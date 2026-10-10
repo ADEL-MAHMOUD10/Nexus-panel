@@ -184,9 +184,9 @@
               <button @click="openUpdatesModal()" 
                       class="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-input hover:bg-white/10 border border-brand-border text-brand-muted hover:text-white transition flex items-center gap-1.5"
                       title="Check & View Panel / Core Updates">
-                <span class="text-white/80" x-text="'Panel: ' + (updates.panel.currentVersion || 'v1.0.1')"></span>
+                <span class="text-white/80" x-text="'Panel: ' + (updates.panel.currentVersion || '...')"></span>
                 <span class="text-brand-border">|</span>
-                <span class="text-cyan-400 font-semibold" x-text="'Core: ' + status.xrayVersion"></span>
+                <span class="text-cyan-400 font-semibold" x-text="'Core: ' + (status.xrayVersion || '...')"></span>
                 <template x-if="updates.panel.hasUpdate || updates.xray.hasUpdate">
                   <span class="inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full bg-amber-500/20 text-amber-300 text-[9px] border border-amber-500/40 animate-pulse font-sans">
                     Update!

@@ -36,11 +36,27 @@ check_root
 # Service Controls
 # ------------------------------------------------------------------------------
 status() {
+    local panel_ver="v1.0.1"
+    if [[ -x "${NEXUS_BIN}" ]]; then
+        panel_ver=$("${NEXUS_BIN}" -v 2>/dev/null | awk '{print $3}')
+    fi
+    if [[ -z "$panel_ver" && -f "${NEXUS_DIR}/version" ]]; then
+        panel_ver=$(cat "${NEXUS_DIR}/version" | tr -d '[:space:]')
+    fi
+    if [[ -z "$panel_ver" ]]; then panel_ver="v1.0.1"; fi
+
+    local xray_ver="Not Installed"
+    if [[ -x "${NEXUS_DIR}/bin/xray" ]]; then
+        xray_ver=$("${NEXUS_DIR}/bin/xray" version 2>/dev/null | head -n1 | awk '{print "v"$2}' | sed 's/vv/v/')
+    elif command -v xray &>/dev/null; then
+        xray_ver=$(xray version 2>/dev/null | head -n1 | awk '{print "v"$2}' | sed 's/vv/v/')
+    fi
+
     if systemctl is-active --quiet "${SERVICE_NAME}"; then
-        echo -e "Nexus Status: ${GREEN}Running${PLAIN}"
+        echo -e "Nexus Status: ${GREEN}Running${PLAIN} (Panel: ${CYAN}${panel_ver}${PLAIN} | Core: ${CYAN}${xray_ver}${PLAIN})"
         return 0
     else
-        echo -e "Nexus Status: ${RED}Stopped${PLAIN}"
+        echo -e "Nexus Status: ${RED}Stopped${PLAIN} (Panel: ${CYAN}${panel_ver}${PLAIN} | Core: ${CYAN}${xray_ver}${PLAIN})"
         return 1
     fi
 }
@@ -253,6 +269,10 @@ update_panel() {
     if [[ -f "${TMP_NEXUS}" && -s "${TMP_NEXUS}" ]]; then
         chmod 755 "${TMP_NEXUS}"
         mv -f "${TMP_NEXUS}" "${NEXUS_BIN}"
+        LATEST_TAG=$(curl -s "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
+        if [[ -n "$LATEST_TAG" ]]; then
+            echo "${LATEST_TAG}" > "${NEXUS_DIR}/version"
+        fi
         log_info "Binary updated successfully. Restarting Nexus service..."
         restart
     else

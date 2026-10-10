@@ -22,12 +22,19 @@ import (
 )
 
 func main() {
+	showVersion := flag.Bool("v", false, "Display Nexus Panel version")
+	showVersionLong := flag.Bool("version", false, "Display Nexus Panel version")
 	isCLI := flag.Bool("cli", false, "Execute CLI command and exit")
 	setPort := flag.Int("set-port", 0, "Set web panel port")
 	resetAdmin := flag.Bool("reset-admin", false, "Reset admin username and password")
 	username := flag.String("username", "", "Admin username")
 	password := flag.String("password", "", "Admin password")
 	flag.Parse()
+
+	if *showVersion || *showVersionLong {
+		fmt.Printf("Nexus Panel %s (%s/%s)\n", api.GetPanelVersion(), runtime.GOOS, runtime.GOARCH)
+		return
+	}
 
 	// Resolve storage paths
 	baseDir := "."

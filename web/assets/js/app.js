@@ -87,14 +87,14 @@ document.addEventListener('alpine:init', () => {
     isUpdatingPanel: false,
     updates: {
       panel: {
-        currentVersion: 'v1.0.1',
-        latestVersion: 'v1.0.1',
+        currentVersion: '',
+        latestVersion: '',
         hasUpdate: false,
         updateUrl: 'https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases'
       },
       xray: {
-        currentVersion: 'v26.7.11',
-        latestVersion: 'v26.7.11',
+        currentVersion: '',
+        latestVersion: '',
         hasUpdate: false,
         updateUrl: 'https://github.com/XTLS/Xray-core/releases'
       }
@@ -451,6 +451,10 @@ document.addEventListener('alpine:init', () => {
 
       if (st.panelVersion) {
         this.updates.panel.currentVersion = st.panelVersion;
+      }
+      if (st.xrayVersion) {
+        this.status.xrayVersion = st.xrayVersion;
+        this.updates.xray.currentVersion = st.xrayVersion;
       }
     },
 

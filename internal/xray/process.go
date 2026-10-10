@@ -68,30 +68,66 @@ func (m *ProcessManager) GetBinPath() string {
 	return m.binPath
 }
 
-// GetVersion queries the actual binary version
+// GetVersion queries the actual binary version installed on disk
 func (m *ProcessManager) GetVersion() string {
-	bin := m.binPath
-	if runtime.GOOS == "windows" && !strings.HasSuffix(bin, ".exe") {
-		if _, err := os.Stat(bin + ".exe"); err == nil {
+	candidates := []string{}
+	if m != nil && m.binPath != "" {
+		candidates = append(candidates, m.binPath)
+	}
+	if exe, err := os.Executable(); err == nil {
+		dir := filepath.Dir(exe)
+		candidates = append(candidates, filepath.Join(dir, "bin", "xray"), filepath.Join(dir, "xray"))
+	}
+	candidates = append(candidates,
+		"/usr/local/nexus/bin/xray",
+		"/usr/local/bin/xray",
+		"/usr/bin/xray",
+		"bin/xray",
+	)
+
+	for _, bin := range candidates {
+		if bin == "" {
+			continue
+		}
+		if runtime.GOOS == "windows" && !strings.HasSuffix(bin, ".exe") {
 			bin += ".exe"
 		}
-	}
-	out, err := exec.Command(bin, "version").Output()
-	if err != nil {
-		return "v26.7.11"
-	}
-	lines := strings.Split(string(out), "\n")
-	if len(lines) > 0 {
-		parts := strings.Fields(lines[0])
-		if len(parts) >= 2 {
-			ver := parts[1]
-			if !strings.HasPrefix(ver, "v") {
-				ver = "v" + ver
+		if fi, err := os.Stat(bin); err == nil && !fi.IsDir() {
+			out, err := exec.Command(bin, "version").Output()
+			if err == nil {
+				lines := strings.Split(string(out), "\n")
+				if len(lines) > 0 {
+					parts := strings.Fields(lines[0])
+					if len(parts) >= 2 {
+						ver := parts[1]
+						if !strings.HasPrefix(ver, "v") {
+							ver = "v" + ver
+						}
+						return ver
+					}
+				}
 			}
-			return ver
 		}
 	}
-	return "v26.7.11"
+
+	if p, err := exec.LookPath("xray"); err == nil {
+		out, err := exec.Command(p, "version").Output()
+		if err == nil {
+			lines := strings.Split(string(out), "\n")
+			if len(lines) > 0 {
+				parts := strings.Fields(lines[0])
+				if len(parts) >= 2 {
+					ver := parts[1]
+					if !strings.HasPrefix(ver, "v") {
+						ver = "v" + ver
+					}
+					return ver
+				}
+			}
+		}
+	}
+
+	return "Not Installed"
 }
 
 // GetLogs returns the most recent logs

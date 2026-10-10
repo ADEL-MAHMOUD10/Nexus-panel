@@ -31,9 +31,6 @@ import (
 	psNet "github.com/shirou/gopsutil/v3/net"
 )
 
-// PanelVersion defines the official release version of Nexus Panel
-const PanelVersion = "v1.0.1"
-
 // Server handles REST API endpoints for Nexus
 type Server struct {
 	db             *database.DB
@@ -348,12 +345,20 @@ func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "client": c})
 }
 
-func (s *Server) handleCheckUpdates(w http.ResponseWriter, r *http.Request) {
-	currentPanelVer := PanelVersion
-	currentXrayVer := "v26.7.11"
+func (s *Server) getXrayVersion() string {
 	if s.processManager != nil {
-		currentXrayVer = s.processManager.GetVersion()
+		v := s.processManager.GetVersion()
+		if v != "" && v != "Not Installed" {
+			return v
+		}
 	}
+	pm := xray.NewProcessManager("bin/xray", "", nil)
+	return pm.GetVersion()
+}
+
+func (s *Server) handleCheckUpdates(w http.ResponseWriter, r *http.Request) {
+	currentPanelVer := GetPanelVersion()
+	currentXrayVer := s.getXrayVersion()
 
 	client := http.Client{Timeout: 5 * time.Second}
 
@@ -529,14 +534,17 @@ func (s *Server) handleUpdateXray(w http.ResponseWriter, r *http.Request) {
 			fName := f.Name
 			if fName == "xray" || fName == "xray.exe" || fName == "geoip.dat" || fName == "geosite.dat" {
 				targetFilePath := filepath.Join(binDir, fName)
+				tmpTargetFile := targetFilePath + ".new"
 				rc, err := f.Open()
 				if err != nil {
 					continue
 				}
-				destFile, err := os.OpenFile(targetFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+				destFile, err := os.OpenFile(tmpTargetFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 				if err == nil {
 					_, _ = io.Copy(destFile, rc)
 					_ = destFile.Close()
+					_ = os.Chmod(tmpTargetFile, 0755)
+					_ = os.Rename(tmpTargetFile, targetFilePath)
 				}
 				_ = rc.Close()
 			}
@@ -563,6 +571,12 @@ func (s *Server) handleUpdatePanel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var req struct {
+		Version string `json:"version"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	targetVer := strings.TrimSpace(req.Version)
+
 	go func() {
 		arch := runtime.GOARCH
 		targetBinary := fmt.Sprintf("nexus-linux-%s", arch)
@@ -578,12 +592,31 @@ func (s *Server) handleUpdatePanel(w http.ResponseWriter, r *http.Request) {
 		dir := filepath.Dir(execPath)
 		tmpPath := filepath.Join(dir, "nexus.new")
 
-		urls := []string{
-			fmt.Sprintf("https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases/latest/download/%s", targetBinary),
-			fmt.Sprintf("https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/bin/%s", targetBinary),
+		client := http.Client{Timeout: 120 * time.Second}
+
+		if targetVer == "" || targetVer == "latest" {
+			reqLatest, _ := http.NewRequest("GET", "https://api.github.com/repos/ADEL-MAHMOUD10/Nexus-panel/releases/latest", nil)
+			reqLatest.Header.Set("User-Agent", "Nexus-Proxy-Panel")
+			if respLatest, err := client.Do(reqLatest); err == nil && respLatest.StatusCode == http.StatusOK {
+				var rel struct {
+					TagName string `json:"tag_name"`
+				}
+				if json.NewDecoder(respLatest.Body).Decode(&rel) == nil && rel.TagName != "" {
+					targetVer = rel.TagName
+				}
+				_ = respLatest.Body.Close()
+			}
 		}
 
-		client := http.Client{Timeout: 120 * time.Second}
+		urls := []string{}
+		if targetVer != "" && targetVer != "latest" {
+			urls = append(urls, fmt.Sprintf("https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases/download/%s/%s", targetVer, targetBinary))
+		}
+		urls = append(urls,
+			fmt.Sprintf("https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases/latest/download/%s", targetBinary),
+			fmt.Sprintf("https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/bin/%s", targetBinary),
+		)
+
 		var downloaded bool
 
 		for _, dlURL := range urls {
@@ -621,6 +654,11 @@ func (s *Server) handleUpdatePanel(w http.ResponseWriter, r *http.Request) {
 
 		_ = os.Chmod(tmpPath, 0755)
 		_ = os.Rename(tmpPath, execPath)
+
+		// Record the installed version dynamically to disk
+		if targetVer != "" && targetVer != "latest" {
+			SetInstalledPanelVersion(targetVer)
+		}
 
 		// Sync helper CLI
 		scriptURL := "https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/scripts/nexus.sh"
@@ -907,16 +945,14 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 	// Real Public IP Detection
 	publicIP := s.getRealPublicIP(r)
 
-	xrayVer := "v26.7.11"
-	if s.processManager != nil {
-		xrayVer = s.processManager.GetVersion()
-	}
+	xrayVer := s.getXrayVersion()
+	panelVer := GetPanelVersion()
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success":      true,
 		"xrayRunning":  isXrayRunning,
 		"xrayVersion":  xrayVer,
-		"panelVersion": PanelVersion,
+		"panelVersion": panelVer,
 		"serverTime":   time.Now().Unix(),
 		"cpu": map[string]any{
 			"usedPercent": cpuUsage,
