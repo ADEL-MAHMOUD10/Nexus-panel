@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"nexus/internal/database"
@@ -19,8 +20,19 @@ func GenerateFullConfig(db *database.DB, apiPort int) (*Config, error) {
 		return baseCfg, fmt.Errorf("failed to fetch database inbounds: %w", err)
 	}
 
+	webPortStr := db.GetSetting("web_port", "8443")
+	webPort, _ := strconv.Atoi(webPortStr)
+	if webPort <= 0 {
+		webPort = 8443
+	}
+
 	for _, in := range inbounds {
 		if !in.Enable {
+			continue
+		}
+
+		if in.Port == webPort {
+			logger.Warningf("NEXUS: skipping inbound %s (port %d) because it collides with panel web_port %d", in.Tag, in.Port, webPort)
 			continue
 		}
 

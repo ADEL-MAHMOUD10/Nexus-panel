@@ -175,6 +175,14 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 
 	mux.HandleFunc("GET /api/crypto/reality-keys", s.authMiddleware(s.handleGenerateRealityKeys))
 
+	// SSL Certificate Management
+	mux.HandleFunc("GET /api/server/certificates", s.authMiddleware(s.handleListCertificates))
+	mux.HandleFunc("GET /panel/api/server/certificates", s.authMiddleware(s.handleListCertificates))
+	mux.HandleFunc("POST /api/server/get-cert", s.authMiddleware(s.handleGetCertificate))
+	mux.HandleFunc("POST /panel/api/server/get-cert", s.authMiddleware(s.handleGetCertificate))
+	mux.HandleFunc("POST /api/server/issue-cert", s.authMiddleware(s.handleIssueCertificate))
+	mux.HandleFunc("POST /panel/api/server/issue-cert", s.authMiddleware(s.handleIssueCertificate))
+
 	// Subscription endpoint (Public with token)
 	mux.HandleFunc("GET /sub/{subId}", s.handleSubscription)
 }
@@ -379,6 +387,19 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	webPortStr := s.db.GetSetting("web_port", "8443")
+	webPort, _ := strconv.Atoi(webPortStr)
+	if webPort <= 0 {
+		webPort = 8443
+	}
+	if in.Port == webPort {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"success": false,
+			"message": fmt.Sprintf("Port %d is reserved for the Nexus Web Panel. Please choose a different inbound port.", in.Port),
+		})
+		return
+	}
+
 	// Validate Port Conflict against existing inbounds
 	if conflict, err := s.db.CheckInboundPortConflict(&in, in.ID); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
@@ -441,6 +462,19 @@ func (s *Server) handleUpdateInbound(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{
 			"success": false,
 			"message": "Invalid port number. Must be between 1 and 65535.",
+		})
+		return
+	}
+
+	webPortStr := s.db.GetSetting("web_port", "8443")
+	webPort, _ := strconv.Atoi(webPortStr)
+	if webPort <= 0 {
+		webPort = 8443
+	}
+	if in.Port == webPort {
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"success": false,
+			"message": fmt.Sprintf("Port %d is reserved for the Nexus Web Panel. Please choose a different inbound port.", in.Port),
 		})
 		return
 	}

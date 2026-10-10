@@ -113,6 +113,9 @@ document.addEventListener('alpine:init', () => {
     inboundModalOpen: false,
     clientModalOpen: false,
     qrModalOpen: false,
+    serverCertificates: [],
+    isFetchingCert: false,
+    isIssuingCert: false,
     logsModalOpen: false,
     configModalOpen: false,
 
@@ -1331,7 +1334,8 @@ document.addEventListener('alpine:init', () => {
 
       // Pick an unused port by default to prevent immediate conflict
       const usedPorts = new Set(this.inbounds.map(i => i.port));
-      const defaultCandidates = [443, 8443, 2053, 2083, 2087, 2096, 8080, 8880];
+      usedPorts.add(8443); // Always exclude web panel port
+      const defaultCandidates = [443, 2053, 2083, 2087, 2096, 8080, 8880];
       let selectedPort = defaultCandidates.find(p => !usedPorts.has(p));
       if (!selectedPort) {
         selectedPort = 10000 + Math.floor(Math.random() * 50000);
@@ -1349,6 +1353,7 @@ document.addEventListener('alpine:init', () => {
       this.inboundForm.security = 'tls';
       this.inboundModalOpen = true;
       this.generateRealityKeys();
+      this.fetchServerCertificates();
     },
 
     openEditInbound(inb) {
@@ -1473,6 +1478,7 @@ document.addEventListener('alpine:init', () => {
       } catch(e) {}
 
       this.inboundModalOpen = true;
+      this.fetchServerCertificates();
     },
 
     async toggleInboundEnable(inb) {
@@ -1610,6 +1616,127 @@ document.addEventListener('alpine:init', () => {
         this.inboundForm.realityPrivKey = res.privateKey;
         this.inboundForm.realityPubKey = res.publicKey;
         this.inboundForm.realityShortId = res.shortId;
+      }
+    },
+
+    // SSL Certificate Management
+    async fetchServerCertificates() {
+      try {
+        const res = await this.api('/api/server/certificates');
+        if (res && res.success) {
+          this.serverCertificates = res.certificates || [];
+        }
+      } catch (e) {}
+    },
+
+    async autoDetectCert() {
+      const domain = (this.inboundForm.tlsSNI || '').trim();
+      this.isFetchingCert = true;
+      try {
+        const res = await this.api('/api/server/get-cert', 'POST', {
+          domain,
+          readPem: this.inboundForm.tlsCertMode === 'content'
+        });
+        if (res && res.success) {
+          if (res.certFile) this.inboundForm.tlsCertFile = res.certFile;
+          if (res.keyFile) this.inboundForm.tlsKeyFile = res.keyFile;
+          if (res.certPem && this.inboundForm.tlsCertMode === 'content') this.inboundForm.tlsCertPem = res.certPem;
+          if (res.keyPem && this.inboundForm.tlsCertMode === 'content') this.inboundForm.tlsKeyPem = res.keyPem;
+          if (!this.inboundForm.tlsSNI && res.domain && res.domain !== 'Panel Default') {
+            this.inboundForm.tlsSNI = res.domain;
+          }
+
+          if (res.found) {
+            this.showToast(`SSL Certificate found & loaded for "${res.domain}"!`);
+          } else {
+            this.showToast(`Standard paths populated for "${res.domain || 'domain'}"`);
+          }
+        } else {
+          this.showToast(res?.message || 'Could not find certificate on server', false);
+        }
+        await this.fetchServerCertificates();
+      } catch (e) {
+        this.showToast('Failed to check server certificates', false);
+      } finally {
+        this.isFetchingCert = false;
+      }
+    },
+
+    selectServerCert(cert) {
+      if (!cert) return;
+      this.inboundForm.tlsCertFile = cert.certFile || '';
+      this.inboundForm.tlsKeyFile = cert.keyFile || '';
+      if (cert.domain && cert.domain !== 'Panel Default') {
+        this.inboundForm.tlsSNI = cert.domain;
+      }
+      this.showToast(`Loaded certificate paths for ${cert.domain}`);
+    },
+
+    async setDefaultPanelCert() {
+      this.isFetchingCert = true;
+      try {
+        const res = await this.api('/api/server/certificates');
+        if (res && res.success && res.defaultCert) {
+          this.inboundForm.tlsCertFile = res.defaultCert.certFile;
+          this.inboundForm.tlsKeyFile = res.defaultCert.keyFile;
+          this.showToast('Loaded panel default SSL certificate paths');
+        } else {
+          const sni = (this.inboundForm.tlsSNI || 'default').trim();
+          this.inboundForm.tlsCertFile = `/root/cert/${sni}/fullchain.pem`;
+          this.inboundForm.tlsKeyFile = `/root/cert/${sni}/privkey.pem`;
+          this.showToast(`Auto-filled standard /root/cert/${sni}/ paths`);
+        }
+      } catch(e) {
+        this.showToast('Could not load default panel certificate', false);
+      } finally {
+        this.isFetchingCert = false;
+      }
+    },
+
+    clearCertFiles() {
+      this.inboundForm.tlsCertFile = '';
+      this.inboundForm.tlsKeyFile = '';
+      this.inboundForm.tlsCertPem = '';
+      this.inboundForm.tlsKeyPem = '';
+      this.showToast('Certificate fields cleared');
+    },
+
+    async issueSslCertificate() {
+      let domain = (this.inboundForm.tlsSNI || '').trim();
+      if (!domain) {
+        domain = window.prompt('Enter domain name for Let\'s Encrypt SSL (must point to this VPS IP):');
+        if (!domain) return;
+        domain = domain.trim();
+        this.inboundForm.tlsSNI = domain;
+      }
+
+      const ok = await this.askConfirm(`Request and issue a Let's Encrypt SSL certificate for "${domain}" using standalone HTTP port 80? Ensure your domain DNS A-record points to this server IP and port 80 is open.`, {
+        title: 'Issue SSL Certificate',
+        confirmText: 'Issue Certificate',
+        isDanger: false
+      });
+      if (!ok) return;
+
+      this.isIssuingCert = true;
+      this.showToast(`Issuing SSL certificate for ${domain}... Please wait.`);
+      try {
+        const res = await this.api('/api/server/issue-cert', 'POST', { domain });
+        if (res && res.success) {
+          this.inboundForm.tlsCertFile = res.certFile;
+          this.inboundForm.tlsKeyFile = res.keyFile;
+          if (res.certPem && this.inboundForm.tlsCertMode === 'content') {
+            this.inboundForm.tlsCertPem = res.certPem;
+            this.inboundForm.tlsKeyPem = res.keyPem;
+          }
+          this.showToast(`SSL Certificate issued successfully for ${domain}!`);
+          await this.fetchServerCertificates();
+        } else {
+          this.showToast(res?.message || 'SSL Certificate issuance failed', false);
+        }
+      } catch (e) {
+        this.showToast('Failed to execute SSL issuance', false);
+      } finally {
+        this.isIssuingCert = false;
       }
     },
 

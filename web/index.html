@@ -1733,23 +1733,93 @@
 
                 <!-- Mode A: File Paths -->
                 <template x-if="inboundForm.tlsCertMode === 'file'">
-                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-brand-card/40 p-3 rounded-xl border border-brand-border">
-                    <div>
-                      <label class="block text-brand-muted mb-1 text-[10px]">Certificate Path (fullchain.pem)</label>
-                      <input type="text" x-model="inboundForm.tlsCertFile" placeholder="/etc/ssl/cert.pem"
-                             class="w-full bg-brand-card border border-brand-border rounded-lg px-3 py-1.5 text-brand-text font-mono text-xs focus:outline-none">
+                  <div class="bg-brand-card/40 p-3 rounded-xl border border-brand-border space-y-3">
+                    
+                    <!-- Quick SSL Certificate Toolbar -->
+                    <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 border-b border-brand-border/60">
+                      <div class="flex flex-wrap items-center gap-1.5">
+                        <!-- 1. Get Cert / Auto-Detect Button -->
+                        <button type="button" @click="autoDetectCert()" :disabled="isFetchingCert"
+                                class="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition flex items-center gap-1.5 disabled:opacity-50 shadow-sm"
+                                title="Auto-detect and fill certificate paths for the entered SNI domain">
+                          <svg class="w-3.5 h-3.5" :class="isFetchingCert ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                          <span x-text="isFetchingCert ? 'Detecting...' : 'Get Cert (Auto)'"></span>
+                        </button>
+
+                        <!-- 2. Set Default Panel Cert Button (3X-UI feature) -->
+                        <button type="button" @click="setDefaultPanelCert()"
+                                class="px-2 py-1 rounded-lg bg-brand-input hover:bg-white/10 text-stone-300 hover:text-white border border-brand-border text-[11px] transition"
+                                title="Fill standard/panel default certificate paths">
+                          Default Cert
+                        </button>
+
+                        <!-- 3. Issue SSL Cert Button -->
+                        <button type="button" @click="issueSslCertificate()" :disabled="isIssuingCert"
+                                class="px-2.5 py-1 rounded-lg bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/30 text-[11px] font-medium transition flex items-center gap-1 disabled:opacity-50"
+                                title="Request and issue a new Let's Encrypt certificate for the SNI domain">
+                          <svg class="w-3.5 h-3.5" :class="isIssuingCert ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                          <span x-text="isIssuingCert ? 'Issuing...' : 'Issue Cert (ACME)'"></span>
+                        </button>
+                      </div>
+
+                      <div class="flex items-center gap-1.5">
+                        <!-- Dropdown of Detected Certs on the VPS -->
+                        <template x-if="serverCertificates.length > 0">
+                          <div class="flex items-center gap-1">
+                            <select @change="if ($event.target.value) { const c = serverCertificates.find(x => x.domain === $event.target.value); if (c) selectServerCert(c); }"
+                                    class="bg-brand-card border border-brand-border rounded-lg px-2 py-1 text-[11px] text-brand-text font-mono focus:outline-none">
+                              <option value="">-- Pick Server Cert --</option>
+                              <template x-for="sc in serverCertificates" :key="sc.domain">
+                                <option :value="sc.domain" x-text="sc.domain + ' (' + sc.issuer + ')'"></option>
+                              </template>
+                            </select>
+                          </div>
+                        </template>
+
+                        <!-- Clear Button -->
+                        <button type="button" @click="clearCertFiles()" title="Clear certificate and key paths"
+                                class="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[11px] transition">
+                          Clear
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label class="block text-brand-muted mb-1 text-[10px]">Private Key Path (privkey.pem)</label>
-                      <input type="text" x-model="inboundForm.tlsKeyFile" placeholder="/etc/ssl/privkey.pem"
-                             class="w-full bg-brand-card border border-brand-border rounded-lg px-3 py-1.5 text-brand-text font-mono text-xs focus:outline-none">
+
+                    <!-- Certificate Inputs Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-0.5">
+                      <div>
+                        <div class="flex items-center justify-between mb-1">
+                          <label class="text-brand-muted text-[10px] font-medium">Certificate Path (fullchain.pem)</label>
+                          <button type="button" x-show="inboundForm.tlsCertFile" @click="copy(inboundForm.tlsCertFile)" class="text-[9px] text-cyan-400 hover:underline">Copy</button>
+                        </div>
+                        <input type="text" x-model="inboundForm.tlsCertFile" placeholder="/root/cert/domain/fullchain.pem"
+                               class="w-full bg-brand-card border border-brand-border rounded-lg px-3 py-1.5 text-brand-text font-mono text-xs focus:outline-none focus:border-cyan-400">
+                      </div>
+                      <div>
+                        <div class="flex items-center justify-between mb-1">
+                          <label class="text-brand-muted text-[10px] font-medium">Private Key Path (privkey.pem)</label>
+                          <button type="button" x-show="inboundForm.tlsKeyFile" @click="copy(inboundForm.tlsKeyFile)" class="text-[9px] text-cyan-400 hover:underline">Copy</button>
+                        </div>
+                        <input type="text" x-model="inboundForm.tlsKeyFile" placeholder="/root/cert/domain/privkey.pem"
+                               class="w-full bg-brand-card border border-brand-border rounded-lg px-3 py-1.5 text-brand-text font-mono text-xs focus:outline-none focus:border-cyan-400">
+                      </div>
                     </div>
+
                   </div>
                 </template>
 
                 <!-- Mode B: Direct Content Textareas -->
                 <template x-if="inboundForm.tlsCertMode === 'content'">
                   <div class="space-y-3 bg-brand-card/40 p-3 rounded-xl border border-brand-border">
+                    <div class="flex items-center justify-between pb-2 border-b border-brand-border/60">
+                      <button type="button" @click="autoDetectCert()" :disabled="isFetchingCert"
+                              class="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium transition flex items-center gap-1.5 disabled:opacity-50">
+                        <svg class="w-3.5 h-3.5" :class="isFetchingCert ? 'animate-spin' : ''" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                        <span>Load PEM From Server Cert</span>
+                      </button>
+                      <button type="button" @click="clearCertFiles()" class="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-[11px] transition">
+                        Clear
+                      </button>
+                    </div>
                     <div>
                       <label class="block text-brand-muted mb-1 text-[10px]">Certificate Body (-----BEGIN CERTIFICATE-----)</label>
                       <textarea x-model="inboundForm.tlsCertPem" rows="3" placeholder="Paste PEM certificate..."

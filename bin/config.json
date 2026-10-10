@@ -69,6 +69,45 @@
           "fakedns"
         ]
       }
+    },
+    {
+      "tag": "in-2161-aad0cb",
+      "listen": "0.0.0.0",
+      "port": 2161,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {
+            "id": "c42ba083-9366-41d3-b914-0c7110c6cd69",
+            "email": "user_4818"
+          }
+        ],
+        "decryption": "none",
+        "fallbacks": []
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "none",
+        "sockopt": {
+          "mark": 0,
+          "tcpFastOpen": true,
+          "tproxy": "off"
+        },
+        "tcpSettings": {
+          "header": {
+            "type": "none"
+          }
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic",
+          "fakedns"
+        ]
+      }
     }
   ],
   "outbounds": [
