@@ -355,14 +355,21 @@
               <div class="bg-brand-card/90 backdrop-blur-xl border border-brand-border rounded-2xl p-4 flex flex-col justify-between shadow-sm hover:border-white/20 transition">
                 <div>
                   <div class="flex items-center justify-between text-xs text-brand-muted mb-1">
-                    <span class="font-semibold text-brand-text flex items-center gap-1.5">
-                      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> RAM
-                    </span>
+                    <div class="flex items-center gap-1.5">
+                      <span class="font-semibold text-brand-text flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> RAM
+                      </span>
+                      <span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 font-medium"
+                            x-text="status.mem.display || 'DDR4 @ 3200 MHz'"></span>
+                    </div>
                     <span class="font-mono text-[11px]" x-text="formatBytes(status.mem.used) + ' / ' + formatBytes(status.mem.total)"></span>
                   </div>
                   <div class="flex items-baseline justify-between my-1">
                     <span class="text-2xl font-mono font-bold text-white tracking-tight" x-text="status.mem.usedPercent + '%'"></span>
-                    <span class="text-[10px] text-brand-dim" x-text="'Free: ' + formatBytes(status.mem.free)"></span>
+                    <div class="text-right">
+                      <span class="text-[11px] font-mono text-emerald-400 block font-medium" x-text="'Avail: ' + formatBytes(status.mem.available)"></span>
+                      <span class="text-[9px] font-mono text-brand-dim block" x-text="'(Free: ' + formatBytes(status.mem.free) + ' · Cache: ' + formatBytes(status.mem.cached + status.mem.buffers) + ')'"></span>
+                    </div>
                   </div>
                 </div>
 

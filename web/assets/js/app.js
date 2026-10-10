@@ -405,7 +405,13 @@ document.addEventListener('alpine:init', () => {
           usedPercent: memVal,
           used: st.mem?.used || 0,
           total: st.mem?.total || 0,
+          available: st.mem?.available || Math.max(0, (st.mem?.total || 0) - (st.mem?.used || 0)),
           free: st.mem?.free || 0,
+          buffers: st.mem?.buffers || 0,
+          cached: st.mem?.cached || 0,
+          type: st.mem?.type || 'DDR4',
+          speedMHz: st.mem?.speedMHz || 3200,
+          display: st.mem?.display || 'DDR4 @ 3200 MHz',
           avg: this.calcAvg(this.status.mem.history),
           peak: Math.max(...this.status.mem.history),
           history: this.status.mem.history

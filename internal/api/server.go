@@ -847,13 +847,17 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 
 	// Virtual Memory
 	vMem, _ := mem.VirtualMemory()
-	memTotal, memUsed, memFree, memUsage := uint64(0), uint64(0), uint64(0), 0.0
+	memTotal, memUsed, memAvailable, memFree, memBuffers, memCached, memUsage := uint64(0), uint64(0), uint64(0), uint64(0), uint64(0), uint64(0), 0.0
 	if vMem != nil {
 		memTotal = vMem.Total
 		memUsed = vMem.Used
+		memAvailable = vMem.Available
 		memFree = vMem.Free
+		memBuffers = vMem.Buffers
+		memCached = vMem.Cached
 		memUsage = vMem.UsedPercent
 	}
+	ramHw := GetRAMHardwareInfo(cpuModel)
 
 	// Swap Memory
 	swapMem, _ := mem.SwapMemory()
@@ -964,8 +968,14 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 		"mem": map[string]any{
 			"total":       memTotal,
 			"used":        memUsed,
+			"available":   memAvailable,
 			"free":        memFree,
+			"buffers":     memBuffers,
+			"cached":      memCached,
 			"usedPercent": memUsage,
+			"type":        ramHw.Type,
+			"speedMHz":    ramHw.SpeedMHz,
+			"display":     ramHw.Display,
 		},
 		"swap": map[string]any{
 			"total":       swapTotal,
