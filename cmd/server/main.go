@@ -102,8 +102,9 @@ func main() {
 	configPath := filepath.Join(baseDir, "bin", "config.json")
 	apiPort := 62789
 
-	// Write baseline Xray config if not exists
-	if _, err := os.Stat(configPath); os.IsNotExist(err) {
+	// Build and sync full Xray config from database
+	if err := xray.SaveAndApplyConfig(db, apiPort, configPath, nil); err != nil {
+		logger.Warningf("NEXUS: failed to generate Xray config from database, falling back to base config: %v", err)
 		baseCfg := xray.DefaultBaseConfig(apiPort)
 		cfgData, _ := baseCfg.ToJSON()
 		_ = os.WriteFile(configPath, cfgData, 0644)
@@ -174,9 +175,12 @@ func main() {
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
 
-	// Serve Embedded Assets
+	// Serve Embedded Assets with Cache-Control headers
 	fileServer := web.FileServerHandler()
-	mux.Handle("/assets/", fileServer)
+	mux.Handle("/assets/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+		fileServer.ServeHTTP(w, r)
+	}))
 
 	// Panel SPA UI Page Renderer
 	serveUI := func(w http.ResponseWriter, r *http.Request) {
@@ -186,6 +190,7 @@ func main() {
 			return
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 		_, _ = w.Write(htmlBytes)
 	}
 

@@ -228,10 +228,28 @@ func (db *DB) SaveInbound(i *Inbound) error {
 	return err
 }
 
+func (db *DB) GetInbound(id int) (*Inbound, error) {
+	row := db.conn.QueryRow("SELECT id, tag, listen, port, protocol, enable, remark, settings, stream_settings, sniffing, up, down, total, expiry_time FROM inbounds WHERE id = ?", id)
+	var i Inbound
+	var enableInt int
+	if err := row.Scan(&i.ID, &i.Tag, &i.Listen, &i.Port, &i.Protocol, &enableInt, &i.Remark, &i.Settings, &i.StreamSettings, &i.Sniffing, &i.Up, &i.Down, &i.Total, &i.ExpiryTime); err != nil {
+		return nil, err
+	}
+	i.Enable = enableInt == 1
+	return &i, nil
+}
+
+func (db *DB) ResetInboundTraffic(id int) error {
+	_, err := db.conn.Exec("UPDATE inbounds SET up = 0, down = 0 WHERE id = ?", id)
+	return err
+}
+
 func (db *DB) DeleteInbound(id int) error {
+	_, _ = db.conn.Exec("DELETE FROM clients WHERE inbound_id = ?", id)
 	_, err := db.conn.Exec("DELETE FROM inbounds WHERE id = ?", id)
 	return err
 }
+
 
 // CheckInboundPortConflict verifies whether a new/updated inbound collides on (IP, Port, Transport L4)
 // with an existing inbound listener. Returns colliding Inbound if conflict exists, otherwise nil.

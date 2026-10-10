@@ -41,10 +41,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   
   <!-- Theme Stylesheet -->
-  <link rel="stylesheet" href="/assets/css/app.css">
+  <link rel="stylesheet" href="/assets/css/app.css?v=1.0.5">
   
   <!-- App JS & Alpine.js -->
-  <script src="/assets/js/app.js"></script>
+  <script src="/assets/js/app.js?v=1.0.5"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.8/dist/cdn.min.js"></script>
 </head>
 <body x-data="nexusApp" class="font-sans min-h-screen flex flex-col antialiased bg-grid-lines relative selection:bg-white/20 selection:text-white" x-cloak>
@@ -577,62 +577,364 @@
           </div>
 
           <!-- =================================================================== -->
-          <!-- TAB 2: INBOUNDS                                                     -->
+          <!-- TAB 2: INBOUNDS (Industrial Power Proxy Listeners Management)       -->
           <!-- =================================================================== -->
-          <div x-show="activeTab === 'inbounds'" class="space-y-6">
-            <div class="flex items-center justify-between">
+          <div x-show="activeTab === 'inbounds'" class="space-y-5">
+            
+            <!-- 1. Inbound Dashboard Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <h2 class="text-xl font-bold tracking-tight text-brand-text">Inbound Listeners</h2>
-                <p class="text-xs text-brand-muted">Manage proxy protocols, transports and cryptographic handshakes</p>
+                <h2 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                  <span>Inbound Listeners</span>
+                  <span class="text-xs px-2.5 py-0.5 rounded-full font-mono font-medium bg-[#1d2230] text-sky-400 border border-sky-500/20" x-text="inboundStats.total + ' Listeners'"></span>
+                </h2>
+                <p class="text-xs text-stone-400 mt-0.5">Manage proxy protocols, crypto handshakes, network transports, and kernel port bindings</p>
               </div>
-              <button @click="openAddInbound()"
-                      class="px-4 py-2 bg-white text-stone-900 hover:bg-stone-200 rounded-xl text-xs font-semibold uppercase tracking-wider transition shadow flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                <span>Add Inbound</span>
+              <div class="flex items-center gap-2">
+                <button @click="refreshData()" title="Refresh telemetry"
+                        class="p-2.5 rounded-xl bg-[#161922] hover:bg-[#1f2330] border border-white/10 text-stone-300 hover:text-white transition">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </button>
+                <button @click="openAddInbound()"
+                        class="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-semibold uppercase tracking-wider transition shadow-lg shadow-blue-500/20 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                  <span>Add Inbound</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 2. Inbound Telemetry Strip (6 Stat Cards) -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <!-- Total Inbounds -->
+              <div class="p-3.5 rounded-xl border border-white/10 bg-[#13151b]/80 backdrop-blur text-left">
+                <div class="text-[11px] text-stone-400 flex items-center justify-between font-medium">
+                  <span>Listeners</span>
+                  <svg class="w-3.5 h-3.5 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"></path></svg>
+                </div>
+                <div class="text-xl font-bold font-mono text-white mt-1" x-text="inboundStats.total"></div>
+                <div class="text-[10px] text-stone-500 mt-0.5 truncate" x-text="inboundStats.enabled + ' active, ' + inboundStats.disabled + ' off'"></div>
+              </div>
+
+              <!-- Active Status -->
+              <div class="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-left">
+                <div class="text-[11px] text-emerald-400/90 flex items-center justify-between font-medium">
+                  <span>Active</span>
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                </div>
+                <div class="text-xl font-bold font-mono text-emerald-300 mt-1" x-text="inboundStats.enabled"></div>
+                <div class="text-[10px] text-emerald-500 mt-0.5">Kernel listeners up</div>
+              </div>
+
+              <!-- Upload Bandwidth -->
+              <div class="p-3.5 rounded-xl border border-sky-500/20 bg-sky-500/5 text-left">
+                <div class="text-[11px] text-sky-400/90 flex items-center justify-between font-medium">
+                  <span>Total Upload</span>
+                  <svg class="w-3.5 h-3.5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
+                </div>
+                <div class="text-xl font-bold font-mono text-sky-300 mt-1" x-text="inboundStats.totalUp"></div>
+                <div class="text-[10px] text-sky-500 mt-0.5">Egress traffic</div>
+              </div>
+
+              <!-- Download Bandwidth -->
+              <div class="p-3.5 rounded-xl border border-purple-500/20 bg-purple-500/5 text-left">
+                <div class="text-[11px] text-purple-400/90 flex items-center justify-between font-medium">
+                  <span>Total Download</span>
+                  <svg class="w-3.5 h-3.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"></path></svg>
+                </div>
+                <div class="text-xl font-bold font-mono text-purple-300 mt-1" x-text="inboundStats.totalDown"></div>
+                <div class="text-[10px] text-purple-500 mt-0.5">Ingress traffic</div>
+              </div>
+
+              <!-- Total Aggregate -->
+              <div class="p-3.5 rounded-xl border border-white/10 bg-[#13151b]/80 backdrop-blur text-left">
+                <div class="text-[11px] text-stone-400 flex items-center justify-between font-medium">
+                  <span>Aggregated</span>
+                  <svg class="w-3.5 h-3.5 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                </div>
+                <div class="text-xl font-bold font-mono text-white mt-1" x-text="inboundStats.totalTraffic"></div>
+                <div class="text-[10px] text-stone-500 mt-0.5">Total data passed</div>
+              </div>
+
+              <!-- Connected Clients -->
+              <button @click="navigateTab('clients')"
+                      class="p-3.5 rounded-xl border border-white/10 bg-[#13151b]/80 backdrop-blur text-left hover:border-blue-500/40 hover:bg-[#161a24] transition group">
+                <div class="text-[11px] text-stone-400 flex items-center justify-between font-medium">
+                  <span>Proxy Users</span>
+                  <svg class="w-3.5 h-3.5 text-stone-500 group-hover:text-blue-400 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                </div>
+                <div class="text-xl font-bold font-mono text-blue-400 mt-1" x-text="inboundStats.totalClients"></div>
+                <div class="text-[10px] text-stone-500 mt-0.5 flex items-center gap-1 group-hover:text-stone-300">
+                  <span>Manage users &rarr;</span>
+                </div>
               </button>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <template x-for="inb in inbounds" :key="inb.id">
-                <div class="bg-brand-card/90 backdrop-blur border border-brand-border rounded-2xl p-5 space-y-4 hover:border-white/20 transition">
-                  <div class="flex items-start justify-between">
-                    <div>
-                      <div class="flex items-center gap-2">
-                        <span class="text-sm font-bold uppercase tracking-wider text-brand-text" x-text="inb.protocol"></span>
-                        <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-brand-input border border-brand-border text-brand-muted" x-text="':' + inb.port"></span>
+            <!-- 3. Search, Protocol Filters, and Sorting Controls -->
+            <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#13151b] border border-white/10 p-3 rounded-2xl">
+              <!-- Left: Search Box -->
+              <div class="relative flex-1 max-w-md">
+                <svg class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" x-model="inboundSearch" placeholder="Search remark, port, protocol, IP, SNI..."
+                       class="w-full bg-[#181b24] border border-white/10 rounded-xl pl-9 pr-8 py-2 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-blue-500/60 font-mono transition">
+                <button x-show="inboundSearch" @click="inboundSearch = ''" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-500 hover:text-white text-xs">&times;</button>
+              </div>
+
+              <!-- Right: Protocol Quick Filter Pills and Sort -->
+              <div class="flex flex-wrap items-center gap-2">
+                <!-- Protocol Pills -->
+                <div class="flex items-center gap-1 bg-[#181b24] p-1 rounded-xl border border-white/10 text-xs">
+                  <button type="button" @click="inboundProtocolFilter = 'all'"
+                          :class="inboundProtocolFilter === 'all' ? 'bg-white/10 text-white font-semibold' : 'text-stone-400 hover:text-stone-200'"
+                          class="px-2.5 py-1 rounded-lg transition text-[11px]">All</button>
+                  <button type="button" @click="inboundProtocolFilter = 'vless'"
+                          :class="inboundProtocolFilter === 'vless' ? 'bg-purple-500/20 text-purple-300 font-semibold' : 'text-stone-400 hover:text-stone-200'"
+                          class="px-2.5 py-1 rounded-lg transition text-[11px] uppercase">VLESS</button>
+                  <button type="button" @click="inboundProtocolFilter = 'trojan'"
+                          :class="inboundProtocolFilter === 'trojan' ? 'bg-emerald-500/20 text-emerald-300 font-semibold' : 'text-stone-400 hover:text-stone-200'"
+                          class="px-2.5 py-1 rounded-lg transition text-[11px] uppercase">Trojan</button>
+                  <button type="button" @click="inboundProtocolFilter = 'vmess'"
+                          :class="inboundProtocolFilter === 'vmess' ? 'bg-blue-500/20 text-blue-300 font-semibold' : 'text-stone-400 hover:text-stone-200'"
+                          class="px-2.5 py-1 rounded-lg transition text-[11px] uppercase">VMess</button>
+                  <button type="button" @click="inboundProtocolFilter = 'shadowsocks'"
+                          :class="inboundProtocolFilter === 'shadowsocks' ? 'bg-amber-500/20 text-amber-300 font-semibold' : 'text-stone-400 hover:text-stone-200'"
+                          class="px-2.5 py-1 rounded-lg transition text-[11px] uppercase">SS</button>
+                </div>
+
+                <!-- Sort By Dropdown -->
+                <div class="flex items-center gap-1.5">
+                  <span class="text-[11px] text-stone-500">Sort:</span>
+                  <select x-model="inboundSortBy"
+                          class="bg-[#181b24] border border-white/10 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500/50 font-mono">
+                    <option value="oldest">ID (Ascending)</option>
+                    <option value="newest">ID (Descending)</option>
+                    <option value="port_asc">Port (Low &rarr; High)</option>
+                    <option value="port_desc">Port (High &rarr; Low)</option>
+                    <option value="traffic">Traffic (Highest First)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <!-- 4. Inbound Listener Cards Grid -->
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <template x-for="inb in filteredInbounds" :key="inb.id">
+                <div class="bg-[#13151b]/90 backdrop-blur border rounded-2xl p-5 space-y-4 shadow-xl transition-all"
+                     :class="inb.enable ? 'border-white/10 hover:border-white/20' : 'border-white/5 opacity-70 bg-[#111318]'">
+                  
+                  <!-- Card Top Strip: Tag/Remark, Protocol Badge, Port/Listen Address & Enable Switch -->
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="space-y-1">
+                      <div class="flex flex-wrap items-center gap-2">
+                        <!-- Protocol Badge -->
+                        <span class="px-2.5 py-0.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border shadow-sm"
+                              :class="{
+                                'bg-purple-950/40 text-purple-300 border-purple-800/50': inb.protocol === 'vless',
+                                'bg-emerald-950/40 text-emerald-300 border-emerald-800/50': inb.protocol === 'trojan',
+                                'bg-blue-950/40 text-blue-300 border-blue-800/50': inb.protocol === 'vmess',
+                                'bg-amber-950/40 text-amber-300 border-amber-800/50': inb.protocol === 'shadowsocks'
+                              }"
+                              x-text="inb.protocol"></span>
+
+                        <!-- Port & Listen Interface Pill -->
+                        <span @click="copy((inb.listen || '0.0.0.0') + ':' + inb.port)" title="Click to copy endpoint"
+                              class="cursor-pointer inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-mono bg-[#1c202a] text-stone-200 border border-white/10 hover:border-white/30 transition">
+                          <span class="text-stone-400" x-text="inb.listen || '0.0.0.0'"></span>
+                          <span class="font-bold text-white" x-text="':' + inb.port"></span>
+                        </span>
+
+                        <!-- Inbound ID -->
+                        <span class="px-1.5 py-0.5 rounded text-[10px] font-mono bg-white/5 text-stone-500" x-text="'#' + inb.id"></span>
                       </div>
-                      <div class="text-xs text-brand-muted mt-0.5" x-text="inb.remark || inb.tag"></div>
+
+                      <!-- Friendly Remark -->
+                      <div class="text-sm font-semibold text-white truncate max-w-sm" x-text="inb.remark || inb.tag"></div>
                     </div>
-                    <div class="flex items-center gap-1.5">
-                      <button @click="openAddClient(inb)" title="Add user"
-                              class="p-2 rounded-lg bg-brand-input hover:bg-brand-cardHover border border-brand-border text-brand-text text-xs transition">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
+
+                    <!-- Right Controls: Toggle Switch & Status Pill -->
+                    <div class="flex items-center gap-2.5 shrink-0">
+                      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono border"
+                            :class="inb.enable ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-stone-800 text-stone-400 border-stone-700'">
+                        <span class="w-1.5 h-1.5 rounded-full" :class="inb.enable ? 'bg-emerald-400 animate-pulse' : 'bg-stone-500'"></span>
+                        <span x-text="inb.enable ? 'Listening' : 'Disabled'"></span>
+                      </span>
+
+                      <!-- Toggle Switch -->
+                      <button type="button" @click="toggleInboundEnable(inb)"
+                              :class="inb.enable ? 'bg-blue-600' : 'bg-[#2b3141]'"
+                              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none">
+                        <span :class="inb.enable ? 'translate-x-4' : 'translate-x-0.5'"
+                              class="pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5"></span>
                       </button>
-                      <button @click="deleteInbound(inb.id)" title="Delete"
-                              class="p-2 rounded-lg bg-brand-input hover:bg-rose-500/20 hover:text-rose-400 border border-brand-border text-brand-muted text-xs transition">
+                    </div>
+                  </div>
+
+                  <!-- Cryptography & Stream Settings Badges -->
+                  <div class="flex flex-wrap items-center gap-1.5 text-[11px] font-mono pt-1">
+                    <!-- Network / Transport Badge -->
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#181b24] border border-white/10 text-sky-300 uppercase">
+                      <span class="text-stone-500">net:</span>
+                      <span x-text="parseStreamDetails(inb).network"></span>
+                    </span>
+
+                    <!-- Security Badge -->
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded border uppercase"
+                          :class="{
+                            'bg-cyan-950/40 text-cyan-300 border-cyan-800/40': parseStreamDetails(inb).security === 'reality',
+                            'bg-emerald-950/40 text-emerald-300 border-emerald-800/40': parseStreamDetails(inb).security === 'tls',
+                            'bg-stone-800 text-stone-400 border-stone-700': parseStreamDetails(inb).security === 'none'
+                          }">
+                      <span class="text-stone-500">sec:</span>
+                      <span x-text="parseStreamDetails(inb).security"></span>
+                    </span>
+
+                    <!-- Target SNI / Dest if TLS or REALITY -->
+                    <template x-if="parseStreamDetails(inb).sni">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#181b24] border border-white/10 text-stone-300 truncate max-w-[200px]"
+                            :title="parseStreamDetails(inb).sni">
+                        <span class="text-stone-500">dest/sni:</span>
+                        <span class="text-white" x-text="parseStreamDetails(inb).sni"></span>
+                      </span>
+                    </template>
+
+                    <!-- Path if WS or HTTPUpgrade or gRPC -->
+                    <template x-if="parseStreamDetails(inb).path">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-[#181b24] border border-white/10 text-stone-300 truncate max-w-[160px]"
+                            :title="parseStreamDetails(inb).path">
+                        <span class="text-stone-500">path:</span>
+                        <span class="text-white" x-text="parseStreamDetails(inb).path"></span>
+                      </span>
+                    </template>
+
+                    <!-- Flow (vision) -->
+                    <template x-if="parseStreamDetails(inb).flow">
+                      <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-300">
+                        <span>flow:</span>
+                        <span x-text="parseStreamDetails(inb).flow"></span>
+                      </span>
+                    </template>
+                  </div>
+
+                  <!-- Telemetry: Up / Down Bytes & Quota Progress Bar -->
+                  <div class="bg-[#181b24] p-3 rounded-xl border border-white/10 space-y-2">
+                    <div class="flex items-center justify-between text-xs font-mono">
+                      <div class="flex items-center gap-3">
+                        <span class="text-sky-400 font-semibold flex items-center gap-1">
+                          <span>&uarr;</span> <span x-text="formatBytes(inb.up || 0)"></span>
+                        </span>
+                        <span class="text-purple-400 font-semibold flex items-center gap-1">
+                          <span>&darr;</span> <span x-text="formatBytes(inb.down || 0)"></span>
+                        </span>
+                      </div>
+                      <div class="text-[11px] text-stone-400">
+                        <template x-if="inb.total > 0">
+                          <span x-text="formatBytes((inb.up || 0) + (inb.down || 0)) + ' / ' + formatBytes(inb.total)"></span>
+                        </template>
+                        <template x-if="!inb.total || inb.total === 0">
+                          <span class="text-stone-400 font-sans">Unlimited Bandwidth (&infin;)</span>
+                        </template>
+                      </div>
+                    </div>
+
+                    <!-- Visual Usage Progress Bar -->
+                    <div class="w-full bg-[#101217] rounded-full h-1.5 overflow-hidden border border-white/5">
+                      <div class="bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 h-full rounded-full transition-all duration-300"
+                           :style="'width: ' + (inb.total > 0 ? Math.min(100, Math.round(((inb.up + inb.down) / inb.total) * 100)) : 10) + '%'"></div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[10px] text-stone-500 pt-0.5">
+                      <div>
+                        <span class="text-stone-400">Traffic Quota:</span>
+                        <span x-text="inb.total > 0 ? formatBytes(inb.total) : 'Unlimited Quota'"></span>
+                      </div>
+                      <div>
+                        <span class="text-stone-400">Expiration:</span>
+                        <span x-text="inb.expiryTime > 0 ? (new Date(inb.expiryTime * 1000).toLocaleDateString()) : 'Never Expires'"></span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Subscribed Clients Pill Strip -->
+                  <div class="flex items-center justify-between pt-1 text-xs">
+                    <div class="flex items-center gap-1.5 overflow-x-auto custom-scrollbar py-0.5">
+                      <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-blue-500/10 text-blue-300 border border-blue-500/20 shrink-0"
+                            x-text="(inb.clients ? inb.clients.length : 0) + ' User Client(s)'"></span>
+                      
+                      <!-- Quick Client Avatars / Badges -->
+                      <template x-for="(cl, cIdx) in (inb.clients || []).slice(0, 3)" :key="cl.id">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-mono bg-[#1c202a] text-stone-300 border border-white/5 truncate max-w-[120px]"
+                              :title="cl.email" x-text="cl.email"></span>
+                      </template>
+
+                      <template x-if="inb.clients && inb.clients.length > 3">
+                        <span class="text-[10px] text-stone-500 font-mono" x-text="'+' + (inb.clients.length - 3) + ' more'"></span>
+                      </template>
+                    </div>
+
+                    <!-- Quick Add User Button -->
+                    <button @click="openAddClient(inb)" title="Attach user client to this listener"
+                            class="px-2.5 py-1 rounded-lg bg-[#181b24] hover:bg-white/10 border border-white/10 text-stone-300 hover:text-white text-[11px] transition flex items-center gap-1 shrink-0">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                      <span>Add User</span>
+                    </button>
+                  </div>
+
+                  <!-- Card Action Toolbar (QR, Edit, Clone, Reset Traffic, Delete) -->
+                  <div class="flex items-center justify-between pt-3 border-t border-white/5">
+                    <div class="flex items-center gap-1.5">
+                      <!-- Share / QR Link Button -->
+                      <button @click="showInboundQR(inb)" title="Export QR Code & Share URI"
+                              class="p-2 rounded-xl bg-[#181b24] hover:bg-white/10 border border-white/10 text-stone-300 hover:text-white text-xs transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                      </button>
+
+                      <!-- Clone Listener Button -->
+                      <button @click="cloneInbound(inb)" title="Duplicate / Clone Listener"
+                              class="p-2 rounded-xl bg-[#181b24] hover:bg-white/10 border border-white/10 text-stone-300 hover:text-white text-xs transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                      </button>
+
+                      <!-- Reset Traffic Counters Button -->
+                      <button @click="resetInboundTraffic(inb)" title="Reset Traffic Counters"
+                              class="p-2 rounded-xl bg-[#181b24] hover:bg-amber-500/20 hover:text-amber-400 border border-white/10 text-stone-300 text-xs transition">
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                      </button>
+                    </div>
+
+                    <div class="flex items-center gap-1.5">
+                      <!-- Edit Inbound Button -->
+                      <button @click="openEditInbound(inb)"
+                              class="px-3 py-1.5 rounded-xl bg-[#181b24] hover:bg-white/10 border border-white/10 text-white text-xs font-medium transition flex items-center gap-1.5">
+                        <svg class="w-3.5 h-3.5 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                        <span>Edit</span>
+                      </button>
+
+                      <!-- Delete Listener Button -->
+                      <button @click="deleteInbound(inb.id)" title="Permanently delete listener"
+                              class="p-2 rounded-xl bg-[#181b24] hover:bg-rose-500/20 hover:text-rose-400 border border-white/10 text-stone-400 text-xs transition">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                       </button>
                     </div>
                   </div>
 
-                  <!-- Specs -->
-                  <div class="grid grid-cols-2 gap-2 text-xs font-mono bg-brand-input p-3 rounded-xl border border-brand-border">
-                    <div>
-                      <span class="text-[10px] text-brand-muted block font-sans">Transport / Security</span>
-                      <span class="text-brand-text uppercase" x-text="parseStream(inb)"></span>
-                    </div>
-                    <div>
-                      <span class="text-[10px] text-brand-muted block font-sans">Subscribed Users</span>
-                      <span class="text-brand-text" x-text="(inb.clients ? inb.clients.length : 0) + ' client(s)'"></span>
-                    </div>
-                  </div>
                 </div>
               </template>
             </div>
 
-            <div x-show="inbounds.length === 0" class="text-center py-12 text-brand-muted text-xs">
-              No inbounds configured yet. Click "Add Inbound" to create your first listener.
+            <!-- Empty State -->
+            <div x-show="filteredInbounds.length === 0" class="text-center py-16 bg-[#13151b] border border-white/10 rounded-2xl p-8 space-y-3">
+              <div class="w-12 h-12 mx-auto rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-stone-400">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              </div>
+              <h3 class="text-sm font-semibold text-white">No Inbound Listeners Found</h3>
+              <p class="text-xs text-stone-400 max-w-sm mx-auto">No proxy listeners match your current filters. Clear the search query or click below to configure a new listener.</p>
+              <div class="pt-2">
+                <button @click="inboundSearch = ''; inboundProtocolFilter = 'all'; openAddInbound();"
+                        class="px-4 py-2 bg-white text-stone-900 font-semibold rounded-xl text-xs hover:bg-stone-200 transition">
+                  Create First Listener
+                </button>
+              </div>
             </div>
+
           </div>
 
           <!-- =================================================================== -->
@@ -1004,8 +1306,8 @@
       <!-- Modal Header -->
       <div class="px-6 py-4 border-b border-brand-border flex items-center justify-between shrink-0 bg-brand-card">
         <div class="flex items-center gap-2.5">
-          <span class="w-2.5 h-2.5 rounded-full bg-cyan-400"></span>
-          <h3 class="font-bold text-sm tracking-wide text-brand-text">Configure Inbound Listener</h3>
+          <span class="w-2.5 h-2.5 rounded-full" :class="isEditingInbound ? 'bg-amber-400' : 'bg-cyan-400'"></span>
+          <h3 class="font-bold text-sm tracking-wide text-brand-text" x-text="isEditingInbound ? 'Edit Inbound Listener #' + editingInboundId : 'Configure Inbound Listener'"></h3>
         </div>
         <button @click="inboundModalOpen = false" class="text-brand-muted hover:text-white text-lg leading-none transition">&times;</button>
       </div>
@@ -1639,7 +1941,7 @@
               <template x-if="portConflict">
                 <svg class="w-3.5 h-3.5 text-rose-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>
               </template>
-              <span x-text="portConflict ? 'Port Occupied' : 'Save Inbound'"></span>
+              <span x-text="portConflict ? 'Port Occupied' : (isEditingInbound ? 'Update Inbound' : 'Save Inbound')"></span>
             </button>
           </div>
         </div>

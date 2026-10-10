@@ -141,7 +141,7 @@ if [[ -f "${TMP_NEXUS}" && -s "${TMP_NEXUS}" ]]; then
     chmod 755 "${TMP_NEXUS}"
     mv -f "${TMP_NEXUS}" "${NEXUS_DIR}/nexus"
     LATEST_TAG=$(curl -s "https://api.github.com/repos/${GITHUB_REPO}/releases/latest" 2>/dev/null | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    if [[ -z "$LATEST_TAG" ]]; then LATEST_TAG="v1.0.3"; fi
+    if [[ -z "$LATEST_TAG" ]]; then LATEST_TAG="v1.0.5"; fi
     echo "${LATEST_TAG}" > "${NEXUS_DIR}/version"
 fi
 

@@ -72,6 +72,11 @@ document.addEventListener('alpine:init', () => {
 
     // Inbounds & Clients
     inbounds: [],
+    inboundSearch: '',
+    inboundProtocolFilter: 'all', // 'all', 'vless', 'trojan', 'vmess', 'shadowsocks'
+    inboundSortBy: 'oldest',      // 'oldest', 'newest', 'port_asc', 'port_desc', 'traffic'
+    isEditingInbound: false,
+    editingInboundId: 0,
     clientSearch: '',
     clientStatusFilter: 'all', // 'all', 'online', 'active', 'depleting', 'disabled', 'ended'
     clientSortBy: 'oldest',    // 'oldest', 'newest', 'traffic', 'remaining'
@@ -193,6 +198,9 @@ document.addEventListener('alpine:init', () => {
       const isTargetUDP = (this.inboundForm.protocol === 'hysteria' || this.inboundForm.protocol === 'tuic' || net === 'kcp' || net === 'quic');
 
       const found = this.inbounds.find(existing => {
+        // When editing an inbound, ignore conflict with self
+        if (this.isEditingInbound && existing.id === this.editingInboundId) return false;
+
         if (existing.port !== port) return false;
 
         let existingIsUDP = false;
@@ -335,7 +343,7 @@ document.addEventListener('alpine:init', () => {
           if (this.token) {
             if (this.activeTab === 'overview') {
               this.fetchServerStatus();
-            } else if (this.activeTab === 'clients') {
+            } else if (this.activeTab === 'clients' || this.activeTab === 'inbounds') {
               this.refreshData();
             }
           }
@@ -350,11 +358,47 @@ document.addEventListener('alpine:init', () => {
       setTimeout(() => { this.toast.show = false; }, 3200);
     },
 
-    copy(text) {
+    async copy(text) {
       if (!text) return;
-      navigator.clipboard.writeText(text).then(() => {
+      let copied = false;
+
+      // 1. Try modern Async Clipboard API (works on HTTPS & localhost)
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          copied = true;
+        } catch (e) {
+          copied = false;
+        }
+      }
+
+      // 2. Fallback for insecure contexts (HTTP domains like http://nexus.sigmacode.online:8443/)
+      if (!copied) {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = text;
+          textArea.setAttribute('readonly', '');
+          textArea.style.position = 'fixed';
+          textArea.style.top = '-9999px';
+          textArea.style.left = '-9999px';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          textArea.setSelectionRange(0, 99999);
+          copied = document.execCommand('copy');
+          document.body.removeChild(textArea);
+        } catch (err) {
+          copied = false;
+        }
+      }
+
+      if (copied) {
         this.showToast('Copied to clipboard');
-      });
+      } else {
+        // Fallback prompt if clipboard access is completely blocked
+        window.prompt('Copy to clipboard (Ctrl+C, Enter):', text);
+      }
     },
 
     toggleIPVisibility() {
@@ -885,6 +929,77 @@ document.addEventListener('alpine:init', () => {
       return this.formatBytes(down);
     },
 
+    get inboundStats() {
+      const all = this.inbounds;
+      let enabled = 0, disabled = 0, totalUp = 0, totalDown = 0, totalClients = 0;
+      all.forEach(i => {
+        if (i.enable) enabled++; else disabled++;
+        totalUp += (i.up || 0);
+        totalDown += (i.down || 0);
+        if (i.clients) {
+          totalClients += i.clients.length;
+          i.clients.forEach(c => {
+            totalUp += (c.up || 0);
+            totalDown += (c.down || 0);
+          });
+        }
+      });
+
+      return {
+        total: all.length,
+        enabled,
+        disabled,
+        totalUp: this.formatBytes(totalUp),
+        totalDown: this.formatBytes(totalDown),
+        totalTraffic: this.formatBytes(totalUp + totalDown),
+        totalClients
+      };
+    },
+
+    get filteredInbounds() {
+      let list = [...this.inbounds];
+
+      if (this.inboundProtocolFilter && this.inboundProtocolFilter !== 'all') {
+        list = list.filter(i => (i.protocol || '').toLowerCase() === this.inboundProtocolFilter.toLowerCase());
+      }
+
+      if (this.inboundSearch) {
+        const q = this.inboundSearch.toLowerCase().trim();
+        list = list.filter(i => {
+          const remark = (i.remark || '').toLowerCase();
+          const tag = (i.tag || '').toLowerCase();
+          const port = String(i.port);
+          const listen = (i.listen || '').toLowerCase();
+          const proto = (i.protocol || '').toLowerCase();
+          
+          let streamSni = '';
+          let streamPath = '';
+          try {
+            const ss = JSON.parse(i.streamSettings || '{}');
+            if (ss.tlsSettings?.serverName) streamSni = ss.tlsSettings.serverName.toLowerCase();
+            if (ss.realitySettings?.dest) streamSni += ' ' + ss.realitySettings.dest.toLowerCase();
+            if (ss.wsSettings?.path) streamPath = ss.wsSettings.path.toLowerCase();
+          } catch(e) {}
+
+          return remark.includes(q) || tag.includes(q) || port.includes(q) || listen.includes(q) || proto.includes(q) || streamSni.includes(q) || streamPath.includes(q);
+        });
+      }
+
+      if (this.inboundSortBy === 'oldest') {
+        list.sort((a, b) => a.id - b.id);
+      } else if (this.inboundSortBy === 'newest') {
+        list.sort((a, b) => b.id - a.id);
+      } else if (this.inboundSortBy === 'port_asc') {
+        list.sort((a, b) => a.port - b.port);
+      } else if (this.inboundSortBy === 'port_desc') {
+        list.sort((a, b) => b.port - a.port);
+      } else if (this.inboundSortBy === 'traffic') {
+        list.sort((a, b) => ((b.up || 0) + (b.down || 0)) - ((a.up || 0) + (a.down || 0)));
+      }
+
+      return list;
+    },
+
     get clientStats() {
       const all = this.rawClientsList;
       const now = Math.floor(Date.now() / 1000);
@@ -1209,6 +1324,8 @@ document.addEventListener('alpine:init', () => {
 
     // Inbound Actions
     openAddInbound() {
+      this.isEditingInbound = false;
+      this.editingInboundId = 0;
       this.inboundModalTab = 'basics';
       this.inboundForm.remark = 'VLESS-TLS-' + Math.floor(Math.random() * 900 + 100);
 
@@ -1232,6 +1349,246 @@ document.addEventListener('alpine:init', () => {
       this.inboundForm.security = 'tls';
       this.inboundModalOpen = true;
       this.generateRealityKeys();
+    },
+
+    openEditInbound(inb) {
+      this.isEditingInbound = true;
+      this.editingInboundId = inb.id;
+      this.inboundModalTab = 'basics';
+
+      this.inboundForm.remark = inb.remark || inb.tag || '';
+      this.inboundForm.port = inb.port;
+      this.inboundForm.listen = inb.listen || '0.0.0.0';
+      this.inboundForm.totalGB = inb.total > 0 ? (inb.total / (1024 * 1024 * 1024)).toFixed(2) : 0;
+      
+      if (inb.expiryTime > 0) {
+        const diff = inb.expiryTime - Math.floor(Date.now() / 1000);
+        this.inboundForm.expiryDays = diff > 0 ? Math.ceil(diff / 86400) : 0;
+      } else {
+        this.inboundForm.expiryDays = 0;
+      }
+
+      this.inboundForm.protocol = inb.protocol || 'vless';
+
+      // Parse Settings
+      try {
+        const s = typeof inb.settings === 'string' ? JSON.parse(inb.settings || '{}') : (inb.settings || {});
+        if (inb.protocol === 'vless') {
+          this.inboundForm.vlessDecryption = s.decryption || 'none';
+          this.inboundForm.vlessFlow = (s.clients && s.clients[0]?.flow) || 'xtls-rprx-vision';
+        } else if (inb.protocol === 'vmess') {
+          this.inboundForm.vmessAlterId = s.default?.alterId || 0;
+          this.inboundForm.vmessSecurity = s.default?.security || 'auto';
+        } else if (inb.protocol === 'shadowsocks') {
+          this.inboundForm.shadowsocksMethod = s.method || '2022-blake3-aes-128-gcm';
+          this.inboundForm.shadowsocksPassword = s.password || '';
+        }
+        if (s.fallbacks && s.fallbacks[0]) {
+          this.inboundForm.fallbacksDest = s.fallbacks[0].dest || '';
+          this.inboundForm.fallbacksPath = s.fallbacks[0].path || '';
+        } else {
+          this.inboundForm.fallbacksDest = '';
+          this.inboundForm.fallbacksPath = '';
+        }
+      } catch(e) {}
+
+      // Parse StreamSettings
+      try {
+        const ss = typeof inb.streamSettings === 'string' ? JSON.parse(inb.streamSettings || '{}') : (inb.streamSettings || {});
+        this.inboundForm.network = ss.network || 'tcp';
+        this.inboundForm.security = ss.security || 'none';
+
+        if (ss.tcpSettings?.header) {
+          this.inboundForm.tcpHeaderType = ss.tcpSettings.header.type || 'none';
+          if (ss.tcpSettings.header.request) {
+            this.inboundForm.tcpHost = (ss.tcpSettings.header.request.headers?.Host?.[0]) || '';
+            this.inboundForm.tcpPath = (ss.tcpSettings.header.request.path?.[0]) || '/';
+          }
+        }
+        if (ss.wsSettings) {
+          this.inboundForm.wsPath = ss.wsSettings.path || '/vless-ws';
+          this.inboundForm.wsHost = ss.wsSettings.headers?.Host || ss.wsSettings.host || '';
+        }
+        if (ss.httpupgradeSettings) {
+          this.inboundForm.httpupgradePath = ss.httpupgradeSettings.path || '/vless-httpupgrade';
+          this.inboundForm.httpupgradeHost = ss.httpupgradeSettings.host || '';
+        }
+        if (ss.grpcSettings) {
+          this.inboundForm.grpcServiceName = ss.grpcSettings.serviceName || 'vless-grpc';
+          this.inboundForm.grpcMultiMode = !!ss.grpcSettings.multiMode;
+        }
+        if (ss.xhttpSettings) {
+          this.inboundForm.xhttpPath = ss.xhttpSettings.path || '/vless-xhttp';
+          this.inboundForm.xhttpMode = ss.xhttpSettings.mode || 'auto';
+        }
+
+        if (ss.realitySettings) {
+          const r = ss.realitySettings;
+          this.inboundForm.realityDest = r.dest || 'www.google.com:443';
+          this.inboundForm.realityServerNames = Array.isArray(r.serverNames) ? r.serverNames.join(', ') : (r.serverNames || 'www.google.com');
+          this.inboundForm.realityPrivKey = r.privateKey || '';
+          this.inboundForm.realityPubKey = r.settings?.publicKey || '';
+          this.inboundForm.realityShortId = (Array.isArray(r.shortIds) ? r.shortIds[0] : r.shortIds) || '';
+          this.inboundForm.realitySpiderX = r.settings?.spiderX || '/';
+          this.inboundForm.realityFingerprint = r.settings?.fingerprint || 'chrome';
+          this.inboundForm.realityShow = !!r.show;
+        }
+
+        if (ss.tlsSettings) {
+          const t = ss.tlsSettings;
+          this.inboundForm.tlsSNI = t.serverName || '';
+          this.inboundForm.tlsALPN = Array.isArray(t.alpn) ? t.alpn.join(',') : (t.alpn || 'h2,http/1.1');
+          this.inboundForm.tlsMinVersion = t.minVersion || '1.2';
+          this.inboundForm.tlsMaxVersion = t.maxVersion || '1.3';
+          this.inboundForm.tlsRejectUnknownSni = !!t.rejectUnknownSni;
+          this.inboundForm.tlsFingerprint = t.settings?.fingerprint || 'chrome';
+          if (t.certificates && t.certificates[0]) {
+            const cert = t.certificates[0];
+            if (cert.certificateFile || cert.keyFile) {
+              this.inboundForm.tlsCertMode = 'file';
+              this.inboundForm.tlsCertFile = cert.certificateFile || '';
+              this.inboundForm.tlsKeyFile = cert.keyFile || '';
+            } else if (cert.certificate || cert.key) {
+              this.inboundForm.tlsCertMode = 'content';
+              this.inboundForm.tlsCertPem = Array.isArray(cert.certificate) ? cert.certificate.join('\n') : (cert.certificate || '');
+              this.inboundForm.tlsKeyPem = Array.isArray(cert.key) ? cert.key.join('\n') : (cert.key || '');
+            }
+          }
+        }
+
+        if (ss.sockopt) {
+          this.inboundForm.sockoptTcpFastOpen = !!ss.sockopt.tcpFastOpen;
+          this.inboundForm.sockoptTproxy = ss.sockopt.tproxy || 'off';
+          this.inboundForm.sockoptMark = ss.sockopt.mark || 0;
+        }
+      } catch(e) {}
+
+      // Parse Sniffing
+      try {
+        const sn = typeof inb.sniffing === 'string' ? JSON.parse(inb.sniffing || '{}') : (inb.sniffing || {});
+        this.inboundForm.sniffingEnabled = sn.enabled !== false;
+        this.inboundForm.sniffingDestOverride = sn.destOverride || ['http', 'tls', 'quic', 'fakedns'];
+        this.inboundForm.sniffingMetadataOnly = !!sn.metadataOnly;
+        this.inboundForm.sniffingRouteOnly = !!sn.routeOnly;
+      } catch(e) {}
+
+      this.inboundModalOpen = true;
+    },
+
+    async toggleInboundEnable(inb) {
+      const previous = inb.enable;
+      inb.enable = !previous;
+      const res = await this.api(`/api/inbounds/toggle/${inb.id}`, 'POST');
+      if (res && res.success) {
+        this.showToast(`Inbound "${inb.remark || inb.tag}" ${inb.enable ? 'enabled' : 'disabled'}`);
+      } else {
+        inb.enable = previous;
+        this.showToast(res?.message || 'Failed to toggle inbound listener', false);
+      }
+    },
+
+    async resetInboundTraffic(inb) {
+      const ok = await this.askConfirm(`Reset accumulated upload and download traffic statistics for inbound "${inb.remark || inb.tag}" to 0?`, {
+        title: 'Reset Inbound Traffic',
+        confirmText: 'Reset Counters',
+        isDanger: true
+      });
+      if (!ok) return;
+
+      const res = await this.api(`/api/inbounds/reset-traffic/${inb.id}`, 'POST');
+      if (res && res.success) {
+        this.showToast(`Traffic counters reset for "${inb.remark || inb.tag}"`);
+        this.refreshData();
+      } else {
+        this.showToast(res?.message || 'Failed to reset inbound traffic', false);
+      }
+    },
+
+    async cloneInbound(inb) {
+      const ok = await this.askConfirm(`Clone inbound listener "${inb.remark || inb.tag}"? A duplicate listener with unique credentials will be created on the next available port.`, {
+        title: 'Clone Inbound Listener',
+        confirmText: 'Clone Listener',
+        isDanger: false
+      });
+      if (!ok) return;
+
+      const res = await this.api(`/api/inbounds/clone/${inb.id}`, 'POST');
+      if (res && res.success) {
+        this.showToast(`Inbound cloned successfully on port :${res.inbound?.port || ''}`);
+        this.refreshData();
+      } else {
+        this.showToast(res?.message || 'Failed to clone inbound listener', false);
+      }
+    },
+
+    showInboundQR(inb) {
+      if (!inb.clients || inb.clients.length === 0) {
+        this.showToast(`No clients configured for "${inb.remark || inb.tag}". Please add a user client first to generate a connection link.`, false);
+        return;
+      }
+      const client = inb.clients[0];
+      const link = client.link;
+      if (!link) {
+        this.showToast('Could not find connection link for this inbound', false);
+        return;
+      }
+      this.qrTitle = `${inb.remark || inb.tag} (${client.email})`;
+      this.qrLinkText = link;
+      this.qrModalOpen = true;
+      this.$nextTick(() => {
+        const container = document.getElementById('qrcodeBox');
+        if (container) {
+          container.innerHTML = '';
+          if (window.QRCode) {
+            new QRCode(container, {
+              text: link,
+              width: 190,
+              height: 190,
+              colorDark: '#1e2127',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.M
+            });
+          }
+        }
+      });
+    },
+
+    parseStreamDetails(inb) {
+      const res = {
+        network: 'tcp',
+        security: 'none',
+        sni: '',
+        path: '',
+        flow: ''
+      };
+      try {
+        const ss = typeof inb.streamSettings === 'string' ? JSON.parse(inb.streamSettings || '{}') : (inb.streamSettings || {});
+        res.network = ss.network || 'tcp';
+        res.security = ss.security || 'none';
+
+        if (ss.security === 'reality' && ss.realitySettings) {
+          const r = ss.realitySettings;
+          res.sni = Array.isArray(r.serverNames) ? r.serverNames[0] : (r.serverNames || r.dest || '');
+        } else if (ss.security === 'tls' && ss.tlsSettings) {
+          res.sni = ss.tlsSettings.serverName || '';
+        }
+
+        if (ss.network === 'ws' && ss.wsSettings) {
+          res.path = ss.wsSettings.path || '';
+        } else if (ss.network === 'grpc' && ss.grpcSettings) {
+          res.path = ss.grpcSettings.serviceName || '';
+        } else if (ss.network === 'httpupgrade' && ss.httpupgradeSettings) {
+          res.path = ss.httpupgradeSettings.path || '';
+        } else if (ss.network === 'xhttp' && ss.xhttpSettings) {
+          res.path = ss.xhttpSettings.path || '';
+        }
+
+        const s = typeof inb.settings === 'string' ? JSON.parse(inb.settings || '{}') : (inb.settings || {});
+        if (s.clients && s.clients[0]?.flow) {
+          res.flow = s.clients[0].flow;
+        }
+      } catch(e) {}
+      return res;
     },
 
     randomizeShortId() {
@@ -1267,8 +1624,9 @@ document.addEventListener('alpine:init', () => {
       const net = this.inboundForm.network;
       const isTargetUDP = (this.inboundForm.protocol === 'hysteria' || this.inboundForm.protocol === 'tuic' || net === 'kcp' || net === 'quic');
 
-      // Check conflict locally across active inbounds list
+      // Check conflict locally across active inbounds list (skip self when editing)
       const conflict = this.inbounds.find(existing => {
+        if (this.isEditingInbound && existing.id === this.editingInboundId) return false;
         if (existing.port !== port) return false;
         
         let existingIsUDP = false;
@@ -1285,7 +1643,6 @@ document.addEventListener('alpine:init', () => {
         if (isTargetUDP !== existingIsUDP) return false;
 
         const exListen = (existing.listen || '0.0.0.0').trim();
-        // If either is wildcard 0.0.0.0, or both listen to same IP
         return (listen === '0.0.0.0' || exListen === '0.0.0.0' || listen === exListen);
       });
 
@@ -1437,13 +1794,21 @@ document.addEventListener('alpine:init', () => {
         sniffing: JSON.stringify(sniffingObj)
       };
 
-      const res = await this.api('/api/inbounds/create', 'POST', payload);
+      let endpoint = '/api/inbounds/create';
+      if (this.isEditingInbound) {
+        payload.id = this.editingInboundId;
+        endpoint = `/api/inbounds/update/${this.editingInboundId}`;
+      }
+
+      const res = await this.api(endpoint, 'POST', payload);
       if (res && res.success) {
         this.inboundModalOpen = false;
-        this.showToast('Inbound configured successfully');
+        this.showToast(this.isEditingInbound ? 'Inbound listener updated' : 'Inbound listener configured');
+        this.isEditingInbound = false;
+        this.editingInboundId = 0;
         this.refreshData();
       } else {
-        this.showToast(res?.message || 'Failed to configure inbound', false);
+        this.showToast(res?.message || 'Failed to save inbound listener', false);
       }
     },
 

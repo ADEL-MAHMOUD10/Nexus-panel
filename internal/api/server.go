@@ -98,6 +98,19 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
 	mux.HandleFunc("POST /panel/api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
 
+	mux.HandleFunc("POST /api/inbounds/update", s.authMiddleware(s.handleUpdateInbound))
+	mux.HandleFunc("POST /api/inbounds/update/{id}", s.authMiddleware(s.handleUpdateInbound))
+	mux.HandleFunc("POST /panel/api/inbounds/update/{id}", s.authMiddleware(s.handleUpdateInbound))
+
+	mux.HandleFunc("POST /api/inbounds/toggle/{id}", s.authMiddleware(s.handleToggleInbound))
+	mux.HandleFunc("POST /panel/api/inbounds/toggle/{id}", s.authMiddleware(s.handleToggleInbound))
+
+	mux.HandleFunc("POST /api/inbounds/reset-traffic/{id}", s.authMiddleware(s.handleResetInboundTraffic))
+	mux.HandleFunc("POST /panel/api/inbounds/reset-traffic/{id}", s.authMiddleware(s.handleResetInboundTraffic))
+
+	mux.HandleFunc("POST /api/inbounds/clone/{id}", s.authMiddleware(s.handleCloneInbound))
+	mux.HandleFunc("POST /panel/api/inbounds/clone/{id}", s.authMiddleware(s.handleCloneInbound))
+
 	mux.HandleFunc("POST /api/inbounds/delete", s.authMiddleware(s.handleDeleteInbound))
 	mux.HandleFunc("POST /api/inbounds/del/{id}", s.authMiddleware(s.handleDeleteInbound))
 	mux.HandleFunc("POST /panel/api/inbounds/del/{id}", s.authMiddleware(s.handleDeleteInbound))
@@ -399,7 +412,196 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = s.applyXrayConfig()
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbound": in})
+}
+
+func (s *Server) handleUpdateInbound(w http.ResponseWriter, r *http.Request) {
+	var in database.Inbound
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if idStr := r.PathValue("id"); idStr != "" {
+		if id, err := strconv.Atoi(idStr); err == nil && id > 0 {
+			in.ID = id
+		}
+	}
+
+	if in.ID <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success": false,
+			"message": "Valid inbound ID required for update",
+		})
+		return
+	}
+
+	if in.Port <= 0 || in.Port > 65535 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success": false,
+			"message": "Invalid port number. Must be between 1 and 65535.",
+		})
+		return
+	}
+
+	// Validate Port Conflict against other inbounds
+	if conflict, err := s.db.CheckInboundPortConflict(&in, in.ID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"message": "Failed to validate port availability: " + err.Error(),
+		})
+		return
+	} else if conflict != nil {
+		conflictRemark := conflict.Remark
+		if conflictRemark == "" {
+			conflictRemark = conflict.Tag
+		}
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"success": false,
+			"message": fmt.Sprintf("Port %d is already in use by inbound \"%s\" (ID: %d, Protocol: %s). Duplicate listeners on the same interface and port are not allowed.", in.Port, conflictRemark, conflict.ID, strings.ToUpper(conflict.Protocol)),
+		})
+		return
+	}
+
+	if in.Tag == "" {
+		in.Tag = fmt.Sprintf("in-%d", in.Port)
+	}
+
+	if err := s.db.SaveInbound(&in); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"message": "Failed to update inbound: " + err.Error(),
+		})
+		return
+	}
+
+	_ = s.applyXrayConfig()
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbound": in})
+}
+
+func (s *Server) handleToggleInbound(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		idStr = r.URL.Query().Get("id")
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Inbound ID required"})
+		return
+	}
+
+	in, err := s.db.GetInbound(id)
+	if err != nil || in == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "Inbound not found"})
+		return
+	}
+
+	in.Enable = !in.Enable
+	if err := s.db.SaveInbound(in); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
+
+	_ = s.applyXrayConfig()
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "enable": in.Enable})
+}
+
+func (s *Server) handleResetInboundTraffic(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		idStr = r.URL.Query().Get("id")
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Inbound ID required"})
+		return
+	}
+
+	if err := s.db.ResetInboundTraffic(id); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleCloneInbound(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		idStr = r.URL.Query().Get("id")
+	}
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Inbound ID required"})
+		return
+	}
+
+	in, err := s.db.GetInbound(id)
+	if err != nil || in == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "Inbound not found"})
+		return
+	}
+
+	// Pick next free port
+	inbounds, _ := s.db.GetAllInbounds()
+	usedPorts := make(map[int]bool)
+	for _, existing := range inbounds {
+		usedPorts[existing.Port] = true
+	}
+	newPort := in.Port + 1
+	for usedPorts[newPort] || newPort > 65535 {
+		newPort++
+		if newPort > 65535 {
+			newPort = 10000
+		}
+	}
+
+	cloned := *in
+	cloned.ID = 0
+	cloned.Port = newPort
+	cloned.Tag = fmt.Sprintf("in-%d-%s", newPort, uuid.NewString()[:6])
+	if cloned.Remark != "" {
+		cloned.Remark = cloned.Remark + " (Clone)"
+	} else {
+		cloned.Remark = fmt.Sprintf("Clone :%d", newPort)
+	}
+	cloned.Up = 0
+	cloned.Down = 0
+
+	if err := s.db.SaveInbound(&cloned); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
+
+	// Also clone existing clients to the new inbound with unique credentials
+	clients, _ := s.db.GetClientsByInbound(in.ID)
+	for _, c := range clients {
+		clonedClient := c
+		clonedClient.ID = 0
+		clonedClient.InboundID = cloned.ID
+		clonedClient.Email = c.Email + "_clone"
+		if clonedClient.UUID != "" {
+			clonedClient.UUID = uuid.NewString()
+		}
+		if clonedClient.SubID != "" {
+			clonedClient.SubID = uuid.NewString()[:12]
+		}
+		clonedClient.Up = 0
+		clonedClient.Down = 0
+		_ = s.db.SaveClient(&clonedClient)
+	}
+
+	_ = s.applyXrayConfig()
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbound": cloned})
+}
+
+func (s *Server) applyXrayConfig() error {
+	configPath := "bin/config.json"
+	if s.processManager != nil && s.processManager.GetConfigPath() != "" {
+		configPath = s.processManager.GetConfigPath()
+	}
+	apiPort := 62789
+	return xray.SaveAndApplyConfig(s.db, apiPort, configPath, s.processManager)
 }
 
 func (s *Server) handleGetInbound(w http.ResponseWriter, r *http.Request) {
@@ -455,6 +657,7 @@ func (s *Server) handleDeleteInbound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_ = s.applyXrayConfig()
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
