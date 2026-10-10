@@ -87,8 +87,8 @@ document.addEventListener('alpine:init', () => {
     isUpdatingPanel: false,
     updates: {
       panel: {
-        currentVersion: 'v2.5.4',
-        latestVersion: 'v2.5.4',
+        currentVersion: 'v1.0.0',
+        latestVersion: 'v1.0.0',
         hasUpdate: false,
         updateUrl: 'https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases'
       },

@@ -341,7 +341,7 @@ func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCheckUpdates(w http.ResponseWriter, r *http.Request) {
-	currentPanelVer := "v2.5.4"
+	currentPanelVer := "v1.0.0"
 	currentXrayVer := "v26.7.11"
 	if s.processManager != nil {
 		currentXrayVer = s.processManager.GetVersion()
@@ -815,7 +815,7 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 		"success":      true,
 		"xrayRunning":  isXrayRunning,
 		"xrayVersion":  xrayVer,
-		"panelVersion": "v2.5.4",
+		"panelVersion": "v1.0.0",
 		"serverTime":   time.Now().Unix(),
 		"cpu": map[string]any{
 			"usedPercent": cpuUsage,
