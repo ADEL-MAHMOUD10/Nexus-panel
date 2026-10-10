@@ -4,15 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 	"time"
+
+	"nexus/internal/logger"
 )
+
+var xrayLogRegex = regexp.MustCompile(`^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?) \[([^\]]+)\] (.+)$`)
+
 
 // ProcessManager manages the lifecycle of the Xray-core operating system process
 type ProcessManager struct {
@@ -148,9 +153,45 @@ func (m *ProcessManager) appendLog(s string) {
 		if trimmed == "" {
 			continue
 		}
+
+		// Parse structured Xray log lines: "2026/10/11 00:32:03 [Warning] msg..."
+		matches := xrayLogRegex.FindStringSubmatch(trimmed)
+		if len(matches) > 4 {
+			lvl := matches[3]
+			body := matches[4]
+			bodyLower := strings.ToLower(body)
+			if strings.Contains(bodyLower, "tls handshake error") || strings.Contains(bodyLower, "connection ends") {
+				logger.Debug("XRAY: " + body)
+			} else if strings.Contains(bodyLower, "failed") {
+				logger.Error("XRAY: " + body)
+			} else {
+				switch strings.ToLower(lvl) {
+				case "debug":
+					logger.Debug("XRAY: " + body)
+				case "info":
+					logger.Info("XRAY: " + body)
+				case "warning", "warn":
+					logger.Warning("XRAY: " + body)
+				case "error", "err":
+					logger.Error("XRAY: " + body)
+				default:
+					logger.Info("XRAY: " + body)
+				}
+			}
+		} else {
+			trimmedLower := strings.ToLower(trimmed)
+			if strings.Contains(trimmedLower, "panic") || strings.Contains(trimmedLower, "fatal") || strings.Contains(trimmedLower, "failed to") {
+				logger.Error("XRAY: " + trimmed)
+			} else if strings.Contains(trimmedLower, "warning") {
+				logger.Warning("XRAY: " + trimmed)
+			} else {
+				logger.Info("XRAY: " + trimmed)
+			}
+		}
+
 		m.logs = append(m.logs, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), trimmed))
-		if len(m.logs) > 200 {
-			m.logs = m.logs[len(m.logs)-200:]
+		if len(m.logs) > 500 {
+			m.logs = m.logs[len(m.logs)-500:]
 		}
 	}
 }
@@ -191,7 +232,7 @@ func (m *ProcessManager) Start() error {
 	cmd.Stderr = pipe
 
 	if err := cmd.Start(); err != nil {
-		m.appendLog(fmt.Sprintf("Failed to start xray-core: %v", err))
+		logger.Errorf("NEXUS: failed to start xray-core: %v", err)
 		return fmt.Errorf("failed to start xray-core: %w", err)
 	}
 
@@ -199,7 +240,7 @@ func (m *ProcessManager) Start() error {
 	m.running = true
 	m.startTime = time.Now()
 	m.doneChan = make(chan struct{})
-	m.appendLog("Nexus Xray-core service started successfully")
+	logger.Infof("NEXUS: Xray-core service started successfully (PID: %d)", cmd.Process.Pid)
 
 	go m.waitForExit(cmd, m.doneChan)
 
@@ -230,9 +271,9 @@ func (m *ProcessManager) waitForExit(cmd *exec.Cmd, done chan struct{}) {
 	m.mu.Unlock()
 
 	if err != nil {
-		log.Printf("[Nexus Xray] Process exited with error: %v", err)
+		logger.Errorf("NEXUS: Xray process exited with error: %v", err)
 	} else {
-		log.Printf("[Nexus Xray] Process exited cleanly")
+		logger.Infof("NEXUS: Xray process exited cleanly")
 	}
 }
 

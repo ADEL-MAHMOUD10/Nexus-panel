@@ -2,9 +2,12 @@ package api
 
 import (
 	"archive/zip"
+	"bytes"
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -13,6 +16,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +24,7 @@ import (
 	"github.com/google/uuid"
 	"nexus/internal/crypto"
 	"nexus/internal/database"
+	"nexus/internal/logger"
 	"nexus/internal/subscription"
 	"nexus/internal/xray"
 	"golang.org/x/crypto/bcrypt"
@@ -85,6 +90,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/server/restart-panel", s.authMiddleware(s.handleRestartPanel))
 	mux.HandleFunc("POST /api/server/stop-xray", s.authMiddleware(s.handleStopXray))
 	mux.HandleFunc("GET /api/server/logs", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("POST /api/server/logs", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("POST /api/server/logs/{count}", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("GET /api/server/config", s.authMiddleware(s.handleGetConfig))
 	mux.HandleFunc("POST /api/server/config", s.authMiddleware(s.handleSaveConfig))
 	mux.HandleFunc("GET /api/crypto/reality-keys", s.authMiddleware(s.handleGenerateRealityKeys))
@@ -107,18 +114,29 @@ func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	adminUser, passHash, err := s.db.GetAdmin()
+	clientIP := r.RemoteAddr
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		clientIP = strings.Split(fwd, ",")[0]
+	} else if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		clientIP = realIP
+	}
+
 	if err != nil {
 		// Default fallback if unset: admin / admin
 		if req.Username != "admin" || req.Password != "admin" {
+			logger.Warningf("NEXUS: failed login attempt: username=%q, IP=%q", req.Username, clientIP)
 			http.Error(w, "invalid username or password", http.StatusUnauthorized)
 			return
 		}
 	} else {
 		if req.Username != adminUser || bcrypt.CompareHashAndPassword([]byte(passHash), []byte(req.Password)) != nil {
+			logger.Warningf("NEXUS: failed login attempt: username=%q, IP=%q", req.Username, clientIP)
 			http.Error(w, "invalid username or password", http.StatusUnauthorized)
 			return
 		}
 	}
+
+	logger.Infof("NEXUS: logged in successfully: username=%q, IP=%q", req.Username, clientIP)
 
 	tokenBytes := make([]byte, 24)
 	_, _ = rand.Read(tokenBytes)
@@ -684,6 +702,7 @@ func (s *Server) handleUpdatePanel(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleRestartPanel(w http.ResponseWriter, r *http.Request) {
+	logger.Infof("NEXUS: panel restart initiated by user")
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success": true,
 		"message": "Nexus Panel is restarting...",
@@ -760,11 +779,14 @@ func (s *Server) handleRestartXray(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "process manager unavailable", http.StatusServiceUnavailable)
 		return
 	}
+	logger.Infof("NEXUS: xray-core restart requested by user")
 	err := s.processManager.Restart()
 	if err != nil {
+		logger.Errorf("NEXUS: failed to restart xray-core: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
 		return
 	}
+	logger.Infof("NEXUS: xray-core restarted successfully")
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
@@ -778,11 +800,120 @@ func (s *Server) handleStopXray(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
-	logs := []string{}
-	if s.processManager != nil {
-		logs = s.processManager.GetLogs()
+	countStr := r.PathValue("count")
+	if countStr == "" {
+		countStr = r.URL.Query().Get("count")
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "logs": logs})
+	level := r.URL.Query().Get("level")
+	syslogStr := r.URL.Query().Get("syslog")
+
+	if r.Method == http.MethodPost && r.Body != nil {
+		var req struct {
+			Count  any    `json:"count"`
+			Level  string `json:"level"`
+			Syslog any    `json:"syslog"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			if req.Count != nil && countStr == "" {
+				countStr = fmt.Sprintf("%v", req.Count)
+			}
+			if req.Level != "" && level == "" {
+				level = req.Level
+			}
+			if req.Syslog != nil && syslogStr == "" {
+				syslogStr = fmt.Sprintf("%v", req.Syslog)
+			}
+		}
+	}
+
+	count := 20
+	if countStr != "" {
+		if c, err := strconv.Atoi(countStr); err == nil && c > 0 {
+			count = c
+		}
+	}
+	if count > 10000 {
+		count = 10000
+	}
+
+	if level == "" {
+		level = "info"
+	}
+	level = strings.ToLower(strings.TrimSpace(level))
+
+	syslog := syslogStr == "true" || syslogStr == "1"
+
+	if syslog {
+		if runtime.GOOS == "windows" {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"success": true,
+				"logs": []string{
+					"Syslog is not supported on Windows. Please use application logs instead by unchecking the 'Syslog' option.",
+				},
+			})
+			return
+		}
+
+		validLevels := map[string]bool{
+			"0": true, "emerg": true,
+			"1": true, "alert": true,
+			"2": true, "crit": true,
+			"3": true, "err": true, "error": true,
+			"4": true, "warning": true, "warn": true,
+			"5": true, "notice": true,
+			"6": true, "info": true,
+			"7": true, "debug": true,
+		}
+		if !validLevels[level] {
+			level = "info"
+		}
+		syslogLevel := level
+		if syslogLevel == "error" {
+			syslogLevel = "err"
+		} else if syslogLevel == "warn" {
+			syslogLevel = "warning"
+		}
+
+		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+		defer cancel()
+
+		cmd := exec.CommandContext(ctx, "journalctl", "-u", "nexus", "--no-pager", "-n", strconv.Itoa(count), "-p", syslogLevel)
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		err := cmd.Run()
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"success": true,
+				"logs": []string{"journalctl did not answer in time. Try a smaller line count or a less strict level."},
+			})
+			return
+		}
+		if err != nil {
+			writeJSON(w, http.StatusOK, map[string]any{
+				"success": true,
+				"logs": []string{"Failed to run journalctl command! Make sure systemd is available and nexus service is registered."},
+			})
+			return
+		}
+
+		rawLines := strings.Split(out.String(), "\n")
+		var lines []string
+		for _, l := range rawLines {
+			trimmed := strings.TrimRight(l, "\r\n")
+			if trimmed != "" {
+				lines = append(lines, trimmed)
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"success": true, "logs": lines})
+		return
+	}
+
+	// Application in-memory buffer
+	lines := logger.GetLogs(count, level)
+	if len(lines) == 0 && s.processManager != nil {
+		lines = s.processManager.GetLogs()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "logs": lines})
 }
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {

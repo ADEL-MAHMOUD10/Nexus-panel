@@ -16,6 +16,7 @@ import (
 
 	"nexus/internal/api"
 	"nexus/internal/database"
+	"nexus/internal/logger"
 	"nexus/internal/xray"
 	"nexus/web"
 	"golang.org/x/crypto/bcrypt"
@@ -110,9 +111,9 @@ func main() {
 	// Start Xray Core Process
 	pm := xray.NewProcessManager(binPath, configPath, os.Stdout)
 	if err := pm.Start(); err != nil {
-		log.Printf("[Warn] Failed to start xray core binary (expected if running without binary locally): %v", err)
+		logger.Warningf("NEXUS: failed to start xray core binary (expected if running without binary locally): %v", err)
 	} else {
-		log.Printf("[Info] Xray core process started successfully")
+		logger.Infof("NEXUS: xray core process started successfully")
 	}
 	defer pm.Stop()
 
@@ -124,9 +125,9 @@ func main() {
 		time.Sleep(500 * time.Millisecond)
 		ctrl, err = xray.NewController(grpcAddr)
 		if err != nil {
-			log.Printf("[Warn] Failed to connect to Xray gRPC: %v", err)
+			logger.Warningf("NEXUS: failed to connect to Xray gRPC: %v", err)
 		} else {
-			log.Printf("[Info] Connected to Xray gRPC API at %s", grpcAddr)
+			logger.Infof("NEXUS: connected to Xray gRPC API at %s", grpcAddr)
 			defer ctrl.Close()
 		}
 	}
@@ -197,8 +198,10 @@ func main() {
 	}
 
 	go func() {
+		logger.Infof("NEXUS: web panel listening on http://0.0.0.0:%s", webPort)
 		log.Printf("[Info] Nexus Web Panel listening on http://0.0.0.0:%s", webPort)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			logger.Errorf("NEXUS: HTTP server error: %v", err)
 			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()

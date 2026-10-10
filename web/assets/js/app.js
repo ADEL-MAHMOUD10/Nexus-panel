@@ -238,6 +238,12 @@ document.addEventListener('alpine:init', () => {
     // Raw Config & Logs
     rawConfigText: '',
     logsList: [],
+    logsRows: '20',
+    logsLevel: 'info',
+    logsSyslog: false,
+    logsAutoUpdate: false,
+    logsLoading: false,
+    logsTimer: null,
     ipMasked: true,
 
     // Custom Confirmation Dialog (Replaces native browser confirm)
@@ -544,14 +550,174 @@ document.addEventListener('alpine:init', () => {
 
     async openLogs() {
       this.logsModalOpen = true;
-      this.refreshLogs();
+      await this.refreshLogs();
+      if (this.logsAutoUpdate) {
+        this.startLogsAutoUpdate();
+      }
     },
 
-    async refreshLogs() {
-      const res = await this.api('/api/server/logs');
-      if (res && res.logs) {
-        this.logsList = res.logs;
+    closeLogs() {
+      this.logsModalOpen = false;
+      this.stopLogsAutoUpdate();
+    },
+
+    startLogsAutoUpdate() {
+      this.stopLogsAutoUpdate();
+      if (this.logsAutoUpdate && this.logsModalOpen) {
+        this.logsTimer = setInterval(() => {
+          if (this.logsModalOpen && this.logsAutoUpdate) {
+            this.refreshLogs(false);
+          } else {
+            this.stopLogsAutoUpdate();
+          }
+        }, 3500);
       }
+    },
+
+    stopLogsAutoUpdate() {
+      if (this.logsTimer) {
+        clearInterval(this.logsTimer);
+        this.logsTimer = null;
+      }
+    },
+
+    toggleLogsAutoUpdate() {
+      if (this.logsAutoUpdate) {
+        this.startLogsAutoUpdate();
+      } else {
+        this.stopLogsAutoUpdate();
+      }
+    },
+
+    async refreshLogs(showSpinner = true) {
+      if (showSpinner) this.logsLoading = true;
+      try {
+        const res = await this.api('/api/server/logs', 'POST', {
+          count: parseInt(this.logsRows, 10) || 20,
+          level: this.logsLevel || 'info',
+          syslog: !!this.logsSyslog
+        });
+        if (res && res.logs) {
+          this.logsList = res.logs;
+        }
+      } catch (err) {
+        console.error('Failed to fetch logs:', err);
+      } finally {
+        if (showSpinner) {
+          setTimeout(() => { this.logsLoading = false; }, 300);
+        }
+      }
+    },
+
+    downloadLogs() {
+      if (!this.logsList || this.logsList.length === 0) {
+        this.showToast('No logs to download');
+        return;
+      }
+      const content = this.logsList.join('\n');
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const dateStr = new Date().toISOString().slice(0, 10);
+      a.download = `nexus-${this.logsSyslog ? 'syslog' : 'panel'}-${dateStr}.log`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    },
+
+    parseLogLine(raw) {
+      if (!raw) return { stamp: '', date: '', time: '', levelText: '', levelClass: '', service: '', body: '' };
+      const line = (raw || '').trim();
+
+      const SYSLOG_PREFIX = /^([A-Za-z]{3}\s+\d{1,2})\s+(\d{2}:\d{2}:\d{2})\s+\S+\s+\S+?:\s+(.*)$/;
+      const GO_LOG_DATE = /^\d{4}\/\d{2}\/\d{2}\s+\d{2}:\d{2}:\d{2}\s+/;
+      const TELEGO = /^\[[^\]]+\]\s+([A-Z]+)\s+(.*)$/;
+      const APP_LOG = /^(\d{4}\/\d{2}\/\d{2})\s+(\d{2}:\d{2}:\d{2})\s+(\S+)\s+-\s+([\s\S]*)$/;
+
+      const LEVELS = ['DEBUG', 'INFO', 'NOTICE', 'WARNING', 'ERROR'];
+
+      function splitLevelDash(message) {
+        const dash = message.indexOf(' - ');
+        if (dash < 0) return null;
+        const lvl = message.slice(0, dash).trim();
+        if (!LEVELS.includes(lvl)) return null;
+        return { level: lvl, rest: message.slice(dash + 3) };
+      }
+
+      let date = '';
+      let time = '';
+      let levelText = '';
+      let body = '';
+
+      const sys = line.match(SYSLOG_PREFIX);
+      if (sys) {
+        date = sys[1];
+        time = sys[2];
+        let message = sys[3];
+        const ld = splitLevelDash(message);
+        if (ld) {
+          levelText = ld.level;
+          body = ld.rest;
+        } else {
+          message = message.replace(GO_LOG_DATE, '');
+          const tg = message.match(TELEGO);
+          if (tg && LEVELS.includes(tg[1])) {
+            levelText = tg[1];
+            body = tg[2];
+          } else {
+            body = message;
+          }
+        }
+      } else {
+        const app = line.match(APP_LOG);
+        if (app) {
+          date = app[1];
+          time = app[2];
+          levelText = app[3];
+          body = app[4];
+        } else {
+          body = line;
+        }
+      }
+
+      let levelClass = 'text-zinc-400';
+      const lvlUpper = (levelText || '').toUpperCase();
+      if (lvlUpper === 'DEBUG') {
+        levelClass = 'text-[#6aa6ee]';
+      } else if (lvlUpper === 'INFO') {
+        levelClass = 'text-[#4ed3a6]';
+      } else if (lvlUpper === 'NOTICE') {
+        levelClass = 'text-[#4ed3a6]';
+      } else if (lvlUpper === 'WARNING' || lvlUpper === 'WARN') {
+        levelClass = 'text-[#ffb872]';
+      } else if (lvlUpper === 'ERROR' || lvlUpper === 'ERR') {
+        levelClass = 'text-[#ff7575]';
+      }
+
+      let service = '';
+      if (body.startsWith('XRAY:')) {
+        service = 'XRAY:';
+        body = body.slice('XRAY:'.length).trimStart();
+      } else if (body.startsWith('NEXUS:')) {
+        service = 'NEXUS:';
+        body = body.slice('NEXUS:'.length).trimStart();
+      } else if (body.startsWith('X-UI:')) {
+        service = 'X-UI:';
+        body = body.slice('X-UI:'.length).trimStart();
+      }
+
+      const stamp = [date, time].filter(Boolean).join(' ');
+      return { date, time, stamp, levelText, levelClass, service, body };
+    },
+
+    get parsedLogs() {
+      return (this.logsList || []).map(l => this.parseLogLine(l));
+    },
+
+    getParsedLogs() {
+      return (this.logsList || []).map(l => this.parseLogLine(l));
     },
 
     async openConfig() {
