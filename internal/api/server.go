@@ -31,6 +31,9 @@ import (
 	psNet "github.com/shirou/gopsutil/v3/net"
 )
 
+// PanelVersion defines the official release version of Nexus Panel
+const PanelVersion = "v1.0.1"
+
 // Server handles REST API endpoints for Nexus
 type Server struct {
 	db             *database.DB
@@ -82,6 +85,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/server/update-xray", s.authMiddleware(s.handleUpdateXray))
 	mux.HandleFunc("POST /api/server/update-panel", s.authMiddleware(s.handleUpdatePanel))
 	mux.HandleFunc("POST /api/server/restart-xray", s.authMiddleware(s.handleRestartXray))
+	mux.HandleFunc("POST /api/server/restart-panel", s.authMiddleware(s.handleRestartPanel))
 	mux.HandleFunc("POST /api/server/stop-xray", s.authMiddleware(s.handleStopXray))
 	mux.HandleFunc("GET /api/server/logs", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("GET /api/server/config", s.authMiddleware(s.handleGetConfig))
@@ -345,7 +349,7 @@ func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCheckUpdates(w http.ResponseWriter, r *http.Request) {
-	currentPanelVer := "v1.0.0"
+	currentPanelVer := PanelVersion
 	currentXrayVer := "v26.7.11"
 	if s.processManager != nil {
 		currentXrayVer = s.processManager.GetVersion()
@@ -554,19 +558,107 @@ func (s *Server) handleUpdatePanel(w http.ResponseWriter, r *http.Request) {
 	if runtime.GOOS != "linux" {
 		writeJSON(w, http.StatusOK, map[string]any{
 			"success": true,
-			"message": "Panel is already up to date on current build platform.",
+			"message": "Panel update is only supported on Linux VPS.",
 		})
 		return
 	}
 
-	// Trigger detached background updater script for Linux VPS from user's custom repo
-	cmd := exec.Command("bash", "-c", "curl -sL https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/install.sh | bash")
-	_ = cmd.Start()
+	go func() {
+		arch := runtime.GOARCH
+		targetBinary := fmt.Sprintf("nexus-linux-%s", arch)
+
+		execPath, err := os.Executable()
+		if err != nil || execPath == "" {
+			execPath = "/usr/local/nexus/nexus"
+		}
+		if resolved, err := filepath.EvalSymlinks(execPath); err == nil {
+			execPath = resolved
+		}
+
+		dir := filepath.Dir(execPath)
+		tmpPath := filepath.Join(dir, "nexus.new")
+
+		urls := []string{
+			fmt.Sprintf("https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases/latest/download/%s", targetBinary),
+			fmt.Sprintf("https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/bin/%s", targetBinary),
+		}
+
+		client := http.Client{Timeout: 120 * time.Second}
+		var downloaded bool
+
+		for _, dlURL := range urls {
+			resp, err := client.Get(dlURL)
+			if err != nil || resp.StatusCode != http.StatusOK {
+				if resp != nil {
+					_ = resp.Body.Close()
+				}
+				continue
+			}
+
+			f, err := os.OpenFile(tmpPath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+			if err != nil {
+				_ = resp.Body.Close()
+				continue
+			}
+
+			_, copyErr := io.Copy(f, resp.Body)
+			_ = f.Close()
+			_ = resp.Body.Close()
+
+			if copyErr == nil {
+				if fi, err := os.Stat(tmpPath); err == nil && fi.Size() > 5*1024*1024 {
+					downloaded = true
+					break
+				}
+			}
+			_ = os.Remove(tmpPath)
+		}
+
+		if !downloaded {
+			_ = exec.Command("bash", "-c", "curl -sL https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/install.sh | bash").Run()
+			return
+		}
+
+		_ = os.Chmod(tmpPath, 0755)
+		_ = os.Rename(tmpPath, execPath)
+
+		// Sync helper CLI
+		scriptURL := "https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/scripts/nexus.sh"
+		if sResp, err := client.Get(scriptURL); err == nil && sResp.StatusCode == http.StatusOK {
+			sTmp := filepath.Join(dir, "nexus.sh.new")
+			if sf, err := os.OpenFile(sTmp, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755); err == nil {
+				_, _ = io.Copy(sf, sResp.Body)
+				_ = sf.Close()
+				_ = os.Rename(sTmp, filepath.Join(dir, "nexus.sh"))
+				_ = os.Chmod(filepath.Join(dir, "nexus.sh"), 0755)
+			}
+			_ = sResp.Body.Close()
+		}
+
+		time.Sleep(1 * time.Second)
+		_ = exec.Command("systemctl", "restart", "nexus").Start()
+	}()
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success": true,
-		"message": "Nexus Panel update triggered via automated background updater.",
+		"message": "Panel upgrade initiated. The latest binary is being fetched and the service will seamlessly restart.",
 	})
+}
+
+func (s *Server) handleRestartPanel(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Nexus Panel is restarting...",
+	})
+
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		if runtime.GOOS == "linux" {
+			_ = exec.Command("systemctl", "restart", "nexus").Start()
+		} else {
+			os.Exit(0)
+		}
+	}()
 }
 
 func (s *Server) handleDeleteClient(w http.ResponseWriter, r *http.Request) {
@@ -824,7 +916,7 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 		"success":      true,
 		"xrayRunning":  isXrayRunning,
 		"xrayVersion":  xrayVer,
-		"panelVersion": "v1.0.0",
+		"panelVersion": PanelVersion,
 		"serverTime":   time.Now().Unix(),
 		"cpu": map[string]any{
 			"usedPercent": cpuUsage,

@@ -87,8 +87,8 @@ document.addEventListener('alpine:init', () => {
     isUpdatingPanel: false,
     updates: {
       panel: {
-        currentVersion: 'v1.0.0',
-        latestVersion: 'v1.0.0',
+        currentVersion: 'v1.0.1',
+        latestVersion: 'v1.0.1',
         hasUpdate: false,
         updateUrl: 'https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases'
       },
@@ -448,6 +448,10 @@ document.addEventListener('alpine:init', () => {
         os: st.os || 'Linux Core',
         publicIP: st.publicIP || ''
       };
+
+      if (st.panelVersion) {
+        this.updates.panel.currentVersion = st.panelVersion;
+      }
     },
 
     updateHistory(arr, val, maxLen = 16) {
@@ -480,6 +484,38 @@ document.addEventListener('alpine:init', () => {
       } else {
         this.showToast(res?.message || 'Failed to restart core', false);
       }
+    },
+
+    async restartPanel() {
+      const ok = await this.askConfirm('Restart Nexus Panel web management service? Dashboard connection will briefly reconnect.', {
+        title: 'Restart Nexus Panel',
+        confirmText: 'Restart Panel',
+        isDanger: true
+      });
+      if (!ok) return;
+
+      this.showToast('Restarting Nexus Panel service... Reconnecting...');
+      try {
+        await this.api('/api/server/restart-panel', 'POST');
+      } catch(e) {}
+
+      let retries = 0;
+      const checkInterval = setInterval(async () => {
+        retries++;
+        try {
+          const res = await fetch('/api/server/status', { credentials: 'same-origin' });
+          if (res.ok) {
+            clearInterval(checkInterval);
+            this.showToast('Nexus Panel reconnected successfully!');
+            await this.fetchServerStatus();
+          }
+        } catch(e) {}
+
+        if (retries > 25) {
+          clearInterval(checkInterval);
+          window.location.reload();
+        }
+      }, 1500);
     },
 
     async stopXray() {
@@ -762,8 +798,8 @@ document.addEventListener('alpine:init', () => {
     },
 
     async updatePanelNow() {
-      const targetVersion = this.updates.panel.latestVersion || 'v3.9.0';
-      const ok = await this.askConfirm(`Upgrade Nexus Panel to ${targetVersion}? The updater script will run on the VPS and restart the management interface.`, {
+      const targetVersion = this.updates.panel.latestVersion || 'latest';
+      const ok = await this.askConfirm(`Upgrade Nexus Panel to ${targetVersion}? The new binary will be fetched and installed, then the service will automatically restart.`, {
         title: 'Upgrade Nexus Panel',
         confirmText: 'Start Panel Upgrade',
         isDanger: false
@@ -774,11 +810,29 @@ document.addEventListener('alpine:init', () => {
       try {
         const res = await this.api('/api/server/update-panel', 'POST');
         if (res && res.success) {
-          this.showToast(res.message || 'Panel updater started');
-          setTimeout(async () => {
-            await this.checkUpdates();
-            this.isUpdatingPanel = false;
-          }, 5000);
+          this.showToast(res.message || 'Panel upgrade initiated. Reconnecting soon...');
+          let attempts = 0;
+          const poll = setInterval(async () => {
+            attempts++;
+            if (attempts > 3) {
+              try {
+                const stRes = await fetch('/api/server/status', { credentials: 'same-origin' });
+                if (stRes.ok) {
+                  clearInterval(poll);
+                  this.isUpdatingPanel = false;
+                  this.showToast('Nexus Panel upgraded and reloaded successfully!');
+                  await this.fetchServerStatus();
+                  await this.checkUpdates();
+                  setTimeout(() => window.location.reload(), 1200);
+                }
+              } catch(e) {}
+            }
+            if (attempts > 35) {
+              clearInterval(poll);
+              this.isUpdatingPanel = false;
+              window.location.reload();
+            }
+          }, 1500);
         } else {
           this.showToast(res?.message || 'Panel update failed', false);
           this.isUpdatingPanel = false;

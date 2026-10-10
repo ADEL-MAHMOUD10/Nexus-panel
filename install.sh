@@ -124,18 +124,22 @@ ln -sf "${NEXUS_DIR}/nexus.sh" "/usr/bin/nexus"
 ln -sf "${NEXUS_DIR}/nexus.sh" "/usr/local/bin/nexus"
 
 # Download or copy Nexus core binary
+TMP_NEXUS="${NEXUS_DIR}/nexus.new"
 if [[ -f "./nexus" ]]; then
-    cp -f "./nexus" "${NEXUS_DIR}/nexus"
+    cp -f "./nexus" "${TMP_NEXUS}"
+elif [[ -f "./bin/nexus-linux-${GO_ARCH}" ]]; then
+    cp -f "./bin/nexus-linux-${GO_ARCH}" "${TMP_NEXUS}"
 else
     log_info "Fetching Nexus server binary for ${GO_ARCH}..."
-    curl -fL --progress-bar "${RAW_URL}/bin/nexus-linux-${GO_ARCH}" -o "${NEXUS_DIR}/nexus" || {
+    curl -fL --progress-bar "${RAW_URL}/bin/nexus-linux-${GO_ARCH}" -o "${TMP_NEXUS}" || {
         log_warn "Raw download failed, trying release download..."
-        curl -fL --progress-bar "https://github.com/${GITHUB_REPO}/releases/latest/download/nexus-linux-${GO_ARCH}" -o "${NEXUS_DIR}/nexus" || true
+        curl -fL --progress-bar "https://github.com/${GITHUB_REPO}/releases/latest/download/nexus-linux-${GO_ARCH}" -o "${TMP_NEXUS}" || true
     }
 fi
 
-if [[ -f "${NEXUS_DIR}/nexus" ]]; then
-    chmod 755 "${NEXUS_DIR}/nexus"
+if [[ -f "${TMP_NEXUS}" && -s "${TMP_NEXUS}" ]]; then
+    chmod 755 "${TMP_NEXUS}"
+    mv -f "${TMP_NEXUS}" "${NEXUS_DIR}/nexus"
 fi
 
 # Verify nexus binary integrity

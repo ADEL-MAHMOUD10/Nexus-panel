@@ -231,6 +231,36 @@ EOF
 }
 
 # ------------------------------------------------------------------------------
+# Update Nexus Panel Binary
+# ------------------------------------------------------------------------------
+update_panel() {
+    log_info "Checking CPU architecture..."
+    ARCH=$(uname -m)
+    case "$ARCH" in
+        x86_64|amd64)  GO_ARCH="amd64" ;;
+        aarch64|arm64) GO_ARCH="arm64" ;;
+        *) log_err "Unsupported CPU architecture: $ARCH"; return 1 ;;
+    esac
+
+    log_info "Downloading latest Nexus Panel binary (${GO_ARCH})..."
+    TMP_NEXUS="${NEXUS_DIR}/nexus.new"
+    GITHUB_REPO="ADEL-MAHMOUD10/Nexus-panel"
+    curl -fL --progress-bar "https://github.com/${GITHUB_REPO}/releases/latest/download/nexus-linux-${GO_ARCH}" -o "${TMP_NEXUS}" || {
+        log_warn "Release asset download failed, attempting repository main download..."
+        curl -fL --progress-bar "https://raw.githubusercontent.com/${GITHUB_REPO}/main/bin/nexus-linux-${GO_ARCH}" -o "${TMP_NEXUS}" || true
+    }
+
+    if [[ -f "${TMP_NEXUS}" && -s "${TMP_NEXUS}" ]]; then
+        chmod 755 "${TMP_NEXUS}"
+        mv -f "${TMP_NEXUS}" "${NEXUS_BIN}"
+        log_info "Binary updated successfully. Restarting Nexus service..."
+        restart
+    else
+        log_err "Failed to download update binary!"
+    fi
+}
+
+# ------------------------------------------------------------------------------
 # Main Interactive CLI Menu
 # ------------------------------------------------------------------------------
 show_menu() {
@@ -256,11 +286,12 @@ ${GREEN} 9.${PLAIN} Enable TCP BBR Acceleration
 ─────────────────────────────────────────────────────────
 ${GREEN}10.${PLAIN} Enable Autostart on Boot
 ${GREEN}11.${PLAIN} Disable Autostart on Boot
-${GREEN}12.${PLAIN} Uninstall Nexus
+${GREEN}12.${PLAIN} Update Nexus Panel
+${GREEN}13.${PLAIN} Uninstall Nexus
 ─────────────────────────────────────────────────────────
 ${RED} 0.${PLAIN} Exit
 "
-    read -rp "Please enter selection [0-12]: " opt
+    read -rp "Please enter selection [0-13]: " opt
     case "$opt" in
         1) start ;;
         2) stop ;;
@@ -273,7 +304,8 @@ ${RED} 0.${PLAIN} Exit
         9) enable_bbr ;;
         10) systemctl enable "${SERVICE_NAME}" && log_info "Autostart enabled." ;;
         11) systemctl disable "${SERVICE_NAME}" && log_info "Autostart disabled." ;;
-        12) 
+        12) update_panel ;;
+        13) 
             read -rp "Are you sure you want to uninstall Nexus? (y/N): " confirm
             if [[ "$confirm" =~ ^[Yy]$ ]]; then
                 systemctl stop "${SERVICE_NAME}" 2>/dev/null
@@ -302,7 +334,8 @@ if [[ $# -gt 0 ]]; then
         port) change_port ;;
         bbr) enable_bbr ;;
         ssl) ssl_menu ;;
-        *) echo "Usage: nexus {start|stop|restart|status|logs|port|bbr|ssl}" ;;
+        update) update_panel ;;
+        *) echo "Usage: nexus {start|stop|restart|status|logs|port|bbr|ssl|update}" ;;
     esac
 else
     show_menu

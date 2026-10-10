@@ -184,7 +184,7 @@
               <button @click="openUpdatesModal()" 
                       class="text-[10px] font-mono px-2 py-0.5 rounded bg-brand-input hover:bg-white/10 border border-brand-border text-brand-muted hover:text-white transition flex items-center gap-1.5"
                       title="Check & View Panel / Core Updates">
-                <span class="text-white/80">Panel: v2.5.4</span>
+                <span class="text-white/80" x-text="'Panel: ' + (updates.panel.currentVersion || 'v1.0.1')"></span>
                 <span class="text-brand-border">|</span>
                 <span class="text-cyan-400 font-semibold" x-text="'Core: ' + status.xrayVersion"></span>
                 <template x-if="updates.panel.hasUpdate || updates.xray.hasUpdate">
@@ -208,13 +208,20 @@
         </div>
       </div>
 
-      <!-- Quick Action Controls (Restart, Stop, Logs, Config, Refresh, Sign Out) -->
+      <!-- Quick Action Controls (Restart Core, Restart Panel, Stop, Logs, Config, Refresh, Sign Out) -->
       <div class="flex items-center gap-2">
         <!-- Restart Core -->
-        <button @click="restartXray()" title="Restart Xray Core"
+        <button @click="restartXray()" title="Restart Xray Core Kernel"
                 class="px-2.5 py-1.5 rounded-xl text-xs bg-brand-input hover:bg-white/10 border border-brand-border text-brand-text hover:text-white transition flex items-center gap-1.5 shadow-sm">
           <svg class="w-3.5 h-3.5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
-          <span class="hidden md:inline font-medium">Restart</span>
+          <span class="hidden md:inline font-medium">Restart Core</span>
+        </button>
+
+        <!-- Restart Panel -->
+        <button @click="restartPanel()" title="Restart Nexus Web Management Panel"
+                class="px-2.5 py-1.5 rounded-xl text-xs bg-brand-input hover:bg-cyan-500/10 border border-brand-border text-brand-text hover:text-cyan-300 transition flex items-center gap-1.5 shadow-sm">
+          <svg class="w-3.5 h-3.5 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+          <span class="hidden md:inline font-medium">Restart Panel</span>
         </button>
 
         <!-- Stop Core -->
