@@ -45,6 +45,10 @@ type Server struct {
 	lastBytesRecv uint64
 	speedUp       float64
 	speedDown     float64
+
+	publicIPMu      sync.RWMutex
+	cachedPublicIP  string
+	lastPublicIPGet time.Time
 }
 
 // NewServer initializes the REST API server
@@ -695,7 +699,11 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 	if len(cpuPercents) > 0 {
 		cpuUsage = cpuPercents[0]
 	}
-	cpuCores := runtime.NumCPU()
+	cpuThreads := runtime.NumCPU()
+	cpuPhysicalCores, _ := cpu.Counts(false)
+	if cpuPhysicalCores <= 0 {
+		cpuPhysicalCores = cpuThreads
+	}
 	cpuFreq := 3.00
 	cpuModel := "Standard Processor"
 	if cInfo, err := cpu.Info(); err == nil && len(cInfo) > 0 {
@@ -804,7 +812,8 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 	panelMemMB := float64(memStats.Alloc) / (1024 * 1024)
 	threads := runtime.NumGoroutine()
 
-	publicIP := s.db.GetSetting("server_host", r.Host)
+	// Real Public IP Detection
+	publicIP := s.getRealPublicIP(r)
 
 	xrayVer := "v26.7.11"
 	if s.processManager != nil {
@@ -819,7 +828,8 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 		"serverTime":   time.Now().Unix(),
 		"cpu": map[string]any{
 			"usedPercent": cpuUsage,
-			"cores":       cpuCores,
+			"cores":       cpuPhysicalCores,
+			"threads":     cpuThreads,
 			"freqGHz":     cpuFreq,
 			"model":       cpuModel,
 		},
@@ -918,4 +928,47 @@ func writeJSON(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(data)
+}
+
+// getRealPublicIP returns the true public IPv4 address of the VPS host (without port or domain name)
+func (s *Server) getRealPublicIP(r *http.Request) string {
+	s.publicIPMu.RLock()
+	if s.cachedPublicIP != "" && time.Since(s.lastPublicIPGet) < 10*time.Minute {
+		cached := s.cachedPublicIP
+		s.publicIPMu.RUnlock()
+		return cached
+	}
+	s.publicIPMu.RUnlock()
+
+	// Query public IP service
+	client := http.Client{Timeout: 3 * time.Second}
+	endpoints := []string{
+		"https://api.ipify.org",
+		"https://ifconfig.me/ip",
+		"https://icanhazip.com",
+	}
+
+	for _, ep := range endpoints {
+		resp, err := client.Get(ep)
+		if err == nil && resp.StatusCode == http.StatusOK {
+			var buf [64]byte
+			n, _ := resp.Body.Read(buf[:])
+			_ = resp.Body.Close()
+			ipStr := strings.TrimSpace(string(buf[:n]))
+			if parsedIP := net.ParseIP(ipStr); parsedIP != nil {
+				s.publicIPMu.Lock()
+				s.cachedPublicIP = ipStr
+				s.lastPublicIPGet = time.Now()
+				s.publicIPMu.Unlock()
+				return ipStr
+			}
+		}
+	}
+
+	// Fallback to request host without port
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	return host
 }

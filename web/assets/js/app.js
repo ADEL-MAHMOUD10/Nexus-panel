@@ -393,8 +393,9 @@ document.addEventListener('alpine:init', () => {
         serverTime: st.serverTime || Date.now(),
         cpu: {
           usedPercent: cpuVal,
-          cores: st.cpu?.cores || 2,
-          freqGHz: st.cpu?.freqGHz ? (Math.round(st.cpu.freqGHz * 100) / 100).toFixed(2) : '3.00',
+          cores: st.cpu?.cores || 6,
+          threads: st.cpu?.threads || st.cpu?.cores || 12,
+          freqGHz: st.cpu?.freqGHz ? (Math.round(st.cpu.freqGHz * 100) / 100).toFixed(2) : '2.30',
           model: st.cpu?.model || 'Standard Processor',
           avg: this.calcAvg(this.status.cpu.history),
           peak: Math.max(...this.status.cpu.history),
