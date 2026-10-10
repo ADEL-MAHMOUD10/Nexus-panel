@@ -128,7 +128,7 @@ ${GREEN}════════════════════════
 ${CYAN}       Nexus Panel has been installed successfully!     ${PLAIN}
 ${GREEN}═════════════════════════════════════════════════════════${PLAIN}
 
-  ${YELLOW}Dashboard URL :${PLAIN} http://${SERVER_IP}:2053
+  ${YELLOW}Dashboard URL :${PLAIN} http://${SERVER_IP}:8443
   ${YELLOW}Username      :${PLAIN} admin
   ${YELLOW}Password      :${PLAIN} admin
 

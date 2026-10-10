@@ -63,7 +63,7 @@ bash <(curl -Ls https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/mai
 > **ملاحظة:** سيقوم السكربت تلقائياً بتثبيت أحدث نسخة من `Xray-core`، وبناء خدمة `Systemd`، وضبط كل شيء ليعمل تلقائياً عند إعادة تشغيل السيرفر.
 
 ### بيانات الدخول الافتراضية:
-* **رابط اللوحة:** `http://YOUR_SERVER_IP:2053`
+* **رابط اللوحة:** `http://YOUR_SERVER_IP:8443`
 * **اسم المستخدم (Username):** `admin`
 * **كلمة المرور (Password):** `admin`
 
@@ -156,8 +156,8 @@ nexus/
 
 تأكد من فتح المنافذ التالية على جدار الحماية (UFW أو Security Groups):
 ```bash
-# منفذ لوحة التحكم (الافتراضي: 2053)
-ufw allow 2053/tcp
+# منفذ لوحة التحكم (الافتراضي: 8443)
+ufw allow 8443/tcp
 
 # منافذ البروكسي العامة (مثل 443 و 80)
 ufw allow 443/tcp

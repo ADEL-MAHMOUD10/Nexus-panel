@@ -160,7 +160,7 @@ func main() {
 	}()
 
 	// Start HTTP REST API Server
-	webPort := db.GetSetting("web_port", "2053")
+	webPort := db.GetSetting("web_port", "8443")
 	apiServer := api.NewServer(db, ctrl, pm)
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
