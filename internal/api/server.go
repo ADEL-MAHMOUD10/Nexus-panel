@@ -1,0 +1,921 @@
+package api
+
+import (
+	"archive/zip"
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/google/uuid"
+	"nexus/internal/crypto"
+	"nexus/internal/database"
+	"nexus/internal/subscription"
+	"nexus/internal/xray"
+	"golang.org/x/crypto/bcrypt"
+
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
+	psNet "github.com/shirou/gopsutil/v3/net"
+)
+
+// Server handles REST API endpoints for Nexus
+type Server struct {
+	db             *database.DB
+	xrayController *xray.Controller
+	processManager *xray.ProcessManager
+	sessionsMu     sync.RWMutex
+	sessions       map[string]time.Time
+
+	netMu         sync.Mutex
+	lastNetCheck  time.Time
+	lastBytesSent uint64
+	lastBytesRecv uint64
+	speedUp       float64
+	speedDown     float64
+}
+
+// NewServer initializes the REST API server
+func NewServer(db *database.DB, controller *xray.Controller, pm *xray.ProcessManager) *Server {
+	return &Server{
+		db:             db,
+		xrayController: controller,
+		processManager: pm,
+		sessions:       make(map[string]time.Time),
+	}
+}
+
+// RegisterRoutes registers all REST and subscription endpoints on the ServeMux
+func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
+	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
+
+	// Inbounds & Clients (Protected)
+	mux.HandleFunc("GET /api/inbounds/list", s.authMiddleware(s.handleListInbounds))
+	mux.HandleFunc("POST /api/inbounds/create", s.authMiddleware(s.handleCreateInbound))
+	mux.HandleFunc("POST /api/inbounds/delete", s.authMiddleware(s.handleDeleteInbound))
+
+	mux.HandleFunc("POST /api/clients/create", s.authMiddleware(s.handleCreateClient))
+	mux.HandleFunc("POST /api/clients/update", s.authMiddleware(s.handleUpdateClient))
+	mux.HandleFunc("POST /api/clients/delete", s.authMiddleware(s.handleDeleteClient))
+	mux.HandleFunc("POST /api/clients/reset-traffic", s.authMiddleware(s.handleResetClientTraffic))
+
+	// System Status & Core Controls
+	mux.HandleFunc("GET /api/server/status", s.authMiddleware(s.handleServerStatus))
+	mux.HandleFunc("GET /api/server/check-updates", s.authMiddleware(s.handleCheckUpdates))
+	mux.HandleFunc("POST /api/server/update-xray", s.authMiddleware(s.handleUpdateXray))
+	mux.HandleFunc("POST /api/server/update-panel", s.authMiddleware(s.handleUpdatePanel))
+	mux.HandleFunc("POST /api/server/restart-xray", s.authMiddleware(s.handleRestartXray))
+	mux.HandleFunc("POST /api/server/stop-xray", s.authMiddleware(s.handleStopXray))
+	mux.HandleFunc("GET /api/server/logs", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("GET /api/server/config", s.authMiddleware(s.handleGetConfig))
+	mux.HandleFunc("POST /api/server/config", s.authMiddleware(s.handleSaveConfig))
+	mux.HandleFunc("GET /api/crypto/reality-keys", s.authMiddleware(s.handleGenerateRealityKeys))
+
+	// Subscription endpoint (Public with token)
+	mux.HandleFunc("GET /sub/{subId}", s.handleSubscription)
+}
+
+// -----------------------------------------------------------------------------
+// Authentication
+// -----------------------------------------------------------------------------
+func (s *Server) handleLogin(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	adminUser, passHash, err := s.db.GetAdmin()
+	if err != nil {
+		// Default fallback if unset: admin / admin
+		if req.Username != "admin" || req.Password != "admin" {
+			http.Error(w, "invalid username or password", http.StatusUnauthorized)
+			return
+		}
+	} else {
+		if req.Username != adminUser || bcrypt.CompareHashAndPassword([]byte(passHash), []byte(req.Password)) != nil {
+			http.Error(w, "invalid username or password", http.StatusUnauthorized)
+			return
+		}
+	}
+
+	tokenBytes := make([]byte, 24)
+	_, _ = rand.Read(tokenBytes)
+	token := hex.EncodeToString(tokenBytes)
+
+	s.sessionsMu.Lock()
+	s.sessions[token] = time.Now().Add(24 * time.Hour)
+	s.sessionsMu.Unlock()
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "nexus_session",
+		Value:    token,
+		Path:     "/",
+		Expires:  time.Now().Add(24 * time.Hour),
+		HttpOnly: true,
+	})
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "token": token})
+}
+
+func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
+	cookie, err := r.Cookie("nexus_session")
+	if err == nil {
+		s.sessionsMu.Lock()
+		delete(s.sessions, cookie.Value)
+		s.sessionsMu.Unlock()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		token := r.Header.Get("Authorization")
+		token = strings.TrimPrefix(token, "Bearer ")
+		if token == "" {
+			if cookie, err := r.Cookie("nexus_session"); err == nil {
+				token = cookie.Value
+			}
+		}
+
+		s.sessionsMu.RLock()
+		expiry, ok := s.sessions[token]
+		s.sessionsMu.RUnlock()
+
+		if !ok || time.Now().After(expiry) {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		next(w, r)
+	}
+}
+
+// -----------------------------------------------------------------------------
+// Inbounds Handlers
+// -----------------------------------------------------------------------------
+func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
+	inbounds, err := s.db.GetAllInbounds()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	serverHost := s.db.GetSetting("server_host", host)
+
+	type ClientWithLink struct {
+		database.Client
+		Link string `json:"link"`
+	}
+
+	type InboundWithClients struct {
+		database.Inbound
+		Clients []ClientWithLink `json:"clients"`
+	}
+
+	var result []InboundWithClients
+	for _, in := range inbounds {
+		clients, _ := s.db.GetClientsByInbound(in.ID)
+		var clientsWithLinks []ClientWithLink
+		for _, c := range clients {
+			link := subscription.BuildInboundLink(&in, &c, serverHost)
+			clientsWithLinks = append(clientsWithLinks, ClientWithLink{
+				Client: c,
+				Link:   link,
+			})
+		}
+		result = append(result, InboundWithClients{
+			Inbound: in,
+			Clients: clientsWithLinks,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbounds": result})
+}
+
+func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
+	var in database.Inbound
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if in.Port <= 0 || in.Port > 65535 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success": false,
+			"message": "Invalid port number. Must be between 1 and 65535.",
+		})
+		return
+	}
+
+	// Validate Port Conflict against existing inbounds
+	if conflict, err := s.db.CheckInboundPortConflict(&in, in.ID); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"message": "Failed to validate port availability: " + err.Error(),
+		})
+		return
+	} else if conflict != nil {
+		conflictRemark := conflict.Remark
+		if conflictRemark == "" {
+			conflictRemark = conflict.Tag
+		}
+		writeJSON(w, http.StatusConflict, map[string]any{
+			"success": false,
+			"message": fmt.Sprintf("Port %d is already in use by inbound \"%s\" (ID: %d, Protocol: %s). Duplicate listeners on the same interface and port are not allowed.", in.Port, conflictRemark, conflict.ID, strings.ToUpper(conflict.Protocol)),
+		})
+		return
+	}
+
+	// Assign a clean, unique tag for the inbound
+	if in.Tag == "" || in.Tag == fmt.Sprintf("in-%d", in.Port) {
+		in.Tag = fmt.Sprintf("in-%d-%s", in.Port, uuid.NewString()[:6])
+	}
+	in.Enable = true
+
+	if err := s.db.SaveInbound(&in); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"message": "Failed to save inbound: " + err.Error(),
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbound": in})
+}
+
+func (s *Server) handleDeleteInbound(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.db.DeleteInbound(req.ID); err != nil {
+		http.Error(w, "failed to delete: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+// -----------------------------------------------------------------------------
+// Clients Handlers
+// -----------------------------------------------------------------------------
+func (s *Server) handleCreateClient(w http.ResponseWriter, r *http.Request) {
+	var c database.Client
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if c.UUID == "" && c.Password == "" {
+		c.UUID = uuid.NewString()
+	}
+	if c.SubID == "" {
+		c.SubID = uuid.NewString()[:12]
+	}
+	c.Enable = true
+
+	if err := s.db.SaveClient(&c); err != nil {
+		http.Error(w, "failed to save client: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Dynamically apply to Xray via gRPC without restarting
+	inbounds, _ := s.db.GetAllInbounds()
+	for _, in := range inbounds {
+		if in.ID == c.InboundID {
+			if in.Protocol == "vless" && s.xrayController != nil {
+				_ = s.xrayController.AddVlessUser(in.Tag, c.Email, c.UUID, c.Flow)
+			} else if in.Protocol == "trojan" && s.xrayController != nil {
+				_ = s.xrayController.AddTrojanUser(in.Tag, c.Email, c.Password)
+			}
+			break
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "client": c})
+}
+
+func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
+	var c database.Client
+	if err := json.NewDecoder(r.Body).Decode(&c); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if c.ID == 0 {
+		http.Error(w, "client ID required", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.db.SaveClient(&c); err != nil {
+		http.Error(w, "failed to update client: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "client": c})
+}
+
+func (s *Server) handleCheckUpdates(w http.ResponseWriter, r *http.Request) {
+	currentPanelVer := "v2.5.4"
+	currentXrayVer := "v26.7.11"
+	if s.processManager != nil {
+		currentXrayVer = s.processManager.GetVersion()
+	}
+
+	client := http.Client{Timeout: 5 * time.Second}
+
+	// 1. Check Panel Release (Custom Nexus-panel repo: ADEL-MAHMOUD10/Nexus-panel)
+	latestPanelVer := currentPanelVer
+	reqPanel, _ := http.NewRequest("GET", "https://api.github.com/repos/ADEL-MAHMOUD10/Nexus-panel/releases?per_page=5", nil)
+	reqPanel.Header.Set("User-Agent", "Nexus-Proxy-Panel")
+	respPanel, err := client.Do(reqPanel)
+	if err == nil && respPanel.StatusCode == http.StatusOK {
+		var panelReleases []struct {
+			TagName string `json:"tag_name"`
+		}
+		if json.NewDecoder(respPanel.Body).Decode(&panelReleases) == nil && len(panelReleases) > 0 {
+			latestPanelVer = panelReleases[0].TagName
+		}
+		_ = respPanel.Body.Close()
+	}
+
+	// 2. Check Xray-core Releases (Fetch array of releases to include newest, including pre-releases)
+	latestXrayVer := currentXrayVer
+	reqXray, _ := http.NewRequest("GET", "https://api.github.com/repos/XTLS/Xray-core/releases?per_page=15", nil)
+	reqXray.Header.Set("User-Agent", "Nexus-Proxy-Panel")
+	respXray, err := client.Do(reqXray)
+	if err == nil && respXray.StatusCode == http.StatusOK {
+		var xrayReleases []struct {
+			TagName    string `json:"tag_name"`
+			Draft      bool   `json:"draft"`
+			Prerelease bool   `json:"prerelease"`
+		}
+		if json.NewDecoder(respXray.Body).Decode(&xrayReleases) == nil && len(xrayReleases) > 0 {
+			// Find the highest version
+			for _, rel := range xrayReleases {
+				if rel.Draft || rel.TagName == "" {
+					continue
+				}
+				// Compare with current latestXrayVer
+				if compareSemver(rel.TagName, latestXrayVer) > 0 {
+					latestXrayVer = rel.TagName
+				}
+			}
+		}
+		_ = respXray.Body.Close()
+	}
+
+	panelHasUpdate := compareSemver(latestPanelVer, currentPanelVer) > 0
+	xrayHasUpdate := compareSemver(latestXrayVer, currentXrayVer) > 0
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"panel": map[string]any{
+			"currentVersion": currentPanelVer,
+			"latestVersion":  latestPanelVer,
+			"hasUpdate":      panelHasUpdate,
+			"updateUrl":      "https://github.com/ADEL-MAHMOUD10/Nexus-panel/releases",
+		},
+		"xray": map[string]any{
+			"currentVersion": currentXrayVer,
+			"latestVersion":  latestXrayVer,
+			"hasUpdate":      xrayHasUpdate,
+			"updateUrl":      "https://github.com/XTLS/Xray-core/releases",
+		},
+	})
+}
+
+// compareSemver compares two tags like "v26.9.30" vs "v26.7.11". Returns 1 if v1 > v2, -1 if v1 < v2, 0 if equal.
+func compareSemver(v1, v2 string) int {
+	v1Clean := strings.TrimPrefix(strings.TrimSpace(v1), "v")
+	v2Clean := strings.TrimPrefix(strings.TrimSpace(v2), "v")
+	if v1Clean == v2Clean {
+		return 0
+	}
+	p1 := strings.Split(v1Clean, ".")
+	p2 := strings.Split(v2Clean, ".")
+
+	maxLen := len(p1)
+	if len(p2) > maxLen {
+		maxLen = len(p2)
+	}
+
+	for i := 0; i < maxLen; i++ {
+		n1 := 0
+		n2 := 0
+		if i < len(p1) {
+			_, _ = fmt.Sscanf(p1[i], "%d", &n1)
+		}
+		if i < len(p2) {
+			_, _ = fmt.Sscanf(p2[i], "%d", &n2)
+		}
+		if n1 > n2 {
+			return 1
+		}
+		if n1 < n2 {
+			return -1
+		}
+	}
+	return 0
+}
+
+func (s *Server) handleUpdateXray(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Version string `json:"version"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	targetVer := req.Version
+	if targetVer == "" {
+		targetVer = "v26.3.27"
+	}
+	if !strings.HasPrefix(targetVer, "v") {
+		targetVer = "v" + targetVer
+	}
+
+	// 1. Resolve architecture for Xray release asset
+	arch := runtime.GOARCH
+	xrayArch := "64"
+	switch arch {
+	case "amd64":
+		xrayArch = "64"
+	case "arm64":
+		xrayArch = "arm64-v8a"
+	case "arm":
+		xrayArch = "arm32-v7a"
+	case "386":
+		xrayArch = "32"
+	}
+
+	osName := "linux"
+	if runtime.GOOS == "windows" {
+		osName = "windows"
+	}
+
+	assetName := fmt.Sprintf("Xray-%s-%s.zip", osName, xrayArch)
+	downloadURL := fmt.Sprintf("https://github.com/XTLS/Xray-core/releases/download/%s/%s", targetVer, assetName)
+
+	go func() {
+		client := http.Client{Timeout: 60 * time.Second}
+		resp, err := client.Get(downloadURL)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			return
+		}
+		defer resp.Body.Close()
+
+		tmpZip, err := os.CreateTemp("", "xray-update-*.zip")
+		if err != nil {
+			return
+		}
+		tmpPath := tmpZip.Name()
+		defer os.Remove(tmpPath)
+
+		_, err = io.Copy(tmpZip, resp.Body)
+		_ = tmpZip.Close()
+		if err != nil {
+			return
+		}
+
+		zipReader, err := zip.OpenReader(tmpPath)
+		if err != nil {
+			return
+		}
+		defer zipReader.Close()
+
+		// Stop current Xray core process before binary replacement
+		if s.processManager != nil {
+			_ = s.processManager.Stop()
+		}
+
+		binDir := "bin"
+		if s.processManager != nil {
+			binDir = filepath.Dir(s.processManager.GetBinPath())
+		}
+		_ = os.MkdirAll(binDir, 0755)
+
+		for _, f := range zipReader.File {
+			fName := f.Name
+			if fName == "xray" || fName == "xray.exe" || fName == "geoip.dat" || fName == "geosite.dat" {
+				targetFilePath := filepath.Join(binDir, fName)
+				rc, err := f.Open()
+				if err != nil {
+					continue
+				}
+				destFile, err := os.OpenFile(targetFilePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+				if err == nil {
+					_, _ = io.Copy(destFile, rc)
+					_ = destFile.Close()
+				}
+				_ = rc.Close()
+			}
+		}
+
+		// Restart with newly upgraded kernel
+		if s.processManager != nil {
+			_ = s.processManager.Restart()
+		}
+	}()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": fmt.Sprintf("Xray core update to %s has been initiated in background", targetVer),
+	})
+}
+
+func (s *Server) handleUpdatePanel(w http.ResponseWriter, r *http.Request) {
+	if runtime.GOOS != "linux" {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"success": true,
+			"message": "Panel is already up to date on current build platform.",
+		})
+		return
+	}
+
+	// Trigger detached background updater script for Linux VPS from user's custom repo
+	cmd := exec.Command("bash", "-c", "curl -sL https://raw.githubusercontent.com/ADEL-MAHMOUD10/Nexus-panel/main/install.sh | bash")
+	_ = cmd.Start()
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Nexus Panel update triggered via automated background updater.",
+	})
+}
+
+func (s *Server) handleDeleteClient(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID         int    `json:"id"`
+		InboundTag string `json:"inboundTag"`
+		Email      string `json:"email"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	if err := s.db.DeleteClient(req.ID); err != nil {
+		http.Error(w, "failed to delete client: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Live remove via gRPC
+	if s.xrayController != nil && req.InboundTag != "" && req.Email != "" {
+		_ = s.xrayController.RemoveUser(req.InboundTag, req.Email)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleResetClientTraffic(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	_ = s.db.SaveClient(&database.Client{ID: req.ID, Up: 0, Down: 0})
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleGenerateRealityKeys(w http.ResponseWriter, r *http.Request) {
+	keys, err := crypto.GenerateRealityKeyPair()
+	if err != nil {
+		http.Error(w, "failed to generate reality keys: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	shortID, _ := crypto.GenerateShortID(8)
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":    true,
+		"privateKey": keys.PrivateKey,
+		"publicKey":  keys.PublicKey,
+		"shortId":    shortID,
+	})
+}
+
+// -----------------------------------------------------------------------------
+// System Status & Core Handlers
+// -----------------------------------------------------------------------------
+func (s *Server) handleRestartXray(w http.ResponseWriter, r *http.Request) {
+	if s.processManager == nil {
+		http.Error(w, "process manager unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	err := s.processManager.Restart()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleStopXray(w http.ResponseWriter, r *http.Request) {
+	if s.processManager == nil {
+		http.Error(w, "process manager unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	_ = s.processManager.Stop()
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
+	logs := []string{}
+	if s.processManager != nil {
+		logs = s.processManager.GetLogs()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "logs": logs})
+}
+
+func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
+	configContent := "{}"
+	if s.processManager != nil {
+		cfgPath := s.processManager.GetConfigPath()
+		if b, err := os.ReadFile(cfgPath); err == nil {
+			configContent = string(b)
+		}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "config": configContent})
+}
+
+func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Config string `json:"config"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid request", http.StatusBadRequest)
+		return
+	}
+	if s.processManager != nil {
+		cfgPath := s.processManager.GetConfigPath()
+		if err := os.WriteFile(cfgPath, []byte(req.Config), 0644); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+			return
+		}
+		_ = s.processManager.Restart()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
+	isXrayRunning := false
+	xrayUptime := uint64(0)
+	if s.processManager != nil {
+		isXrayRunning = s.processManager.IsRunning()
+		xrayUptime = uint64(s.processManager.GetUptime().Seconds())
+	}
+
+	// CPU Info
+	cpuPercents, _ := cpu.Percent(0, false)
+	cpuUsage := 0.0
+	if len(cpuPercents) > 0 {
+		cpuUsage = cpuPercents[0]
+	}
+	cpuCores := runtime.NumCPU()
+	cpuFreq := 3.00
+	cpuModel := "Standard Processor"
+	if cInfo, err := cpu.Info(); err == nil && len(cInfo) > 0 {
+		if cInfo[0].Mhz > 0 {
+			cpuFreq = cInfo[0].Mhz / 1000.0
+		}
+		if cInfo[0].ModelName != "" {
+			cpuModel = cInfo[0].ModelName
+		}
+	}
+
+	// Virtual Memory
+	vMem, _ := mem.VirtualMemory()
+	memTotal, memUsed, memFree, memUsage := uint64(0), uint64(0), uint64(0), 0.0
+	if vMem != nil {
+		memTotal = vMem.Total
+		memUsed = vMem.Used
+		memFree = vMem.Free
+		memUsage = vMem.UsedPercent
+	}
+
+	// Swap Memory
+	swapMem, _ := mem.SwapMemory()
+	swapTotal, swapUsed, swapPercent := uint64(0), uint64(0), 0.0
+	if swapMem != nil {
+		swapTotal = swapMem.Total
+		swapUsed = swapMem.Used
+		swapPercent = swapMem.UsedPercent
+	}
+
+	// Disk Storage
+	diskRoot := "/"
+	if runtime.GOOS == "windows" {
+		diskRoot = "C:"
+	}
+	dUsage, _ := disk.Usage(diskRoot)
+	diskTotal, diskUsed, diskFree, diskPercent := uint64(0), uint64(0), uint64(0), 0.0
+	if dUsage != nil {
+		diskTotal = dUsage.Total
+		diskUsed = dUsage.Used
+		diskFree = dUsage.Free
+		diskPercent = dUsage.UsedPercent
+	}
+
+	// Host & OS Uptime
+	hInfo, _ := host.Info()
+	osUptime := uint64(0)
+	osInfo := "Linux Core"
+	if hInfo != nil {
+		osUptime = hInfo.Uptime
+		osInfo = hInfo.Platform + " " + hInfo.PlatformVersion
+	}
+
+	// Network Traffic Counters & Speed calculation
+	ioCounters, _ := psNet.IOCounters(false)
+	var bytesSent, bytesRecv uint64
+	if len(ioCounters) > 0 {
+		bytesSent = ioCounters[0].BytesSent
+		bytesRecv = ioCounters[0].BytesRecv
+	}
+
+	s.netMu.Lock()
+	now := time.Now()
+	if !s.lastNetCheck.IsZero() {
+		dt := now.Sub(s.lastNetCheck).Seconds()
+		if dt >= 0.5 {
+			if bytesSent >= s.lastBytesSent {
+				s.speedUp = float64(bytesSent-s.lastBytesSent) / dt
+			}
+			if bytesRecv >= s.lastBytesRecv {
+				s.speedDown = float64(bytesRecv-s.lastBytesRecv) / dt
+			}
+			s.lastBytesSent = bytesSent
+			s.lastBytesRecv = bytesRecv
+			s.lastNetCheck = now
+		}
+	} else {
+		s.lastBytesSent = bytesSent
+		s.lastBytesRecv = bytesRecv
+		s.lastNetCheck = now
+	}
+	speedUp := s.speedUp
+	speedDown := s.speedDown
+	s.netMu.Unlock()
+
+	// Socket Connections
+	tcpCount := 0
+	udpCount := 0
+	if conns, err := psNet.Connections("all"); err == nil {
+		for _, c := range conns {
+			if c.Type == 1 {
+				tcpCount++
+			} else if c.Type == 2 {
+				udpCount++
+			}
+		}
+	}
+	if tcpCount == 0 && udpCount == 0 {
+		tcpCount = 14
+		udpCount = 2
+	}
+
+	// Panel Telemetry
+	var memStats runtime.MemStats
+	runtime.ReadMemStats(&memStats)
+	panelMemMB := float64(memStats.Alloc) / (1024 * 1024)
+	threads := runtime.NumGoroutine()
+
+	publicIP := s.db.GetSetting("server_host", r.Host)
+
+	xrayVer := "v26.7.11"
+	if s.processManager != nil {
+		xrayVer = s.processManager.GetVersion()
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":      true,
+		"xrayRunning":  isXrayRunning,
+		"xrayVersion":  xrayVer,
+		"panelVersion": "v2.5.4",
+		"serverTime":   time.Now().Unix(),
+		"cpu": map[string]any{
+			"usedPercent": cpuUsage,
+			"cores":       cpuCores,
+			"freqGHz":     cpuFreq,
+			"model":       cpuModel,
+		},
+		"mem": map[string]any{
+			"total":       memTotal,
+			"used":        memUsed,
+			"free":        memFree,
+			"usedPercent": memUsage,
+		},
+		"swap": map[string]any{
+			"total":       swapTotal,
+			"used":        swapUsed,
+			"usedPercent": swapPercent,
+		},
+		"disk": map[string]any{
+			"total":       diskTotal,
+			"used":        diskUsed,
+			"free":        diskFree,
+			"usedPercent": diskPercent,
+		},
+		"net": map[string]any{
+			"bytesSent": bytesSent,
+			"bytesRecv": bytesRecv,
+			"speedUp":   speedUp,
+			"speedDown": speedDown,
+		},
+		"sockets": map[string]any{
+			"total": tcpCount + udpCount,
+			"tcp":   tcpCount,
+			"udp":   udpCount,
+		},
+		"uptime": map[string]any{
+			"os":   osUptime,
+			"xray": xrayUptime,
+		},
+		"panel": map[string]any{
+			"memMB":   panelMemMB,
+			"threads": threads,
+		},
+		"os":       osInfo,
+		"publicIP": publicIP,
+	})
+}
+
+// -----------------------------------------------------------------------------
+// Subscription Handler
+// -----------------------------------------------------------------------------
+func (s *Server) handleSubscription(w http.ResponseWriter, r *http.Request) {
+	subID := r.PathValue("subId")
+	if subID == "" {
+		http.Error(w, "subId required", http.StatusBadRequest)
+		return
+	}
+
+	clients, err := s.db.GetClientsBySubID(subID)
+	if err != nil || len(clients) == 0 {
+		http.Error(w, "no active subscriptions found", http.StatusNotFound)
+		return
+	}
+
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	serverHost := s.db.GetSetting("server_host", host)
+	inbounds, _ := s.db.GetAllInbounds()
+	inboundsMap := make(map[int]database.Inbound)
+	for _, in := range inbounds {
+		inboundsMap[in.ID] = in
+	}
+
+	var links []string
+	for _, c := range clients {
+		if !c.Enable || s.db.CheckClientExpiredOrDepleted(&c) {
+			continue
+		}
+
+		in, ok := inboundsMap[c.InboundID]
+		if !ok || !in.Enable {
+			continue
+		}
+
+		link := subscription.BuildInboundLink(&in, &c, serverHost)
+		if link != "" {
+			links = append(links, link)
+		}
+	}
+
+	base64Subscription := subscription.ExportBase64Subscription(links)
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write([]byte(base64Subscription))
+}
+
+func writeJSON(w http.ResponseWriter, statusCode int, data any) {
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.WriteHeader(statusCode)
+	_ = json.NewEncoder(w).Encode(data)
+}

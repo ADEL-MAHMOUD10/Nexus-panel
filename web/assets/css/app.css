@@ -1,0 +1,80 @@
+/* Nexus Proxy Utility - Modern Sleek Industrial Gray Theme */
+:root {
+  --bg-main: #1e2127;
+  --bg-card: #262a33;
+  --bg-card-hover: #2e333e;
+  --bg-input: #20232a;
+  --border-color: #373d4b;
+  --text-main: #f2f4f8;
+  --text-muted: #9ba2b3;
+  --text-dim: #6c7385;
+}
+
+[x-cloak] {
+  display: none !important;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Geometric engineering grid lines */
+.bg-grid-lines {
+  background-image: 
+    linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* Ergonomic Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #373d4b;
+  border-radius: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #4e5669;
+}
+
+/* Watermark N geometry */
+.watermark-container {
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 44vw;
+  max-width: 680px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.16;
+  overflow: hidden;
+}
+
+/* Sparklines */
+.sparkline-svg {
+  display: block;
+  width: 100%;
+  height: 38px;
+  overflow: visible;
+}
+
+/* Terminal logs styling */
+.terminal-window {
+  font-family: 'JetBrains Mono', monospace;
+  background-color: #14161b;
+  border: 1px solid #2d323e;
+  color: #abb2bf;
+}
