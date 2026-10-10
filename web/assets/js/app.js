@@ -75,6 +75,10 @@ document.addEventListener('alpine:init', () => {
     clientSearch: '',
     clientStatusFilter: 'all', // 'all', 'online', 'active', 'depleting', 'disabled', 'ended'
     clientSortBy: 'oldest',    // 'oldest', 'newest', 'traffic', 'remaining'
+    clientFilterOpen: false,
+    clientFilterInbound: 'all',
+    clientSpeeds: {},
+    clientPreviousStats: {},
     selectedClientIds: [],
     clientDetailModalOpen: false,
     selectedClientDetail: null,
@@ -328,8 +332,12 @@ document.addEventListener('alpine:init', () => {
         this.refreshData();
         this.checkUpdates();
         setInterval(() => {
-          if (this.token && this.activeTab === 'overview') {
-            this.fetchServerStatus();
+          if (this.token) {
+            if (this.activeTab === 'overview') {
+              this.fetchServerStatus();
+            } else if (this.activeTab === 'clients') {
+              this.refreshData();
+            }
           }
         }, 2500);
       }
@@ -525,6 +533,58 @@ document.addEventListener('alpine:init', () => {
       const inbRes = await this.api('/api/inbounds/list');
       if (inbRes && inbRes.inbounds) {
         this.inbounds = inbRes.inbounds;
+        this.updateClientSpeeds();
+      }
+    },
+
+    updateClientSpeeds() {
+      const now = Date.now();
+      this.inbounds.forEach(inb => {
+        if (!inb.clients) return;
+        inb.clients.forEach(c => {
+          const email = c.email;
+          if (!email) return;
+          const prev = this.clientPreviousStats[email];
+          if (prev) {
+            const dt = Math.max(1, (now - prev.time) / 1000);
+            const deltaUp = Math.max(0, (c.up || 0) - prev.up);
+            const deltaDown = Math.max(0, (c.down || 0) - prev.down);
+            const upSpeed = deltaUp / dt;
+            const downSpeed = deltaDown / dt;
+            const hadActivity = (deltaUp > 0 || deltaDown > 0);
+            const lastActive = hadActivity ? now : (prev.lastActive || 0);
+            this.clientSpeeds[email] = {
+              upSpeed,
+              downSpeed,
+              lastActive
+            };
+          } else {
+            this.clientSpeeds[email] = {
+              upSpeed: 0,
+              downSpeed: 0,
+              lastActive: ((c.up || 0) + (c.down || 0) > 0) ? now : 0
+            };
+          }
+          this.clientPreviousStats[email] = {
+            up: c.up || 0,
+            down: c.down || 0,
+            time: now,
+            lastActive: this.clientSpeeds[email]?.lastActive || 0
+          };
+        });
+      });
+    },
+
+    getInboundBadgeClass(proto, port) {
+      const p = parseInt(port, 10);
+      if (p === 2053 || p === 80 || p === 8080) {
+        return 'bg-[#341d13] text-[#f97316] border-[#592b15]';
+      } else if (p === 2084 || p === 443 || p === 8443 || p === 2083 || p === 2087 || p === 2096) {
+        return 'bg-[#10233b] text-[#38bdf8] border-[#1d4272]';
+      } else if (proto === 'trojan') {
+        return 'bg-[#132a24] text-[#34d399] border-[#1b4d3e]';
+      } else {
+        return 'bg-[#25153a] text-[#c084fc] border-[#4c1d95]';
       }
     },
 
@@ -860,7 +920,11 @@ document.addEventListener('alpine:init', () => {
         if (inb.clients) {
           inb.clients.forEach(c => {
             const trafficUsed = (c.up || 0) + (c.down || 0);
-            const isOnline = trafficUsed > 0;
+            const sp = this.clientSpeeds[c.email] || { upSpeed: 0, downSpeed: 0, lastActive: 0 };
+            const upSpeed = sp.upSpeed;
+            const downSpeed = sp.downSpeed;
+            const hasRecentActivity = sp.lastActive > 0 && (Date.now() - sp.lastActive < 45000);
+            const isOnline = c.enable && (upSpeed > 0 || downSpeed > 0 || hasRecentActivity || trafficUsed > 0);
             const isEnded = c.expiryTime > 0 && now > c.expiryTime;
             const isDepleted = c.total > 0 && trafficUsed >= c.total;
             const isDisabled = !c.enable;
@@ -897,6 +961,8 @@ document.addEventListener('alpine:init', () => {
               inboundPort: inb.port,
               inboundTag: inb.tag,
               inboundProtocol: inb.protocol,
+              upSpeed,
+              downSpeed,
               isOnline,
               isEnded,
               isDepleted,
@@ -927,6 +993,11 @@ document.addEventListener('alpine:init', () => {
         list = list.filter(c => c.enable && !c.isEnded && !c.isDepleted);
       }
 
+      // Filter by inbound if selected
+      if (this.clientFilterInbound && this.clientFilterInbound !== 'all') {
+        list = list.filter(c => String(c.inboundId) === String(this.clientFilterInbound));
+      }
+
       // Search by email, comment, UUID, subID, port
       if (this.clientSearch) {
         const q = this.clientSearch.toLowerCase().trim();
@@ -935,6 +1006,7 @@ document.addEventListener('alpine:init', () => {
           (c.uuid && c.uuid.toLowerCase().includes(q)) ||
           (c.subId && c.subId.toLowerCase().includes(q)) ||
           (c.inboundRemark && c.inboundRemark.toLowerCase().includes(q)) ||
+          (c.inboundTag && c.inboundTag.toLowerCase().includes(q)) ||
           String(c.inboundPort).includes(q)
         );
       }
@@ -955,7 +1027,7 @@ document.addEventListener('alpine:init', () => {
 
     toggleSelectAllClients() {
       const currentList = this.allClients;
-      if (this.selectedClientIds.length === currentList.length) {
+      if (this.selectedClientIds.length === currentList.length && currentList.length > 0) {
         this.selectedClientIds = [];
       } else {
         this.selectedClientIds = currentList.map(c => c.id);
@@ -972,6 +1044,67 @@ document.addEventListener('alpine:init', () => {
         this.selectedClientIds.splice(idx, 1);
       } else {
         this.selectedClientIds.push(id);
+      }
+    },
+
+    async bulkToggleEnable(enable) {
+      if (this.selectedClientIds.length === 0) return;
+      const actionName = enable ? 'Enable' : 'Disable';
+      const ok = await this.askConfirm(`${actionName} ${this.selectedClientIds.length} selected client accounts?`, {
+        title: `${actionName} Selected Clients`,
+        confirmText: `${actionName} Clients`,
+        isDanger: !enable
+      });
+      if (!ok) return;
+
+      const res = await this.api('/api/clients/bulk', 'POST', {
+        action: enable ? 'enable' : 'disable',
+        ids: this.selectedClientIds
+      });
+      if (res && res.success) {
+        this.showToast(`${this.selectedClientIds.length} clients ${enable ? 'enabled' : 'disabled'}`);
+        this.selectedClientIds = [];
+        this.refreshData();
+      }
+    },
+
+    async bulkResetTraffic() {
+      if (this.selectedClientIds.length === 0) return;
+      const ok = await this.askConfirm(`Reset traffic counters for ${this.selectedClientIds.length} selected client accounts to 0?`, {
+        title: 'Reset Traffic for Selected',
+        confirmText: 'Reset Traffic',
+        isDanger: true
+      });
+      if (!ok) return;
+
+      const res = await this.api('/api/clients/bulk', 'POST', {
+        action: 'reset-traffic',
+        ids: this.selectedClientIds
+      });
+      if (res && res.success) {
+        this.showToast(`Traffic reset for ${this.selectedClientIds.length} clients`);
+        this.selectedClientIds = [];
+        this.refreshData();
+      }
+    },
+
+    async bulkDelete() {
+      if (this.selectedClientIds.length === 0) return;
+      const ok = await this.askConfirm(`Permanently delete ${this.selectedClientIds.length} selected client accounts? This action cannot be undone.`, {
+        title: 'Delete Selected Clients',
+        confirmText: 'Delete Selected',
+        isDanger: true
+      });
+      if (!ok) return;
+
+      const res = await this.api('/api/clients/bulk', 'POST', {
+        action: 'delete',
+        ids: this.selectedClientIds
+      });
+      if (res && res.success) {
+        this.showToast(`Deleted ${this.selectedClientIds.length} clients`);
+        this.selectedClientIds = [];
+        this.refreshData();
       }
     },
 

@@ -709,66 +709,102 @@
               </button>
             </div>
 
-            <!-- 2. Controls Toolbar (+ Add Clients, more actions, Search, Filter & Sort) -->
-            <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-brand-card/70 p-3.5 rounded-xl border border-brand-border">
-              <!-- Left Action Buttons -->
-              <div class="flex items-center gap-2">
-                <button @click="openAddClient()"
-                        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-xl text-xs transition shadow flex items-center gap-1.5">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                  <span>Add Clients</span>
-                </button>
+            <!-- 2. Controls Toolbar (+ Add Clients, Bulk Actions, Search, Filter & Sort) -->
+            <div class="space-y-2">
+              <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#161922] p-3 rounded-xl border border-white/10">
+                <!-- Left Action Buttons & Bulk Bar -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <button @click="openAddClient()"
+                          class="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white font-medium rounded-lg text-xs transition shadow flex items-center gap-1.5">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                    <span>Add Clients</span>
+                  </button>
 
-                <!-- Bulk Selection Count / Reset -->
-                <template x-if="selectedClientIds.length > 0">
-                  <span class="text-xs font-mono text-brand-muted pl-2 border-l border-brand-border" x-text="selectedClientIds.length + ' selected'"></span>
-                </template>
+                  <!-- Bulk Selection Count & Actions -->
+                  <template x-if="selectedClientIds.length > 0">
+                    <div class="flex flex-wrap items-center gap-1.5 pl-2.5 border-l border-white/10">
+                      <span class="text-xs font-mono text-stone-300 font-semibold" x-text="selectedClientIds.length + ' selected'"></span>
+                      <button @click="bulkToggleEnable(true)" class="px-2 py-1 text-[11px] rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition">Enable</button>
+                      <button @click="bulkToggleEnable(false)" class="px-2 py-1 text-[11px] rounded bg-stone-800 text-stone-300 hover:bg-stone-700 border border-white/10 transition">Disable</button>
+                      <button @click="bulkResetTraffic()" class="px-2 py-1 text-[11px] rounded bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 border border-amber-500/30 transition">Reset Traffic</button>
+                      <button @click="bulkDelete()" class="px-2 py-1 text-[11px] rounded bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 border border-rose-500/30 transition">Delete</button>
+                      <button @click="selectedClientIds = []" class="px-2 py-1 text-[11px] rounded text-stone-400 hover:text-white transition">Clear</button>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- Right Search & Filter & Sort (Matching screenshot media_1791659329744_6437aa3d.png) -->
+                <div class="flex flex-wrap items-center gap-2">
+                  <!-- Search Box -->
+                  <div class="relative flex-1 sm:w-64">
+                    <svg class="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    <input type="text" x-model="clientSearch" placeholder="Search email, comment, sub ID, UUID, p..."
+                           class="w-full bg-[#10121a] border border-white/10 rounded-lg pl-9 pr-3 py-1.5 text-xs text-white placeholder-stone-500 focus:outline-none focus:border-blue-500 transition">
+                  </div>
+
+                  <!-- Filter Button (Funnel) -->
+                  <button @click="clientFilterOpen = !clientFilterOpen"
+                          :class="clientFilterOpen || clientStatusFilter !== 'all' || clientFilterInbound !== 'all' ? 'bg-blue-600/20 border-blue-500/60 text-blue-400' : 'bg-[#10121a] border-white/10 text-stone-300 hover:text-white'"
+                          class="flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-xs font-medium transition cursor-pointer">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
+                    <span>Filter</span>
+                    <template x-if="clientStatusFilter !== 'all' || clientFilterInbound !== 'all'">
+                      <span class="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                    </template>
+                  </button>
+
+                  <!-- Sort Order Dropdown -->
+                  <div class="relative">
+                    <select x-model="clientSortBy" class="bg-[#10121a] border border-white/10 text-stone-200 text-xs rounded-lg pl-3 pr-7 py-1.5 focus:outline-none focus:border-blue-500 cursor-pointer appearance-none">
+                      <option value="oldest" class="bg-stone-900">Oldest first</option>
+                      <option value="newest" class="bg-stone-900">Newest first</option>
+                      <option value="traffic" class="bg-stone-900">Traffic (Highest)</option>
+                      <option value="remaining" class="bg-stone-900">Remaining Traffic</option>
+                    </select>
+                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-stone-400">
+                      <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <!-- Right Search & Filter & Sort -->
-              <div class="flex flex-wrap items-center gap-2">
-                <!-- Search Box -->
-                <div class="relative flex-1 sm:w-64">
-                  <svg class="w-4 h-4 text-brand-muted absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                  <input type="text" x-model="clientSearch" placeholder="Search email, comment, sub ID, UUID, port..."
-                         class="w-full bg-brand-input border border-brand-border rounded-xl pl-9 pr-3 py-1.5 text-xs text-brand-text focus:outline-none focus:border-white/50 transition">
-                </div>
+              <!-- Filter Drawer / Bar -->
+              <div x-show="clientFilterOpen" x-transition class="p-3.5 bg-[#12151f] rounded-xl border border-white/10 space-y-2 text-xs">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-stone-400 font-medium">Status:</span>
+                    <button @click="clientStatusFilter = 'all'" :class="clientStatusFilter === 'all' ? 'bg-white/15 text-white font-semibold' : 'text-stone-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">All</button>
+                    <button @click="clientStatusFilter = 'online'" :class="clientStatusFilter === 'online' ? 'bg-blue-600/30 text-blue-400 font-semibold' : 'text-stone-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Online</button>
+                    <button @click="clientStatusFilter = 'active'" :class="clientStatusFilter === 'active' ? 'bg-emerald-600/30 text-emerald-400 font-semibold' : 'text-stone-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Active</button>
+                    <button @click="clientStatusFilter = 'depleting'" :class="clientStatusFilter === 'depleting' ? 'bg-amber-600/30 text-amber-400 font-semibold' : 'text-stone-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Depleting</button>
+                    <button @click="clientStatusFilter = 'disabled'" :class="clientStatusFilter === 'disabled' ? 'bg-zinc-600/30 text-zinc-300 font-semibold' : 'text-stone-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Disabled</button>
+                    <button @click="clientStatusFilter = 'ended'" :class="clientStatusFilter === 'ended' ? 'bg-rose-600/30 text-rose-400 font-semibold' : 'text-stone-400 hover:text-white'" class="px-2.5 py-1 rounded-lg transition">Ended</button>
+                  </div>
 
-                <!-- Status Filter Dropdown / Pill -->
-                <div class="flex items-center gap-1 bg-brand-input border border-brand-border rounded-xl px-2 py-1 text-xs">
-                  <svg class="w-3.5 h-3.5 text-brand-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"></path></svg>
-                  <select x-model="clientStatusFilter" class="bg-transparent text-xs text-brand-text focus:outline-none border-none cursor-pointer">
-                    <option value="all" class="bg-stone-900">All Clients</option>
-                    <option value="online" class="bg-stone-900">Online Only</option>
-                    <option value="active" class="bg-stone-900">Active Only</option>
-                    <option value="depleting" class="bg-stone-900">Depleting</option>
-                    <option value="disabled" class="bg-stone-900">Disabled</option>
-                    <option value="ended" class="bg-stone-900">Ended</option>
-                  </select>
-                </div>
-
-                <!-- Sort Order -->
-                <div class="flex items-center gap-1 bg-brand-input border border-brand-border rounded-xl px-2 py-1 text-xs">
-                  <select x-model="clientSortBy" class="bg-transparent text-xs text-brand-text focus:outline-none border-none cursor-pointer">
-                    <option value="oldest" class="bg-stone-900">Oldest first</option>
-                    <option value="newest" class="bg-stone-900">Newest first</option>
-                    <option value="traffic" class="bg-stone-900">Traffic (Highest)</option>
-                    <option value="remaining" class="bg-stone-900">Remaining Traffic</option>
-                  </select>
+                  <div class="flex items-center gap-2">
+                    <span class="text-stone-400 font-medium">Inbound:</span>
+                    <select x-model="clientFilterInbound" class="bg-[#181a24] border border-white/10 rounded-lg px-2.5 py-1 text-xs text-white focus:outline-none cursor-pointer">
+                      <option value="all">All Inbounds</option>
+                      <template x-for="inb in inbounds" :key="inb.id">
+                        <option :value="inb.id" x-text="(inb.remark || inb.tag) + ' (:' + inb.port + ')'"></option>
+                      </template>
+                    </select>
+                    <button @click="clientStatusFilter = 'all'; clientFilterInbound = 'all'; clientSearch = ''" class="px-2.5 py-1 rounded-lg text-stone-400 hover:text-rose-400 transition">Reset</button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <!-- 3. The Power Data Table (Matching Screenshot Columns Exactly) -->
-            <div class="bg-brand-card/90 backdrop-blur border border-brand-border rounded-2xl overflow-hidden shadow">
+            <div class="bg-[#141620] border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
               <div class="overflow-x-auto custom-scrollbar">
                 <table class="w-full text-left text-xs whitespace-nowrap">
-                  <thead class="bg-brand-input border-b border-brand-border text-brand-muted text-[11px] font-medium select-none">
+                  <thead class="bg-[#10121a] border-b border-white/10 text-stone-400 text-[11px] font-medium select-none">
                     <tr>
                       <th class="px-4 py-3.5 w-10">
                         <input type="checkbox" @click="toggleSelectAllClients()" 
                                :checked="selectedClientIds.length > 0 && selectedClientIds.length === allClients.length"
-                               class="rounded bg-brand-card border-brand-border text-blue-500 focus:ring-0 cursor-pointer">
+                               class="rounded bg-[#161922] border-white/20 text-blue-500 focus:ring-0 cursor-pointer">
                       </th>
                       <th class="px-4 py-3.5">Actions</th>
                       <th class="px-4 py-3.5">Enabled</th>
@@ -781,43 +817,43 @@
                       <th class="px-4 py-3.5">Duration</th>
                     </tr>
                   </thead>
-                  <tbody class="divide-y divide-brand-border/60 font-mono text-xs">
+                  <tbody class="divide-y divide-white/5 font-mono text-xs">
                     <template x-for="c in allClients" :key="c.id">
-                      <tr class="hover:bg-brand-cardHover/50 transition">
+                      <tr class="hover:bg-white/[0.03] transition">
                         
                         <!-- Checkbox -->
                         <td class="px-4 py-3.5">
                           <input type="checkbox" :checked="isClientSelected(c.id)" @click="toggleClientSelection(c.id)"
-                                 class="rounded bg-brand-card border-brand-border text-blue-500 focus:ring-0 cursor-pointer">
+                                 class="rounded bg-[#161922] border-white/20 text-blue-500 focus:ring-0 cursor-pointer">
                         </td>
 
                         <!-- Actions (QR, Info, Reset Traffic, Edit, Delete) -->
                         <td class="px-4 py-3.5">
-                          <div class="flex items-center gap-1.5 text-brand-muted">
+                          <div class="flex items-center gap-1.5 text-stone-400">
                             <!-- QR Code & Share -->
                             <button @click="showQR(c.email, c.link || '')" title="Show QR & Export link"
                                     class="p-1 rounded hover:bg-white/10 hover:text-white transition">
-                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                             </button>
                             <!-- Info / Telemetry -->
                             <button @click="openClientInfo(c)" title="Client Info & Deep Details"
                                     class="p-1 rounded hover:bg-white/10 hover:text-sky-400 transition">
-                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                             </button>
                             <!-- Reset Traffic Counter -->
                             <button @click="resetClientTraffic(c)" title="Reset Traffic Counters"
                                     class="p-1 rounded hover:bg-white/10 hover:text-amber-400 transition">
-                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                             </button>
                             <!-- Edit Client -->
                             <button @click="editClient(c)" title="Edit Client Credentials & Limits"
                                     class="p-1 rounded hover:bg-white/10 hover:text-white transition">
-                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
+                              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path></svg>
                             </button>
                             <!-- Delete Client -->
                             <button @click="deleteClient(c.id, c.inboundTag, c.email)" title="Delete User"
                                     class="p-1 rounded hover:bg-rose-500/20 hover:text-rose-400 transition">
-                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                              <svg class="w-4 h-4 text-rose-400 hover:text-rose-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                             </button>
                           </div>
                         </td>
@@ -825,66 +861,78 @@
                         <!-- Enabled Toggle Switch -->
                         <td class="px-4 py-3.5">
                           <button type="button" @click="toggleClientEnable(c)"
-                                  :class="c.enable ? 'bg-blue-600' : 'bg-brand-border'"
+                                  :class="c.enable ? 'bg-blue-600' : 'bg-[#2b3141]'"
                                   class="relative inline-flex h-4 w-8 shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none">
                             <span :class="c.enable ? 'translate-x-4' : 'translate-x-0.5'"
                                   class="pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out mt-0.5"></span>
                           </button>
                         </td>
 
-                        <!-- Online State Pill -->
+                        <!-- Online State Pill (Matches screenshot Online badge) -->
                         <td class="px-4 py-3.5">
-                          <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-sans font-medium"
-                                :class="c.isOnline ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20' : 'text-brand-muted bg-brand-input border border-brand-border/60'">
-                            <span class="w-1.5 h-1.5 rounded-full" :class="c.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-brand-muted/40'"></span>
-                            <span x-text="c.isOnline ? 'Online' : 'Offline'"></span>
-                          </span>
+                          <template x-if="c.isOnline">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-sans font-medium bg-[#14291e] text-[#22c55e] border border-[#1b432a]">
+                              <span class="w-1.5 h-1.5 rounded-full bg-[#22c55e]"></span>
+                              <span>Online</span>
+                            </span>
+                          </template>
+                          <template x-if="!c.isOnline">
+                            <span class="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-xs font-sans font-medium bg-[#1c202a] text-[#717b8f] border border-[#2b3141]">
+                              <span>Offline</span>
+                            </span>
+                          </template>
                         </td>
 
                         <!-- Client Identity (Email / UUID) -->
                         <td class="px-4 py-3.5">
-                          <div class="font-sans font-semibold text-brand-text truncate max-w-[140px]" x-text="c.email"></div>
-                          <div class="text-[10px] text-brand-muted truncate max-w-[140px]" x-text="c.uuid || c.password"></div>
+                          <div class="font-sans font-bold text-white text-xs truncate max-w-[160px]" x-text="c.email"></div>
+                          <div class="text-[11px] text-stone-400 font-mono truncate max-w-[160px]" x-text="c.subId || c.uuid || c.password || '—'"></div>
                         </td>
 
-                        <!-- Attached Inbounds Pill -->
+                        <!-- Attached Inbounds Pill (WITH PORT CLEARLY DISPLAYED AS REQUESTED) -->
                         <td class="px-4 py-3.5">
-                          <span class="px-2 py-0.5 rounded text-[10px] font-mono border"
-                                :class="c.inboundPort === 443 ? 'bg-orange-500/10 border-orange-500/30 text-orange-400' : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-400'"
-                                x-text="c.inboundRemark ? c.inboundRemark : ('in-' + c.inboundPort)"></span>
-                        </td>
-
-                        <!-- Traffic Used with Visual Progress Bar -->
-                        <td class="px-4 py-3.5">
-                          <div class="flex items-center gap-3">
-                            <span class="text-white text-xs w-16" x-text="formatBytes(c.trafficUsed)"></span>
-                            <div class="w-24 bg-brand-input rounded-full h-1.5 overflow-hidden border border-brand-border/50">
-                              <div class="bg-gradient-to-r from-violet-500 to-fuchsia-500 h-1.5 rounded-full" 
-                                   :style="'width: ' + (c.total > 0 ? c.trafficPercent : 15) + '%'"></div>
-                            </div>
-                            <span class="text-brand-muted text-[11px]" x-text="c.total > 0 ? formatBytes(c.total) : '∞'"></span>
-                          </div>
-                        </td>
-
-                        <!-- Realtime Speed -->
-                        <td class="px-4 py-3.5">
-                          <span class="px-2 py-0.5 rounded text-[11px] font-mono"
-                                :class="c.isOnline ? 'bg-blue-900/30 text-blue-400 border border-blue-800/40' : 'text-brand-muted'">
-                            <span x-text="c.isOnline ? '↑ 302 B/s / ↓ 1.5 KB/s' : '—'"></span>
+                          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-mono font-medium border"
+                                :class="getInboundBadgeClass(c.inboundProtocol, c.inboundPort)">
+                            <span x-text="c.inboundTag || c.inboundRemark || ('in-' + c.inboundPort)"></span>
+                            <span class="px-1 py-0.2 rounded bg-black/40 text-[10px] font-bold text-white/90" x-text="':' + c.inboundPort"></span>
                           </span>
                         </td>
 
-                        <!-- Remaining Traffic Quota -->
+                        <!-- Traffic Used with Visual Progress Bar (Matches Screenshot) -->
                         <td class="px-4 py-3.5">
-                          <span class="px-2 py-0.5 rounded bg-brand-input border border-brand-border text-[11px]"
-                                :class="c.isDepleted ? 'text-amber-400 border-amber-500/40' : 'text-purple-300'"
+                          <div class="flex items-center gap-2.5 font-mono">
+                            <span class="text-white text-xs w-20 text-right" x-text="formatBytes(c.trafficUsed)"></span>
+                            <div class="w-24 bg-[#202534] rounded-full h-1.5 overflow-hidden border border-white/5">
+                              <div class="bg-gradient-to-r from-purple-500 to-indigo-500 h-full rounded-full transition-all duration-300" 
+                                   :style="'width: ' + (c.total > 0 ? c.trafficPercent : 15) + '%'"></div>
+                            </div>
+                            <span class="text-stone-400 text-xs w-16" x-text="c.total > 0 ? formatBytes(c.total) : '∞'"></span>
+                          </div>
+                        </td>
+
+                        <!-- Realtime Speed (Matches screenshot ↑ / ↓ or —) -->
+                        <td class="px-4 py-3.5">
+                          <template x-if="c.upSpeed > 0 || c.downSpeed > 0">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded text-xs font-mono font-medium bg-[#0f213a] text-[#38bdf8] border border-[#1e3a63]">
+                              ↑ <span x-text="formatSpeed(c.upSpeed)"></span> / ↓ <span x-text="formatSpeed(c.downSpeed)"></span>
+                            </span>
+                          </template>
+                          <template x-if="!(c.upSpeed > 0 || c.downSpeed > 0)">
+                            <div class="w-28 py-0.5 rounded bg-[#1c202a]/60 text-stone-500 font-mono text-center text-xs">—</div>
+                          </template>
+                        </td>
+
+                        <!-- Remaining Traffic Quota (Matches screenshot purple pill) -->
+                        <td class="px-4 py-3.5">
+                          <span class="inline-flex items-center justify-center min-w-[3.25rem] px-2.5 py-0.5 rounded text-xs font-mono font-semibold"
+                                :class="c.isDepleted ? 'bg-rose-950/40 text-rose-400 border border-rose-800/40' : 'bg-[#2a1b4e] text-[#c084fc] border border-[#4c1d95]'"
                                 x-text="c.remainingTraffic"></span>
                         </td>
 
-                        <!-- Duration / Expiry -->
+                        <!-- Duration / Expiry (Matches screenshot purple pill) -->
                         <td class="px-4 py-3.5">
-                          <span class="px-2 py-0.5 rounded bg-brand-input border border-brand-border text-[11px]"
-                                :class="c.isEnded ? 'text-rose-400 border-rose-500/40' : 'text-purple-300'"
+                          <span class="inline-flex items-center justify-center min-w-[3.25rem] px-2.5 py-0.5 rounded text-xs font-mono font-semibold"
+                                :class="c.isEnded ? 'bg-rose-950/40 text-rose-400 border border-rose-800/40' : 'bg-[#2a1b4e] text-[#c084fc] border border-[#4c1d95]'"
                                 x-text="c.durationText"></span>
                         </td>
 
@@ -895,7 +943,7 @@
               </div>
 
               <!-- Empty State -->
-              <div x-show="allClients.length === 0" class="text-center py-12 text-brand-muted text-xs">
+              <div x-show="allClients.length === 0" class="text-center py-12 text-stone-400 text-xs">
                 No clients match current filters or search query.
               </div>
             </div>

@@ -396,6 +396,18 @@ func (db *DB) DeleteClient(id int) error {
 	return err
 }
 
+func (db *DB) ResetTraffic(id int, email string) error {
+	if id > 0 {
+		_, err := db.conn.Exec("UPDATE clients SET up = 0, down = 0 WHERE id = ?", id)
+		return err
+	}
+	if email != "" {
+		_, err := db.conn.Exec("UPDATE clients SET up = 0, down = 0 WHERE email = ?", email)
+		return err
+	}
+	return nil
+}
+
 func (db *DB) AddTraffic(email string, up, down int64) error {
 	_, err := db.conn.Exec("UPDATE clients SET up = up + ?, down = down + ? WHERE email = ?", up, down, email)
 	return err

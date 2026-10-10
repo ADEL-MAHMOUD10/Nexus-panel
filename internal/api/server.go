@@ -103,6 +103,9 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/inbounds/del/{id}", s.authMiddleware(s.handleDeleteInbound))
 
 	// Clients
+	mux.HandleFunc("GET /api/clients/list", s.authMiddleware(s.handleListClients))
+	mux.HandleFunc("GET /panel/api/clients/list", s.authMiddleware(s.handleListClients))
+
 	mux.HandleFunc("POST /api/clients/create", s.authMiddleware(s.handleCreateClient))
 	mux.HandleFunc("POST /api/clients/add", s.authMiddleware(s.handleCreateClient))
 	mux.HandleFunc("POST /panel/api/clients/add", s.authMiddleware(s.handleCreateClient))
@@ -118,6 +121,9 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/clients/reset-traffic", s.authMiddleware(s.handleResetClientTraffic))
 	mux.HandleFunc("POST /api/clients/resetTraffic/{email}", s.authMiddleware(s.handleResetClientTraffic))
 	mux.HandleFunc("POST /panel/api/clients/resetTraffic/{email}", s.authMiddleware(s.handleResetClientTraffic))
+
+	mux.HandleFunc("POST /api/clients/bulk", s.authMiddleware(s.handleBulkClients))
+	mux.HandleFunc("POST /panel/api/clients/bulk", s.authMiddleware(s.handleBulkClients))
 
 	// System Status & Core Controls
 	mux.HandleFunc("GET /api/server/status", s.authMiddleware(s.handleServerStatus))
@@ -268,7 +274,11 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 
 	type ClientWithLink struct {
 		database.Client
-		Link string `json:"link"`
+		Link            string `json:"link"`
+		InboundTag      string `json:"inboundTag"`
+		InboundPort     int    `json:"inboundPort"`
+		InboundProtocol string `json:"inboundProtocol"`
+		InboundRemark   string `json:"inboundRemark"`
 	}
 
 	type InboundWithClients struct {
@@ -283,8 +293,12 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
 			clientsWithLinks = append(clientsWithLinks, ClientWithLink{
-				Client: c,
-				Link:   link,
+				Client:          c,
+				Link:            link,
+				InboundTag:      in.Tag,
+				InboundPort:     in.Port,
+				InboundProtocol: in.Protocol,
+				InboundRemark:   in.Remark,
 			})
 		}
 		result = append(result, InboundWithClients{
@@ -294,6 +308,47 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbounds": result})
+}
+
+func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
+	inbounds, err := s.db.GetAllInbounds()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	serverHost := s.db.GetSetting("server_host", host)
+
+	type ClientItem struct {
+		database.Client
+		Link            string `json:"link"`
+		InboundTag      string `json:"inboundTag"`
+		InboundPort     int    `json:"inboundPort"`
+		InboundProtocol string `json:"inboundProtocol"`
+		InboundRemark   string `json:"inboundRemark"`
+	}
+
+	var allClients []ClientItem
+	for _, in := range inbounds {
+		clients, _ := s.db.GetClientsByInbound(in.ID)
+		for _, c := range clients {
+			link := subscription.BuildInboundLink(&in, &c, serverHost)
+			allClients = append(allClients, ClientItem{
+				Client:          c,
+				Link:            link,
+				InboundTag:      in.Tag,
+				InboundPort:     in.Port,
+				InboundProtocol: in.Protocol,
+				InboundRemark:   in.Remark,
+			})
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "clients": allClients, "total": len(allClients)})
 }
 
 func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
@@ -893,13 +948,103 @@ func (s *Server) handleResetClientTraffic(w http.ResponseWriter, r *http.Request
 		}
 	}
 
-	if req.ID == 0 {
+	if req.ID == 0 && req.Email == "" {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Client ID or Email required"})
 		return
 	}
 
-	_ = s.db.SaveClient(&database.Client{ID: req.ID, Up: 0, Down: 0})
+	if err := s.db.ResetTraffic(req.ID, req.Email); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
+}
+
+func (s *Server) handleBulkClients(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Action string   `json:"action"` // "enable", "disable", "reset-traffic", "delete"
+		IDs    []int    `json:"ids"`
+		Emails []string `json:"emails"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Invalid bulk request payload"})
+		return
+	}
+
+	if len(req.IDs) == 0 && len(req.Emails) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "No client targets specified"})
+		return
+	}
+
+	inbounds, _ := s.db.GetAllInbounds()
+	inboundMap := make(map[int]database.Inbound)
+	for _, in := range inbounds {
+		inboundMap[in.ID] = in
+	}
+
+	// Fetch all clients to resolve IDs / emails / tags
+	var allClients []database.Client
+	for _, in := range inbounds {
+		clients, _ := s.db.GetClientsByInbound(in.ID)
+		allClients = append(allClients, clients...)
+	}
+
+	idSet := make(map[int]bool)
+	for _, id := range req.IDs {
+		idSet[id] = true
+	}
+	emailSet := make(map[string]bool)
+	for _, email := range req.Emails {
+		emailSet[email] = true
+	}
+
+	affected := 0
+	for _, c := range allClients {
+		if !idSet[c.ID] && !emailSet[c.Email] {
+			continue
+		}
+
+		inb := inboundMap[c.InboundID]
+
+		switch req.Action {
+		case "enable":
+			c.Enable = true
+			_ = s.db.SaveClient(&c)
+			if s.xrayController != nil {
+				if inb.Protocol == "vless" {
+					_ = s.xrayController.AddVlessUser(inb.Tag, c.Email, c.UUID, c.Flow)
+				} else if inb.Protocol == "trojan" {
+					_ = s.xrayController.AddTrojanUser(inb.Tag, c.Email, c.Password)
+				}
+			}
+			affected++
+
+		case "disable":
+			c.Enable = false
+			_ = s.db.SaveClient(&c)
+			if s.xrayController != nil {
+				_ = s.xrayController.RemoveUser(inb.Tag, c.Email)
+			}
+			affected++
+
+		case "reset-traffic":
+			_ = s.db.ResetTraffic(c.ID, c.Email)
+			affected++
+
+		case "delete":
+			_ = s.db.DeleteClient(c.ID)
+			if s.xrayController != nil {
+				_ = s.xrayController.RemoveUser(inb.Tag, c.Email)
+			}
+			affected++
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":  true,
+		"action":   req.Action,
+		"affected": affected,
+	})
 }
 
 func (s *Server) handleGenerateRealityKeys(w http.ResponseWriter, r *http.Request) {
