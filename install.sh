@@ -128,18 +128,14 @@ if [[ -f "./nexus" ]]; then
     cp -f "./nexus" "${NEXUS_DIR}/nexus"
 else
     log_info "Fetching Nexus server binary for ${GO_ARCH}..."
-    # Attempt download from releases or main branch
-    RELEASE_BIN_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/nexus-linux-${GO_ARCH}"
-    if curl --output /dev/null --silent --head --fail "$RELEASE_BIN_URL"; then
-        curl -sL "$RELEASE_BIN_URL" -o "${NEXUS_DIR}/nexus"
-    else
-        log_info "Downloading precompiled binary from repository..."
-        curl -sL "${RAW_URL}/bin/nexus-linux-${GO_ARCH}" -o "${NEXUS_DIR}/nexus" || true
-    fi
+    curl -fL --progress-bar "${RAW_URL}/bin/nexus-linux-${GO_ARCH}" -o "${NEXUS_DIR}/nexus" || {
+        log_warn "Raw download failed, trying release download..."
+        curl -fL --progress-bar "https://github.com/${GITHUB_REPO}/releases/latest/download/nexus-linux-${GO_ARCH}" -o "${NEXUS_DIR}/nexus" || true
+    }
 fi
 
 if [[ -f "${NEXUS_DIR}/nexus" ]]; then
-    chmod +x "${NEXUS_DIR}/nexus"
+    chmod 755 "${NEXUS_DIR}/nexus"
 fi
 
 # Verify nexus binary integrity
