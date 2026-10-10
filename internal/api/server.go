@@ -68,32 +68,92 @@ func NewServer(db *database.DB, controller *xray.Controller, pm *xray.ProcessMan
 
 // RegisterRoutes registers all REST and subscription endpoints on the ServeMux
 func (s *Server) RegisterRoutes(mux *http.ServeMux) {
+	// API Discovery Catalog
+	mux.HandleFunc("GET /api", s.handleListEndpoints)
+	mux.HandleFunc("GET /api/", s.handleListEndpoints)
+	mux.HandleFunc("GET /api/endpoints", s.handleListEndpoints)
+	mux.HandleFunc("GET /panel/api", s.handleListEndpoints)
+	mux.HandleFunc("GET /panel/api/endpoints", s.handleListEndpoints)
+
+	// Authentication
 	mux.HandleFunc("POST /api/auth/login", s.handleLogin)
+	mux.HandleFunc("POST /api/login", s.handleLogin)
+	mux.HandleFunc("POST /panel/api/auth/login", s.handleLogin)
+	mux.HandleFunc("POST /panel/api/login", s.handleLogin)
+
 	mux.HandleFunc("POST /api/auth/logout", s.handleLogout)
+	mux.HandleFunc("POST /api/logout", s.handleLogout)
+	mux.HandleFunc("POST /panel/api/auth/logout", s.handleLogout)
+	mux.HandleFunc("POST /panel/api/logout", s.handleLogout)
 
 	// Inbounds & Clients (Protected)
 	mux.HandleFunc("GET /api/inbounds/list", s.authMiddleware(s.handleListInbounds))
-	mux.HandleFunc("POST /api/inbounds/create", s.authMiddleware(s.handleCreateInbound))
-	mux.HandleFunc("POST /api/inbounds/delete", s.authMiddleware(s.handleDeleteInbound))
+	mux.HandleFunc("GET /panel/api/inbounds/list", s.authMiddleware(s.handleListInbounds))
 
+	mux.HandleFunc("GET /api/inbounds/get/{id}", s.authMiddleware(s.handleGetInbound))
+	mux.HandleFunc("GET /api/inbounds/{id}", s.authMiddleware(s.handleGetInbound))
+	mux.HandleFunc("GET /panel/api/inbounds/get/{id}", s.authMiddleware(s.handleGetInbound))
+
+	mux.HandleFunc("POST /api/inbounds/create", s.authMiddleware(s.handleCreateInbound))
+	mux.HandleFunc("POST /api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
+	mux.HandleFunc("POST /panel/api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
+
+	mux.HandleFunc("POST /api/inbounds/delete", s.authMiddleware(s.handleDeleteInbound))
+	mux.HandleFunc("POST /api/inbounds/del/{id}", s.authMiddleware(s.handleDeleteInbound))
+	mux.HandleFunc("POST /panel/api/inbounds/del/{id}", s.authMiddleware(s.handleDeleteInbound))
+
+	// Clients
 	mux.HandleFunc("POST /api/clients/create", s.authMiddleware(s.handleCreateClient))
+	mux.HandleFunc("POST /api/clients/add", s.authMiddleware(s.handleCreateClient))
+	mux.HandleFunc("POST /panel/api/clients/add", s.authMiddleware(s.handleCreateClient))
+
 	mux.HandleFunc("POST /api/clients/update", s.authMiddleware(s.handleUpdateClient))
+	mux.HandleFunc("POST /api/clients/update/{email}", s.authMiddleware(s.handleUpdateClient))
+	mux.HandleFunc("POST /panel/api/clients/update/{email}", s.authMiddleware(s.handleUpdateClient))
+
 	mux.HandleFunc("POST /api/clients/delete", s.authMiddleware(s.handleDeleteClient))
+	mux.HandleFunc("POST /api/clients/del/{email}", s.authMiddleware(s.handleDeleteClient))
+	mux.HandleFunc("POST /panel/api/clients/del/{email}", s.authMiddleware(s.handleDeleteClient))
+
 	mux.HandleFunc("POST /api/clients/reset-traffic", s.authMiddleware(s.handleResetClientTraffic))
+	mux.HandleFunc("POST /api/clients/resetTraffic/{email}", s.authMiddleware(s.handleResetClientTraffic))
+	mux.HandleFunc("POST /panel/api/clients/resetTraffic/{email}", s.authMiddleware(s.handleResetClientTraffic))
 
 	// System Status & Core Controls
 	mux.HandleFunc("GET /api/server/status", s.authMiddleware(s.handleServerStatus))
+	mux.HandleFunc("GET /panel/api/server/status", s.authMiddleware(s.handleServerStatus))
+
 	mux.HandleFunc("GET /api/server/check-updates", s.authMiddleware(s.handleCheckUpdates))
+	mux.HandleFunc("GET /panel/api/server/check-updates", s.authMiddleware(s.handleCheckUpdates))
+
 	mux.HandleFunc("POST /api/server/update-xray", s.authMiddleware(s.handleUpdateXray))
+	mux.HandleFunc("POST /panel/api/server/update-xray", s.authMiddleware(s.handleUpdateXray))
+
 	mux.HandleFunc("POST /api/server/update-panel", s.authMiddleware(s.handleUpdatePanel))
+	mux.HandleFunc("POST /panel/api/server/update-panel", s.authMiddleware(s.handleUpdatePanel))
+
 	mux.HandleFunc("POST /api/server/restart-xray", s.authMiddleware(s.handleRestartXray))
+	mux.HandleFunc("POST /api/server/restartXrayService", s.authMiddleware(s.handleRestartXray))
+	mux.HandleFunc("POST /panel/api/server/restartXrayService", s.authMiddleware(s.handleRestartXray))
+
 	mux.HandleFunc("POST /api/server/restart-panel", s.authMiddleware(s.handleRestartPanel))
+	mux.HandleFunc("POST /panel/api/server/restart-panel", s.authMiddleware(s.handleRestartPanel))
+
 	mux.HandleFunc("POST /api/server/stop-xray", s.authMiddleware(s.handleStopXray))
+	mux.HandleFunc("POST /panel/api/server/stop-xray", s.authMiddleware(s.handleStopXray))
+
 	mux.HandleFunc("GET /api/server/logs", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("POST /api/server/logs", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("POST /api/server/logs/{count}", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("GET /panel/api/server/logs", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("POST /panel/api/server/logs", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("POST /panel/api/server/logs/{count}", s.authMiddleware(s.handleGetLogs))
+
 	mux.HandleFunc("GET /api/server/config", s.authMiddleware(s.handleGetConfig))
 	mux.HandleFunc("POST /api/server/config", s.authMiddleware(s.handleSaveConfig))
+	mux.HandleFunc("GET /panel/api/server/config", s.authMiddleware(s.handleGetConfig))
+	mux.HandleFunc("POST /panel/api/server/config", s.authMiddleware(s.handleSaveConfig))
+
 	mux.HandleFunc("GET /api/crypto/reality-keys", s.authMiddleware(s.handleGenerateRealityKeys))
 
 	// Subscription endpoint (Public with token)
@@ -287,17 +347,56 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbound": in})
 }
 
-func (s *Server) handleDeleteInbound(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		ID int `json:"id"`
+func (s *Server) handleGetInbound(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		idStr = r.URL.Query().Get("id")
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Valid inbound ID required"})
+		return
+	}
+	inbounds, err := s.db.GetAllInbounds()
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": err.Error()})
+		return
+	}
+	for _, in := range inbounds {
+		if in.ID == id {
+			clients, _ := s.db.GetClientsByInbound(id)
+			writeJSON(w, http.StatusOK, map[string]any{
+				"success": true,
+				"inbound": in,
+				"clients": clients,
+			})
+			return
+		}
+	}
+	writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "Inbound not found"})
+}
+
+func (s *Server) handleDeleteInbound(w http.ResponseWriter, r *http.Request) {
+	id := 0
+	if idStr := r.PathValue("id"); idStr != "" {
+		id, _ = strconv.Atoi(idStr)
+	}
+	if id == 0 && r.Body != nil {
+		var req struct {
+			ID int `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			id = req.ID
+		}
+	}
+
+	if id == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Inbound ID required"})
 		return
 	}
 
-	if err := s.db.DeleteInbound(req.ID); err != nil {
-		http.Error(w, "failed to delete: "+err.Error(), http.StatusInternalServerError)
+	if err := s.db.DeleteInbound(id); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "Failed to delete: " + err.Error()})
 		return
 	}
 
@@ -724,13 +823,37 @@ func (s *Server) handleDeleteClient(w http.ResponseWriter, r *http.Request) {
 		InboundTag string `json:"inboundTag"`
 		Email      string `json:"email"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+	if emailParam := r.PathValue("email"); emailParam != "" {
+		req.Email = emailParam
+	}
+
+	if req.ID == 0 && req.Email != "" {
+		inbounds, _ := s.db.GetAllInbounds()
+		for _, in := range inbounds {
+			clients, _ := s.db.GetClientsByInbound(in.ID)
+			for _, c := range clients {
+				if c.Email == req.Email {
+					req.ID = c.ID
+					req.InboundTag = in.Tag
+					break
+				}
+			}
+			if req.ID != 0 {
+				break
+			}
+		}
+	}
+
+	if req.ID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Client ID or Email required"})
 		return
 	}
 
 	if err := s.db.DeleteClient(req.ID); err != nil {
-		http.Error(w, "failed to delete client: "+err.Error(), http.StatusInternalServerError)
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"success": false, "message": "Failed to delete client: " + err.Error()})
 		return
 	}
 
@@ -744,10 +867,34 @@ func (s *Server) handleDeleteClient(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleResetClientTraffic(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		ID int `json:"id"`
+		ID    int    `json:"id"`
+		Email string `json:"email"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+	if emailParam := r.PathValue("email"); emailParam != "" {
+		req.Email = emailParam
+	}
+
+	if req.ID == 0 && req.Email != "" {
+		inbounds, _ := s.db.GetAllInbounds()
+		for _, in := range inbounds {
+			clients, _ := s.db.GetClientsByInbound(in.ID)
+			for _, c := range clients {
+				if c.Email == req.Email {
+					req.ID = c.ID
+					break
+				}
+			}
+			if req.ID != 0 {
+				break
+			}
+		}
+	}
+
+	if req.ID == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "Client ID or Email required"})
 		return
 	}
 
@@ -1241,3 +1388,38 @@ func (s *Server) getRealPublicIP(r *http.Request) string {
 	}
 	return host
 }
+
+func (s *Server) handleListEndpoints(w http.ResponseWriter, r *http.Request) {
+	endpoints := []map[string]any{
+		{"method": "POST", "path": "/api/auth/login", "auth": false, "description": "Authenticate user and get session token"},
+		{"method": "POST", "path": "/api/auth/logout", "auth": true, "description": "Invalidate current session"},
+		{"method": "GET",  "path": "/api/server/status", "auth": true, "description": "System hardware telemetry, load, network IO and Xray core status"},
+		{"method": "GET",  "path": "/api/server/logs", "auth": true, "description": "Panel and Xray core logs with count, level, and syslog parameters"},
+		{"method": "POST", "path": "/api/server/restart-panel", "auth": true, "description": "Restart Nexus Web Management Panel"},
+		{"method": "POST", "path": "/api/server/restart-xray", "auth": true, "description": "Restart Xray core service process"},
+		{"method": "POST", "path": "/api/server/stop-xray", "auth": true, "description": "Stop Xray core service process"},
+		{"method": "GET",  "path": "/api/server/check-updates", "auth": true, "description": "Check latest available releases for Nexus Panel and Xray core"},
+		{"method": "POST", "path": "/api/server/update-panel", "auth": true, "description": "Trigger automated remote upgrade for Nexus Panel"},
+		{"method": "POST", "path": "/api/server/update-xray", "auth": true, "description": "Trigger automated remote upgrade for Xray core"},
+		{"method": "GET",  "path": "/api/server/config", "auth": true, "description": "Get current raw Xray JSON config"},
+		{"method": "POST", "path": "/api/server/config", "auth": true, "description": "Save and hot-apply new raw Xray JSON config"},
+		{"method": "GET",  "path": "/api/inbounds/list", "auth": true, "description": "List all configured inbounds and active clients"},
+		{"method": "GET",  "path": "/api/inbounds/get/{id}", "auth": true, "description": "Get specific inbound by ID"},
+		{"method": "POST", "path": "/api/inbounds/create", "auth": true, "description": "Create a new proxy inbound"},
+		{"method": "POST", "path": "/api/inbounds/delete", "auth": true, "description": "Delete inbound by ID in body or URL path (/api/inbounds/del/{id})"},
+		{"method": "POST", "path": "/api/clients/create", "auth": true, "description": "Add new client credential to an inbound"},
+		{"method": "POST", "path": "/api/clients/update", "auth": true, "description": "Update client parameters (traffic limit, expiry date, enable)"},
+		{"method": "POST", "path": "/api/clients/delete", "auth": true, "description": "Delete client by ID or email (/api/clients/del/{email})"},
+		{"method": "POST", "path": "/api/clients/reset-traffic", "auth": true, "description": "Reset client traffic consumption"},
+		{"method": "GET",  "path": "/api/crypto/reality-keys", "auth": true, "description": "Generate new x25519 REALITY key pair"},
+		{"method": "GET",  "path": "/sub/{subId}", "auth": false, "description": "Fetch subscription configuration profiles for client devices"},
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":   true,
+		"service":   "Nexus Control Panel API",
+		"version":   GetPanelVersion(),
+		"endpoints": endpoints,
+	})
+}
+

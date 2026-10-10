@@ -274,7 +274,7 @@
       <aside class="w-full md:w-16 lg:w-48 bg-brand-card/75 backdrop-blur-xl border-r border-brand-border flex md:flex-col justify-between p-2 md:p-3 shrink-0">
         <nav class="flex md:flex-col gap-1 w-full">
           <!-- Overview Tab -->
-          <button @click="activeTab = 'overview'"
+          <button @click="navigateTab('overview')"
                   :class="activeTab === 'overview' ? 'bg-white/15 text-white font-semibold border-white/25 shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-white/5 border-transparent'"
                   class="flex-1 md:flex-none flex items-center justify-center lg:justify-start gap-3 px-3 py-2.5 rounded-xl text-xs transition border group" title="System Telemetry">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
@@ -282,7 +282,7 @@
           </button>
 
           <!-- Inbounds Tab -->
-          <button @click="activeTab = 'inbounds'"
+          <button @click="navigateTab('inbounds')"
                   :class="activeTab === 'inbounds' ? 'bg-white/15 text-white font-semibold border-white/25 shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-white/5 border-transparent'"
                   class="flex-1 md:flex-none flex items-center justify-center lg:justify-start gap-3 px-3 py-2.5 rounded-xl text-xs transition border group" title="Inbounds & Ports">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
@@ -290,7 +290,7 @@
           </button>
 
           <!-- Clients Tab -->
-          <button @click="activeTab = 'clients'"
+          <button @click="navigateTab('clients')"
                   :class="activeTab === 'clients' ? 'bg-white/15 text-white font-semibold border-white/25 shadow-sm' : 'text-brand-muted hover:text-brand-text hover:bg-white/5 border-transparent'"
                   class="flex-1 md:flex-none flex items-center justify-center lg:justify-start gap-3 px-3 py-2.5 rounded-xl text-xs transition border group" title="Clients & Quotas">
             <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
@@ -1784,14 +1784,14 @@
   <!-- MODAL: RAW JSON CONFIG VIEWER / EDITOR                                    -->
   <!-- ========================================================================= -->
   <div x-show="configModalOpen" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" x-cloak>
-    <div @click.away="configModalOpen = false"
+    <div @click.away="closeConfig()"
          class="w-full max-w-3xl bg-brand-card border border-brand-border rounded-2xl p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col">
       <div class="flex items-center justify-between pb-3 border-b border-brand-border">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
           <h3 class="font-semibold text-sm text-brand-text">Raw Xray Kernel Configuration (config.json)</h3>
         </div>
-        <button @click="configModalOpen = false" class="text-brand-muted hover:text-white text-lg leading-none">&times;</button>
+        <button @click="closeConfig()" class="text-brand-muted hover:text-white text-lg leading-none">&times;</button>
       </div>
 
       <div class="flex-1 flex flex-col space-y-2">
@@ -1803,7 +1803,7 @@
       <div class="flex items-center justify-between pt-2 border-t border-brand-border">
         <span class="text-[11px] text-amber-400/90 font-mono">Changes will be validated & Xray-core will reload automatically</span>
         <div class="flex items-center gap-2">
-          <button @click="configModalOpen = false" class="px-4 py-2 rounded-xl border border-brand-border text-brand-muted hover:text-white text-xs">
+          <button @click="closeConfig()" class="px-4 py-2 rounded-xl border border-brand-border text-brand-muted hover:text-white text-xs">
             Cancel
           </button>
           <button @click="saveConfig()" class="px-4 py-2 bg-white text-stone-900 font-semibold rounded-xl hover:bg-stone-200 text-xs shadow">

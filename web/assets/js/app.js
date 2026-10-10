@@ -286,8 +286,45 @@ document.addEventListener('alpine:init', () => {
       isSuccess: true
     },
 
+    routeTo(path, pushState = true) {
+      if (!path) path = '/panel';
+      const cleanPath = path.toLowerCase().replace(/\/+$/, '');
+      if (pushState && window.location.pathname !== path) {
+        history.pushState(null, '', path);
+      }
+      if (cleanPath.endsWith('/logs')) {
+        this.openLogs(false);
+      } else if (cleanPath.endsWith('/config')) {
+        this.openConfig(false);
+      } else if (cleanPath.endsWith('/inbounds')) {
+        this.activeTab = 'inbounds';
+        this.logsModalOpen = false;
+        this.configModalOpen = false;
+      } else if (cleanPath.endsWith('/clients')) {
+        this.activeTab = 'clients';
+        this.logsModalOpen = false;
+        this.configModalOpen = false;
+      } else {
+        this.activeTab = 'overview';
+        this.logsModalOpen = false;
+        this.configModalOpen = false;
+      }
+    },
+
+    navigateTab(tab) {
+      this.activeTab = tab;
+      const targetPath = tab === 'overview' ? '/panel' : `/panel/${tab}`;
+      if (window.location.pathname !== targetPath) {
+        history.pushState(null, '', targetPath);
+      }
+    },
+
     init() {
+      window.addEventListener('popstate', () => {
+        this.routeTo(window.location.pathname, false);
+      });
       if (this.token) {
+        this.routeTo(window.location.pathname, false);
         this.refreshData();
         this.checkUpdates();
         setInterval(() => {
@@ -548,8 +585,11 @@ document.addEventListener('alpine:init', () => {
       }
     },
 
-    async openLogs() {
+    async openLogs(updateUrl = true) {
       this.logsModalOpen = true;
+      if (updateUrl && !window.location.pathname.endsWith('/logs')) {
+        history.pushState(null, '', '/panel/logs');
+      }
       await this.refreshLogs();
       if (this.logsAutoUpdate) {
         this.startLogsAutoUpdate();
@@ -559,6 +599,10 @@ document.addEventListener('alpine:init', () => {
     closeLogs() {
       this.logsModalOpen = false;
       this.stopLogsAutoUpdate();
+      const targetPath = this.activeTab === 'overview' ? '/panel' : `/panel/${this.activeTab}`;
+      if (window.location.pathname.endsWith('/logs')) {
+        history.pushState(null, '', targetPath);
+      }
     },
 
     startLogsAutoUpdate() {
@@ -720,11 +764,22 @@ document.addEventListener('alpine:init', () => {
       return (this.logsList || []).map(l => this.parseLogLine(l));
     },
 
-    async openConfig() {
+    async openConfig(updateUrl = true) {
       this.configModalOpen = true;
+      if (updateUrl && !window.location.pathname.endsWith('/config')) {
+        history.pushState(null, '', '/panel/config');
+      }
       const res = await this.api('/api/server/config');
       if (res && res.config) {
         this.rawConfigText = res.config;
+      }
+    },
+
+    closeConfig() {
+      this.configModalOpen = false;
+      const targetPath = this.activeTab === 'overview' ? '/panel' : `/panel/${this.activeTab}`;
+      if (window.location.pathname.endsWith('/config')) {
+        history.pushState(null, '', targetPath);
       }
     },
 

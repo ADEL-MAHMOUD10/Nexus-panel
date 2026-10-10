@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -173,23 +174,73 @@ func main() {
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
 
-	// Serve Embedded Dashboard UI & Assets
+	// Serve Embedded Assets
 	fileServer := web.FileServerHandler()
+	mux.Handle("/assets/", fileServer)
+
+	// Panel SPA UI Page Renderer
+	serveUI := func(w http.ResponseWriter, r *http.Request) {
+		htmlBytes, err := web.GetIndexHTML()
+		if err != nil {
+			http.Error(w, "Failed to load dashboard UI", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write(htmlBytes)
+	}
+
+	// Distinct Panel Page Endpoints
+	panelRoutes := []string{
+		"GET /panel",
+		"GET /panel/",
+		"GET /panel/inbounds",
+		"GET /panel/clients",
+		"GET /panel/logs",
+		"GET /panel/config",
+		"GET /panel/settings",
+		"GET /panel/updates",
+		"GET /inbounds",
+		"GET /clients",
+		"GET /logs",
+		"GET /config",
+		"GET /settings",
+	}
+	for _, pr := range panelRoutes {
+		mux.HandleFunc(pr, serveUI)
+	}
+
+	// Catch-all handler: root UI, API 404 guard, and SPA deep-link fallback
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path != "/" && !strings.HasPrefix(r.URL.Path, "/assets/") {
-			// fallback to index for SPA routes
-			htmlBytes, _ := web.GetIndexHTML()
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write(htmlBytes)
-			return
-		}
+		// Root homepage
 		if r.URL.Path == "/" {
-			htmlBytes, _ := web.GetIndexHTML()
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			_, _ = w.Write(htmlBytes)
+			serveUI(w, r)
 			return
 		}
-		fileServer.ServeHTTP(w, r)
+
+		// API Guard: Unknown API route must ALWAYS return 404 JSON, NEVER HTML!
+		if strings.HasPrefix(r.URL.Path, "/api/") || strings.HasPrefix(r.URL.Path, "/panel/api/") {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusNotFound)
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"success": false,
+				"message": fmt.Sprintf("API endpoint not found: %s %s", r.Method, r.URL.Path),
+			})
+			return
+		}
+
+		// Any subroute under /panel/ falls back to UI shell
+		if strings.HasPrefix(r.URL.Path, "/panel/") {
+			serveUI(w, r)
+			return
+		}
+
+		// Static assets fallback
+		if strings.HasPrefix(r.URL.Path, "/assets/") {
+			fileServer.ServeHTTP(w, r)
+			return
+		}
+
+		http.NotFound(w, r)
 	})
 
 	srv := &http.Server{
