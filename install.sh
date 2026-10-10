@@ -37,25 +37,48 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-# 2. Architecture detection
+# 2. Complete OS & Architecture detection
+OS_TYPE="unknown"
+OS_VER=""
+if [[ -f /etc/os-release ]]; then
+    . /etc/os-release
+    OS_TYPE=$ID
+    OS_VER=$VERSION_ID
+elif [[ -f /etc/debian_version ]]; then
+    OS_TYPE="debian"
+elif [[ -f /etc/redhat-release ]]; then
+    OS_TYPE="rhel"
+fi
+
 ARCH=$(uname -m)
 case "$ARCH" in
-    x86_64)  XRAY_ARCH="64"    GO_ARCH="amd64" ;;
-    aarch64) XRAY_ARCH="arm64-v8a" GO_ARCH="arm64" ;;
-    armv7l)  XRAY_ARCH="arm32-v7a" GO_ARCH="armv7" ;;
+    x86_64|amd64)  XRAY_ARCH="64"        GO_ARCH="amd64" ;;
+    aarch64|arm64) XRAY_ARCH="arm64-v8a" GO_ARCH="arm64" ;;
+    armv7l|armv7)  XRAY_ARCH="arm32-v7a" GO_ARCH="armv7" ;;
     *)
-        log_err "Unsupported architecture: $ARCH"
+        log_err "Unsupported CPU architecture: $ARCH"
         exit 1
         ;;
 esac
-log_info "Detected architecture: ${ARCH} (Xray: ${XRAY_ARCH})"
 
-# 3. Install prerequisites
-log_info "Updating packages and installing prerequisites (curl, tar, socat)..."
+log_info "Detected OS Distribution : ${OS_TYPE} ${OS_VER}"
+log_info "Detected CPU Architecture : ${ARCH} (Target: ${GO_ARCH}, Xray Core: ${XRAY_ARCH})"
+
+# 3. Install prerequisites based on specific package manager
+log_info "Checking and installing dependencies (curl, tar, socat, unzip)..."
 if command -v apt-get &>/dev/null; then
-    apt-get update -y && apt-get install -y curl tar socat ca-certificates
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -y && apt-get install -y curl tar socat ca-certificates unzip
+elif command -v dnf &>/dev/null; then
+    dnf install -y curl tar socat ca-certificates unzip
 elif command -v yum &>/dev/null; then
-    yum install -y curl tar socat ca-certificates
+    yum install -y curl tar socat ca-certificates unzip
+elif command -v pacman &>/dev/null; then
+    pacman -Sy --noconfirm curl tar socat ca-certificates unzip
+elif command -v apk &>/dev/null; then
+    apk update && apk add curl tar socat ca-certificates unzip
+else
+    log_warn "Unknown package manager. Proceeding with existing system tools..."
 fi
 
 # 4. Prepare directory layout
@@ -85,17 +108,61 @@ rm -rf "${TMP_DIR}"
 chmod +x "${NEXUS_BIN_DIR}/xray"
 log_info "Xray-core binary ready at ${NEXUS_BIN_DIR}/xray"
 
-# 6. Copy or build Nexus binary and scripts
+# 6. Fetch Nexus binary and CLI scripts
+GITHUB_REPO="ADEL-MAHMOUD10/Nexus-panel"
+RAW_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/main"
+
+# Download CLI script
+if [[ -f "./scripts/nexus.sh" ]]; then
+    cp -f "./scripts/nexus.sh" "${NEXUS_DIR}/nexus.sh"
+else
+    log_info "Downloading nexus CLI helper..."
+    curl -sL "${RAW_URL}/scripts/nexus.sh" -o "${NEXUS_DIR}/nexus.sh"
+fi
+chmod +x "${NEXUS_DIR}/nexus.sh"
+ln -sf "${NEXUS_DIR}/nexus.sh" "/usr/bin/nexus"
+ln -sf "${NEXUS_DIR}/nexus.sh" "/usr/local/bin/nexus"
+
+# Download or copy Nexus core binary
 if [[ -f "./nexus" ]]; then
     cp -f "./nexus" "${NEXUS_DIR}/nexus"
+else
+    log_info "Fetching Nexus server binary for ${GO_ARCH}..."
+    # Attempt download from releases or main branch
+    RELEASE_BIN_URL="https://github.com/${GITHUB_REPO}/releases/latest/download/nexus-linux-${GO_ARCH}"
+    if curl --output /dev/null --silent --head --fail "$RELEASE_BIN_URL"; then
+        curl -sL "$RELEASE_BIN_URL" -o "${NEXUS_DIR}/nexus"
+    else
+        log_info "Downloading precompiled binary from repository..."
+        curl -sL "${RAW_URL}/bin/nexus-linux-${GO_ARCH}" -o "${NEXUS_DIR}/nexus" || true
+    fi
+fi
+
+if [[ -f "${NEXUS_DIR}/nexus" ]]; then
     chmod +x "${NEXUS_DIR}/nexus"
 fi
 
-if [[ -f "./scripts/nexus.sh" ]]; then
-    cp -f "./scripts/nexus.sh" "${NEXUS_DIR}/nexus.sh"
-    chmod +x "${NEXUS_DIR}/nexus.sh"
-    ln -sf "${NEXUS_DIR}/nexus.sh" "/usr/bin/nexus"
+# Verify nexus binary integrity
+if [[ ! -x "${NEXUS_DIR}/nexus" ]]; then
+    log_warn "Binary download failed or not executable. Attempting emergency compile if go is present..."
+    if command -v go &>/dev/null; then
+        log_info "Building Nexus binary from source using Go..."
+        TMP_SRC=$(mktemp -d)
+        git clone "https://github.com/${GITHUB_REPO}.git" "${TMP_SRC}"
+        cd "${TMP_SRC}"
+        go build -ldflags="-s -w" -o "${NEXUS_DIR}/nexus" ./cmd/server
+        chmod +x "${NEXUS_DIR}/nexus"
+        rm -rf "${TMP_SRC}"
+        cd - >/dev/null 2>&1
+    fi
 fi
+
+if [[ ! -x "${NEXUS_DIR}/nexus" ]]; then
+    log_err "Failed to obtain executable Nexus binary for ${GO_ARCH}!"
+    log_err "Please ensure the binary exists in repository or install Go on the server."
+    exit 1
+fi
+log_info "Nexus server binary verified and ready."
 
 # 7. Configure Systemd Service
 log_info "Configuring systemd service (nexus.service)..."
