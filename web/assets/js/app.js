@@ -609,7 +609,7 @@ document.addEventListener('alpine:init', () => {
             this.clientSpeeds[email] = {
               upSpeed: 0,
               downSpeed: 0,
-              lastActive: ((c.up || 0) + (c.down || 0) > 0) ? now : 0
+              lastActive: c.isOnline ? now : (c.lastOnline ? c.lastOnline * 1000 : 0)
             };
           }
           this.clientPreviousStats[email] = {
@@ -1009,7 +1009,7 @@ document.addEventListener('alpine:init', () => {
       let online = 0, ended = 0, depleting = 0, disabled = 0, active = 0;
 
       all.forEach(c => {
-        const isOnline = (c.up || 0) + (c.down || 0) > 0;
+        const isOnline = !!c.isOnline;
         const isEnded = c.expiryTime > 0 && now > c.expiryTime;
         const isDepleted = c.total > 0 && ((c.up || 0) + (c.down || 0)) >= c.total;
         const isDisabled = !c.enable;
@@ -1042,7 +1042,7 @@ document.addEventListener('alpine:init', () => {
             const upSpeed = sp.upSpeed;
             const downSpeed = sp.downSpeed;
             const hasRecentActivity = sp.lastActive > 0 && (Date.now() - sp.lastActive < 45000);
-            const isOnline = c.enable && (upSpeed > 0 || downSpeed > 0 || hasRecentActivity || trafficUsed > 0);
+            const isOnline = c.enable && (c.isOnline || upSpeed > 0 || downSpeed > 0 || hasRecentActivity);
             const isEnded = c.expiryTime > 0 && now > c.expiryTime;
             const isDepleted = c.total > 0 && trafficUsed >= c.total;
             const isDisabled = !c.enable;

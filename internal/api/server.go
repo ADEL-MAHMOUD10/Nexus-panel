@@ -138,6 +138,11 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/clients/bulk", s.authMiddleware(s.handleBulkClients))
 	mux.HandleFunc("POST /panel/api/clients/bulk", s.authMiddleware(s.handleBulkClients))
 
+	mux.HandleFunc("GET /api/clients/onlines", s.authMiddleware(s.handleGetOnlineClients))
+	mux.HandleFunc("POST /api/clients/onlines", s.authMiddleware(s.handleGetOnlineClients))
+	mux.HandleFunc("GET /panel/api/clients/onlines", s.authMiddleware(s.handleGetOnlineClients))
+	mux.HandleFunc("POST /panel/api/clients/onlines", s.authMiddleware(s.handleGetOnlineClients))
+
 	// System Status & Core Controls
 	mux.HandleFunc("GET /api/server/status", s.authMiddleware(s.handleServerStatus))
 	mux.HandleFunc("GET /panel/api/server/status", s.authMiddleware(s.handleServerStatus))
@@ -300,6 +305,7 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 		InboundPort     int    `json:"inboundPort"`
 		InboundProtocol string `json:"inboundProtocol"`
 		InboundRemark   string `json:"inboundRemark"`
+		IsOnline        bool   `json:"isOnline"`
 	}
 
 	type InboundWithClients struct {
@@ -313,6 +319,7 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 		var clientsWithLinks []ClientWithLink
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
+			isOnline := s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)
 			clientsWithLinks = append(clientsWithLinks, ClientWithLink{
 				Client:          c,
 				Link:            link,
@@ -320,6 +327,7 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 				InboundPort:     in.Port,
 				InboundProtocol: in.Protocol,
 				InboundRemark:   in.Remark,
+				IsOnline:        isOnline,
 			})
 		}
 		result = append(result, InboundWithClients{
@@ -351,6 +359,7 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 		InboundPort     int    `json:"inboundPort"`
 		InboundProtocol string `json:"inboundProtocol"`
 		InboundRemark   string `json:"inboundRemark"`
+		IsOnline        bool   `json:"isOnline"`
 	}
 
 	var allClients []ClientItem
@@ -358,6 +367,7 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 		clients, _ := s.db.GetClientsByInbound(in.ID)
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
+			isOnline := s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)
 			allClients = append(allClients, ClientItem{
 				Client:          c,
 				Link:            link,
@@ -365,6 +375,7 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 				InboundPort:     in.Port,
 				InboundProtocol: in.Protocol,
 				InboundRemark:   in.Remark,
+				IsOnline:        isOnline,
 			})
 		}
 	}
@@ -1281,6 +1292,21 @@ func (s *Server) handleBulkClients(w http.ResponseWriter, r *http.Request) {
 		"success":  true,
 		"action":   req.Action,
 		"affected": affected,
+	})
+}
+
+func (s *Server) handleGetOnlineClients(w http.ResponseWriter, r *http.Request) {
+	var onlines []string
+	if s.xrayController != nil {
+		onlines = s.xrayController.GetOnlineEmails()
+	}
+	if onlines == nil {
+		onlines = []string{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"onlines": onlines,
+		"obj":     onlines,
 	})
 }
 

@@ -45,6 +45,7 @@ type Client struct {
 	Total      int64  `json:"total"`      // 0 means unlimited
 	ExpiryTime int64  `json:"expiryTime"` // 0 means unlimited
 	SubID      string `json:"subId"`
+	LastOnline int64  `json:"lastOnline"`
 }
 
 // DB wraps SQLite operations for Nexus
@@ -123,6 +124,7 @@ func (db *DB) migrate() error {
 		total INTEGER DEFAULT 0,
 		expiry_time INTEGER DEFAULT 0,
 		sub_id TEXT DEFAULT '',
+		last_online INTEGER DEFAULT 0,
 		FOREIGN KEY(inbound_id) REFERENCES inbounds(id) ON DELETE CASCADE,
 		UNIQUE(inbound_id, email)
 	);
@@ -134,6 +136,7 @@ func (db *DB) migrate() error {
 	// Best-effort column additions for existing databases
 	_, _ = db.conn.Exec("ALTER TABLE inbounds ADD COLUMN listen TEXT DEFAULT '0.0.0.0'")
 	_, _ = db.conn.Exec("ALTER TABLE inbounds ADD COLUMN sniffing TEXT DEFAULT '{}'")
+	_, _ = db.conn.Exec("ALTER TABLE clients ADD COLUMN last_online INTEGER DEFAULT 0")
 	return nil
 }
 
@@ -344,7 +347,7 @@ func listenOverlaps(a, b string) bool {
 // Clients Queries
 // -----------------------------------------------------------------------------
 func (db *DB) GetClientsByInbound(inboundID int) ([]Client, error) {
-	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id FROM clients WHERE inbound_id = ?", inboundID)
+	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE inbound_id = ?", inboundID)
 	if err != nil {
 		return nil, err
 	}
@@ -354,7 +357,7 @@ func (db *DB) GetClientsByInbound(inboundID int) ([]Client, error) {
 	for rows.Next() {
 		var c Client
 		var enableInt int
-		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID); err != nil {
+		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
 			return nil, err
 		}
 		c.Enable = enableInt == 1
@@ -364,7 +367,7 @@ func (db *DB) GetClientsByInbound(inboundID int) ([]Client, error) {
 }
 
 func (db *DB) GetClientsBySubID(subID string) ([]Client, error) {
-	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id FROM clients WHERE sub_id = ?", subID)
+	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE sub_id = ?", subID)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +377,7 @@ func (db *DB) GetClientsBySubID(subID string) ([]Client, error) {
 	for rows.Next() {
 		var c Client
 		var enableInt int
-		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID); err != nil {
+		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
 			return nil, err
 		}
 		c.Enable = enableInt == 1
@@ -391,9 +394,9 @@ func (db *DB) SaveClient(c *Client) error {
 
 	if c.ID == 0 {
 		res, err := db.conn.Exec(`
-			INSERT INTO clients(inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id)
-			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, c.InboundID, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID)
+			INSERT INTO clients(inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online)
+			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, c.InboundID, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.LastOnline)
 		if err != nil {
 			return err
 		}
@@ -403,9 +406,9 @@ func (db *DB) SaveClient(c *Client) error {
 	}
 
 	_, err := db.conn.Exec(`
-		UPDATE clients SET email=?, uuid=?, password=?, flow=?, enable=?, up=?, down=?, total=?, expiry_time=?, sub_id=?
+		UPDATE clients SET email=?, uuid=?, password=?, flow=?, enable=?, up=?, down=?, total=?, expiry_time=?, sub_id=?, last_online=?
 		WHERE id=?
-	`, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.ID)
+	`, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.LastOnline, c.ID)
 	return err
 }
 
@@ -426,9 +429,34 @@ func (db *DB) ResetTraffic(id int, email string) error {
 	return nil
 }
 
-func (db *DB) AddTraffic(email string, up, down int64) error {
-	_, err := db.conn.Exec("UPDATE clients SET up = up + ?, down = down + ? WHERE email = ?", up, down, email)
+func (db *DB) AddInboundTraffic(tag string, up, down int64) error {
+	if up <= 0 && down <= 0 {
+		return nil
+	}
+	_, err := db.conn.Exec("UPDATE inbounds SET up = up + ?, down = down + ? WHERE tag = ?", up, down, tag)
 	return err
+}
+
+func (db *DB) AddClientTraffic(email string, up, down int64, now int64) error {
+	if up <= 0 && down <= 0 {
+		return nil
+	}
+	_, err := db.conn.Exec("UPDATE clients SET up = up + ?, down = down + ?, last_online = ? WHERE email = ?", up, down, now, email)
+	return err
+}
+
+func (db *DB) UpdateClientsLastOnline(emails []string, now int64) error {
+	if len(emails) == 0 {
+		return nil
+	}
+	for _, email := range emails {
+		_, _ = db.conn.Exec("UPDATE clients SET last_online = ? WHERE email = ?", now, email)
+	}
+	return nil
+}
+
+func (db *DB) AddTraffic(email string, up, down int64) error {
+	return db.AddClientTraffic(email, up, down, time.Now().Unix())
 }
 
 func (db *DB) CheckClientExpiredOrDepleted(c *Client) bool {

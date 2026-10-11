@@ -120,23 +120,17 @@ func main() {
 	defer pm.Stop()
 
 	// Connect gRPC Controller
-	var ctrl *xray.Controller
 	grpcAddr := fmt.Sprintf("127.0.0.1:%d", apiPort)
-	if pm.IsRunning() {
-		// give core a brief moment to bind gRPC
-		time.Sleep(500 * time.Millisecond)
-		ctrl, err = xray.NewController(grpcAddr)
-		if err != nil {
-			logger.Warningf("NEXUS: failed to connect to Xray gRPC: %v", err)
-		} else {
-			logger.Infof("NEXUS: connected to Xray gRPC API at %s", grpcAddr)
-			defer ctrl.Close()
-		}
+	ctrl, err := xray.NewController(grpcAddr)
+	if err != nil {
+		logger.Warningf("NEXUS: failed to initialize Xray controller: %v", err)
+	} else {
+		defer ctrl.Close()
 	}
 
-	// Background Traffic & Quota Monitoring Worker
+	// Background Traffic & Online Monitoring Worker (every 5 seconds, matching 3x-ui)
 	go func() {
-		ticker := time.NewTicker(10 * time.Second)
+		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
 		for range ticker.C {
@@ -144,22 +138,57 @@ func main() {
 				continue
 			}
 
-			traffics, err := ctrl.QueryTraffic()
-			if err != nil {
-				continue
+			now := time.Now().Unix()
+			activeEmailsMap := make(map[string]bool)
+
+			// 1. Query live traffic deltas from Xray core
+			inboundTraffics, clientTraffics, err := ctrl.GetTraffic()
+			if err == nil {
+				// Record inbound traffic deltas
+				for _, inb := range inboundTraffics {
+					if inb.Up > 0 || inb.Down > 0 {
+						_ = db.AddInboundTraffic(inb.Tag, inb.Up, inb.Down)
+					}
+				}
+
+				// Record client traffic deltas
+				for _, ct := range clientTraffics {
+					if ct.Up > 0 || ct.Down > 0 {
+						activeEmailsMap[ct.Email] = true
+						_ = db.AddClientTraffic(ct.Email, ct.Up, ct.Down, now)
+					}
+				}
 			}
 
-			for email, traffic := range traffics {
-				_ = db.AddTraffic(email, traffic.Uplink, traffic.Downlink)
+			// 2. Query currently connected users from Xray (StatsUserOnline)
+			onlineUsers, err := ctrl.GetOnlineUsers()
+			if err == nil {
+				for _, email := range onlineUsers {
+					if email != "" {
+						activeEmailsMap[email] = true
+					}
+				}
 			}
 
-			// Check client quotas and expirations
+			// 3. Union active emails list
+			var activeEmails []string
+			for email := range activeEmailsMap {
+				activeEmails = append(activeEmails, email)
+			}
+
+			// 4. Refresh in-memory online cache (45s grace period) & persist last_online
+			ctrl.RefreshOnline(activeEmails, now, 45)
+			if len(activeEmails) > 0 {
+				_ = db.UpdateClientsLastOnline(activeEmails, now)
+			}
+
+			// 5. Check client quotas and expirations
 			inbounds, _ := db.GetAllInbounds()
 			for _, in := range inbounds {
 				clients, _ := db.GetClientsByInbound(in.ID)
 				for _, c := range clients {
 					if c.Enable && db.CheckClientExpiredOrDepleted(&c) {
-						log.Printf("[Quota] Client %s exceeded quota or expired. Disconnecting...", c.Email)
+						logger.Warningf("[Quota] Client %s exceeded quota or expired. Disconnecting...", c.Email)
 						_ = ctrl.RemoveUser(in.Tag, c.Email)
 						c.Enable = false
 						_ = db.SaveClient(&c)

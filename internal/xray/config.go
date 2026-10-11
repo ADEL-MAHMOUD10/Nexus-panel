@@ -51,6 +51,7 @@ type PolicyConfig struct {
 type PolicyLevel struct {
 	StatsUserUplink   bool `json:"statsUserUplink"`
 	StatsUserDownlink bool `json:"statsUserDownlink"`
+	StatsUserOnline   bool `json:"statsUserOnline"`
 }
 
 type PolicySystem struct {
@@ -117,6 +118,7 @@ func DefaultBaseConfig(apiPort int) *Config {
 				"0": {
 					StatsUserUplink:   true,
 					StatsUserDownlink: true,
+					StatsUserOnline:   true,
 				},
 			},
 			System: PolicySystem{
