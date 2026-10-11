@@ -151,8 +151,10 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 	case "tls":
 		params["security"] = "tls"
 		if tls, ok := stream["tlsSettings"].(map[string]any); ok {
-			if sni, ok := tls["serverName"].(string); ok {
-				params["sni"] = sni
+			if sni, ok := tls["serverName"].(string); ok && strings.TrimSpace(sni) != "" {
+				params["sni"] = strings.TrimSpace(sni)
+			} else if serverAddress != "" && net.ParseIP(serverAddress) == nil {
+				params["sni"] = serverAddress
 			}
 			if alpns, ok := tls["alpn"].([]any); ok && len(alpns) > 0 {
 				var alpnStrs []string

@@ -168,6 +168,16 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 					delete(reality, "settings")
 					streamMap["realitySettings"] = reality
 				}
+			} else if sec, ok := streamMap["security"].(string); ok && sec == "tls" {
+				if tls, ok := streamMap["tlsSettings"].(map[string]any); ok {
+					// Delete client-only metadata "settings" block so Xray server does not complain
+					delete(tls, "settings")
+					// If serverName is empty, omit it so Xray does not fail strict validation
+					if sn, ok := tls["serverName"].(string); ok && strings.TrimSpace(sn) == "" {
+						delete(tls, "serverName")
+					}
+					streamMap["tlsSettings"] = tls
+				}
 			}
 			streamSettingsBytes, _ = json.Marshal(streamMap)
 		} else {

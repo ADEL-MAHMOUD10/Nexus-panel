@@ -1834,11 +1834,19 @@
                 </template>
               </div>
 
-              <!-- Reject Unknown SNI Switch -->
-              <div class="flex items-center justify-between pt-1">
+              <!-- Reject Unknown SNI / Allow Any SNI Switch -->
+              <div class="flex items-center justify-between pt-1 p-2.5 rounded-lg border border-brand-border bg-brand-card/30">
                 <div>
-                  <div class="text-xs font-medium text-brand-text">Reject Unknown SNI</div>
-                  <div class="text-[10px] text-brand-dim">Drop TLS handshakes that do not match the specified ServerName.</div>
+                  <div class="text-xs font-medium text-brand-text flex items-center gap-1.5">
+                    <span>Reject Unknown SNI</span>
+                    <span :class="inboundForm.tlsRejectUnknownSni ? 'text-amber-400 bg-amber-400/10' : 'text-emerald-400 bg-emerald-400/10'"
+                          class="text-[10px] px-1.5 py-0.5 rounded font-mono font-normal">
+                      <span x-text="inboundForm.tlsRejectUnknownSni ? 'Strict SNI Match' : 'Allow Any SNI (Bug Host / Flexible)'"></span>
+                    </span>
+                  </div>
+                  <div class="text-[10px] text-brand-dim mt-0.5">
+                    When disabled (default), server accepts any SNI from clients. When enabled, handshakes with non-matching SNI are dropped.
+                  </div>
                 </div>
                 <input type="checkbox" x-model="inboundForm.tlsRejectUnknownSni" class="rounded bg-brand-card border-brand-border text-emerald-400 w-4 h-4 cursor-pointer">
               </div>
