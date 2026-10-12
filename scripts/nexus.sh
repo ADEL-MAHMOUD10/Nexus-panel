@@ -36,14 +36,14 @@ check_root
 # Service Controls
 # ------------------------------------------------------------------------------
 status() {
-    local panel_ver="v1.0.7"
+    local panel_ver="v1.0.8"
     if [[ -x "${NEXUS_BIN}" ]]; then
         panel_ver=$("${NEXUS_BIN}" -v 2>/dev/null | awk '{print $3}')
     fi
     if [[ -z "$panel_ver" && -f "${NEXUS_DIR}/version" ]]; then
         panel_ver=$(cat "${NEXUS_DIR}/version" | tr -d '[:space:]')
     fi
-    if [[ -z "$panel_ver" ]]; then panel_ver="v1.0.7"; fi
+    if [[ -z "$panel_ver" ]]; then panel_ver="v1.0.8"; fi
 
     local xray_ver="Not Installed"
     if [[ -x "${NEXUS_DIR}/bin/xray" ]]; then
