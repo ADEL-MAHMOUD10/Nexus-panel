@@ -297,9 +297,26 @@ func (c *Controller) GetOnlineUsers() ([]string, error) {
 		return nil, fmt.Errorf("failed to get users stats: %w", err)
 	}
 
+	now := time.Now().Unix()
 	var users []string
 	for _, u := range resp.GetUsers() {
-		if u != nil && u.GetEmail() != "" {
+		if u == nil || u.GetEmail() == "" {
+			continue
+		}
+
+		// A client is online if they have at least one active connection dispatched recently (within 20s)
+		hasLiveConnection := false
+		for _, entry := range u.GetIps() {
+			if entry == nil || entry.GetIp() == "" {
+				continue
+			}
+			if entry.GetLastSeen() > 0 && (now-entry.GetLastSeen() <= 20) {
+				hasLiveConnection = true
+				break
+			}
+		}
+
+		if hasLiveConnection {
 			users = append(users, u.GetEmail())
 		}
 	}
@@ -324,7 +341,7 @@ func (c *Controller) RefreshOnline(activeEmails []string, now int64, gracePeriod
 
 	activeList := make([]string, 0, len(c.lastSeenMap))
 	for email, seen := range c.lastSeenMap {
-		if now-seen < gracePeriodSec {
+		if now-seen <= gracePeriodSec {
 			activeList = append(activeList, email)
 		} else {
 			delete(c.lastSeenMap, email)
@@ -345,7 +362,7 @@ func (c *Controller) IsClientOnline(email string) bool {
 	if !ok {
 		return false
 	}
-	return time.Now().Unix()-seen < 45
+	return time.Now().Unix()-seen <= 25
 }
 
 // GetOnlineEmails returns a snapshot of all currently active client emails

@@ -1041,7 +1041,7 @@ document.addEventListener('alpine:init', () => {
             const sp = this.clientSpeeds[c.email] || { upSpeed: 0, downSpeed: 0, lastActive: 0 };
             const upSpeed = sp.upSpeed;
             const downSpeed = sp.downSpeed;
-            const hasRecentActivity = sp.lastActive > 0 && (Date.now() - sp.lastActive < 45000);
+            const hasRecentActivity = sp.lastActive > 0 && (Date.now() - sp.lastActive < 20000);
             const isOnline = c.enable && (c.isOnline || upSpeed > 0 || downSpeed > 0 || hasRecentActivity);
             const isEnded = c.expiryTime > 0 && now > c.expiryTime;
             const isDepleted = c.total > 0 && trafficUsed >= c.total;
