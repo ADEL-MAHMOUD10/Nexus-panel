@@ -1379,7 +1379,7 @@
                   </span>
                 </template>
               </div>
-              <input type="number" x-model="inboundForm.port" required min="1" max="65535" placeholder="443"
+              <input type="number" x-model="inboundForm.port" @input="checkServerPort($event.target.value)" required min="1" max="65535" placeholder="443"
                      :class="portConflict ? 'border-rose-500/80 bg-rose-500/10 text-rose-200 focus:border-rose-400' : 'border-brand-border bg-brand-input text-brand-text focus:border-cyan-400'"
                      class="w-full border rounded-xl px-3.5 py-2.5 font-mono focus:outline-none transition">
               <template x-if="!portConflict">
@@ -1389,7 +1389,7 @@
                 <div class="mt-1.5 p-2 rounded-lg bg-rose-500/15 border border-rose-500/30 text-[11px] text-rose-300 flex items-start gap-1.5 leading-tight">
                   <svg class="w-3.5 h-3.5 shrink-0 mt-0.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                   <div>
-                    Port <span class="font-mono font-bold" x-text="portConflict.port"></span> is already occupied by <span class="font-semibold text-white" x-text="'&quot;' + portConflict.name + '&quot;'"></span> (<span x-text="portConflict.protocol"></span> on <span class="font-mono" x-text="portConflict.listen"></span>). Please pick a different port.
+                    <span x-text="portConflict.message || ('Port ' + portConflict.port + ' is already occupied by &quot;' + portConflict.name + '&quot; (' + portConflict.protocol + ' on ' + portConflict.listen + '). Please pick a different port.')"></span>
                   </div>
                 </div>
               </template>

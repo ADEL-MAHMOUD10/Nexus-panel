@@ -192,9 +192,38 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Realtime Port Conflict Detection (for live form feedback)
+    serverPortConflict: null, // holds { port: number, message: string } when server rejects the port
+    isCheckingPort: false,
+    portCheckTimeout: null,
+
     get portConflict() {
       const port = parseInt(this.inboundForm.port);
-      if (!port || port <= 0 || port > 65535) return null;
+      if (!port || port <= 0 || port > 65535) {
+        return { port: this.inboundForm.port, message: 'Invalid port number (must be 1-65535)' };
+      }
+
+      // Check current browser panel port
+      const currentPanelPort = window.location.port ? parseInt(window.location.port) : (window.location.protocol === 'https:' ? 443 : 80);
+      if (port === currentPanelPort || port === 8443) {
+        return {
+          port,
+          name: 'Nexus Web Panel',
+          protocol: 'HTTPS/Web',
+          listen: '0.0.0.0',
+          message: `Port ${port} is reserved for the Nexus Web Panel. Please choose a different inbound port.`
+        };
+      }
+
+      // Check internal Xray API port
+      if (port === 62789) {
+        return {
+          port,
+          name: 'Xray Internal Controller',
+          protocol: 'gRPC',
+          listen: '127.0.0.1',
+          message: 'Port 62789 is reserved for internal Xray controller RPC.'
+        };
+      }
 
       const listen = (this.inboundForm.listen || '0.0.0.0').trim();
       const net = this.inboundForm.network;
@@ -222,14 +251,30 @@ document.addEventListener('alpine:init', () => {
         return (listen === '0.0.0.0' || exListen === '0.0.0.0' || listen === exListen);
       });
 
-      if (!found) return null;
-      return {
-        port,
-        name: found.remark || found.tag || `Inbound #${found.id}`,
-        protocol: (found.protocol || 'VLESS').toUpperCase(),
-        listen: found.listen || '0.0.0.0',
-        id: found.id
-      };
+      if (found) {
+        const inbName = found.remark || found.tag || `Inbound #${found.id}`;
+        return {
+          port,
+          name: inbName,
+          protocol: (found.protocol || 'VLESS').toUpperCase(),
+          listen: found.listen || '0.0.0.0',
+          id: found.id,
+          message: `Port ${port} is already occupied by "${inbName}" (${(found.protocol || 'VLESS').toUpperCase()} on ${found.listen || '0.0.0.0'}).`
+        };
+      }
+
+      // Check if background server OS port test failed
+      if (this.serverPortConflict && this.serverPortConflict.port === port) {
+        return {
+          port,
+          name: 'Host System / Service',
+          protocol: 'TCP/UDP',
+          listen: '0.0.0.0',
+          message: this.serverPortConflict.message || `Port ${port} is already in use by another service on this server.`
+        };
+      }
+
+      return null;
     },
 
     // Client Form
@@ -1326,20 +1371,66 @@ document.addEventListener('alpine:init', () => {
     },
 
     // Inbound Actions
+    checkServerPort(portVal) {
+      if (this.portCheckTimeout) clearTimeout(this.portCheckTimeout);
+      const port = parseInt(portVal !== undefined ? portVal : this.inboundForm.port);
+      if (!port || port <= 0 || port > 65535) {
+        this.serverPortConflict = null;
+        return;
+      }
+
+      this.portCheckTimeout = setTimeout(async () => {
+        try {
+          this.isCheckingPort = true;
+          const query = new URLSearchParams({
+            port: port.toString(),
+            protocol: this.inboundForm.protocol || 'vless',
+            streamSettings: JSON.stringify({ network: this.inboundForm.network || 'tcp' }),
+            listen: (this.inboundForm.listen || '0.0.0.0').trim(),
+            ignoreId: this.isEditingInbound ? (this.editingInboundId || 0).toString() : '0'
+          });
+          const res = await this.api(`/api/inbounds/check-port?${query.toString()}`);
+          if (res && res.port === parseInt(this.inboundForm.port)) {
+            if (!res.available) {
+              this.serverPortConflict = {
+                port: res.port,
+                message: res.message || `Port ${res.port} is not available on this server.`
+              };
+            } else {
+              this.serverPortConflict = null;
+            }
+          }
+        } catch(e) {
+          // ignore network error during live check
+        } finally {
+          this.isCheckingPort = false;
+        }
+      }, 350);
+    },
+
     openAddInbound() {
       this.isEditingInbound = false;
       this.editingInboundId = 0;
+      this.serverPortConflict = null;
       this.inboundModalTab = 'basics';
       this.inboundForm.remark = 'VLESS-TLS-' + Math.floor(Math.random() * 900 + 100);
 
-      // Pick an unused port by default to prevent immediate conflict
+      // Dynamically detect panel port & inbounds to prevent choosing panel port
+      const currentPanelPort = window.location.port ? parseInt(window.location.port) : (window.location.protocol === 'https:' ? 443 : 80);
       const usedPorts = new Set(this.inbounds.map(i => i.port));
-      usedPorts.add(8443); // Always exclude web panel port
-      const defaultCandidates = [443, 2053, 2083, 2087, 2096, 8080, 8880];
-      let selectedPort = defaultCandidates.find(p => !usedPorts.has(p));
+      usedPorts.add(8443);
+      usedPorts.add(currentPanelPort);
+      usedPorts.add(62789); // internal Xray API
+      usedPorts.add(22);    // SSH
+      usedPorts.add(80);    // HTTP
+      usedPorts.add(443);   // If panel is on 443 or used
+
+      // Prefer standard proxy ports that are NOT the panel port or used
+      const defaultCandidates = [443, 2053, 2083, 2087, 2096, 8080, 8880].filter(p => p !== currentPanelPort && !usedPorts.has(p));
+      let selectedPort = defaultCandidates[0];
       if (!selectedPort) {
         selectedPort = 10000 + Math.floor(Math.random() * 50000);
-        while (usedPorts.has(selectedPort)) {
+        while (usedPorts.has(selectedPort) || selectedPort === currentPanelPort) {
           selectedPort++;
         }
       }
@@ -1354,11 +1445,13 @@ document.addEventListener('alpine:init', () => {
       this.inboundModalOpen = true;
       this.generateRealityKeys();
       this.fetchServerCertificates();
+      this.checkServerPort(selectedPort);
     },
 
     openEditInbound(inb) {
       this.isEditingInbound = true;
       this.editingInboundId = inb.id;
+      this.serverPortConflict = null;
       this.inboundModalTab = 'basics';
 
       this.inboundForm.remark = inb.remark || inb.tag || '';
@@ -1751,32 +1844,32 @@ document.addEventListener('alpine:init', () => {
       const net = this.inboundForm.network;
       const isTargetUDP = (this.inboundForm.protocol === 'hysteria' || this.inboundForm.protocol === 'tuic' || net === 'kcp' || net === 'quic');
 
-      // Check conflict locally across active inbounds list (skip self when editing)
-      const conflict = this.inbounds.find(existing => {
-        if (this.isEditingInbound && existing.id === this.editingInboundId) return false;
-        if (existing.port !== port) return false;
-        
-        let existingIsUDP = false;
-        if (existing.protocol === 'hysteria' || existing.protocol === 'tuic') {
-          existingIsUDP = true;
-        } else {
-          try {
-            const ss = JSON.parse(existing.streamSettings || '{}');
-            if (ss.network === 'kcp' || ss.network === 'quic') existingIsUDP = true;
-          } catch(e){}
-        }
-
-        // Must share transport (both UDP or both TCP)
-        if (isTargetUDP !== existingIsUDP) return false;
-
-        const exListen = (existing.listen || '0.0.0.0').trim();
-        return (listen === '0.0.0.0' || exListen === '0.0.0.0' || listen === exListen);
-      });
-
-      if (conflict) {
-        const name = conflict.remark || conflict.tag || `Inbound #${conflict.id}`;
-        this.showToast(`Port ${port} is already in use by "${name}". Duplicate ports on the same protocol are not allowed.`, false);
+      // Check conflict locally and against Web Panel / System
+      if (this.portConflict) {
+        this.showToast(this.portConflict.message || `Port ${port} is occupied and cannot be used.`, false);
         return;
+      }
+
+      // Pre-flight check with server to ensure OS socket / system port is free
+      try {
+        const query = new URLSearchParams({
+          port: port.toString(),
+          protocol: this.inboundForm.protocol || 'vless',
+          streamSettings: JSON.stringify({ network: this.inboundForm.network || 'tcp' }),
+          listen: (this.inboundForm.listen || '0.0.0.0').trim(),
+          ignoreId: this.isEditingInbound ? (this.editingInboundId || 0).toString() : '0'
+        });
+        const checkRes = await this.api(`/api/inbounds/check-port?${query.toString()}`);
+        if (checkRes && !checkRes.available) {
+          this.serverPortConflict = {
+            port: checkRes.port,
+            message: checkRes.message || `Port ${port} is not available on this server.`
+          };
+          this.showToast(checkRes.message || `Port ${port} is already in use on this server.`, false);
+          return;
+        }
+      } catch (e) {
+        // Continue if check-port fails to allow server create endpoint to perform final check
       }
 
       const sec = this.inboundForm.security;

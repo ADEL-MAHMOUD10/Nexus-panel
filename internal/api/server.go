@@ -97,6 +97,10 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/inbounds/create", s.authMiddleware(s.handleCreateInbound))
 	mux.HandleFunc("POST /api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
 	mux.HandleFunc("POST /panel/api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
+	mux.HandleFunc("GET /api/inbounds/check-port", s.authMiddleware(s.handleCheckPort))
+	mux.HandleFunc("POST /api/inbounds/check-port", s.authMiddleware(s.handleCheckPort))
+	mux.HandleFunc("GET /panel/api/inbounds/check-port", s.authMiddleware(s.handleCheckPort))
+	mux.HandleFunc("POST /panel/api/inbounds/check-port", s.authMiddleware(s.handleCheckPort))
 
 	mux.HandleFunc("POST /api/inbounds/update", s.authMiddleware(s.handleUpdateInbound))
 	mux.HandleFunc("POST /api/inbounds/update/{id}", s.authMiddleware(s.handleUpdateInbound))
@@ -383,6 +387,148 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "clients": allClients, "total": len(allClients)})
 }
 
+// checkPortAvailability checks whether a port can be used by an inbound listener.
+// It checks:
+// 1. Valid port range (1-65535)
+// 2. Nexus Web Panel port (configured web_port or active Host header port)
+// 3. Internal Xray gRPC API port (62789)
+// 4. Overlap with existing inbounds in database (ignoring ignoreID if updating)
+// 5. Live OS socket binding on the host to ensure no background service (SSH, Nginx, Docker, etc.) occupies it.
+func (s *Server) checkPortAvailability(listenIP string, port int, protocol, streamSettings string, ignoreID int, reqHost string) (bool, string) {
+	if port <= 0 || port > 65535 {
+		return false, "Invalid port number. Must be between 1 and 65535."
+	}
+
+	// 1. Reserved internal Xray API port
+	if port == 62789 {
+		return false, "Port 62789 is reserved for internal Xray controller RPC and cannot be used."
+	}
+
+	// 2. Check Nexus Web Panel configured port
+	webPortStr := s.db.GetSetting("web_port", "8443")
+	webPort, _ := strconv.Atoi(webPortStr)
+	if webPort <= 0 {
+		webPort = 8443
+	}
+	if port == webPort {
+		return false, fmt.Sprintf("Port %d is reserved for the Nexus Web Panel. Please choose a different inbound port.", port)
+	}
+
+	// Also check request host port if present (in case panel is accessed on a different port e.g. reverse proxy / custom port)
+	if reqHost != "" {
+		if _, hostPortStr, err := net.SplitHostPort(reqHost); err == nil && hostPortStr != "" {
+			if hp, _ := strconv.Atoi(hostPortStr); hp == port {
+				return false, fmt.Sprintf("Port %d is actively used by the Web Panel web server.", port)
+			}
+		}
+	}
+
+	// 3. Check database inbounds conflict
+	dummyIn := database.Inbound{
+		ID:             ignoreID,
+		Listen:         listenIP,
+		Port:           port,
+		Protocol:       protocol,
+		StreamSettings: streamSettings,
+	}
+	if conflict, err := s.db.CheckInboundPortConflict(&dummyIn, ignoreID); err != nil {
+		return false, "Database error checking port conflict: " + err.Error()
+	} else if conflict != nil {
+		conflictRemark := conflict.Remark
+		if conflictRemark == "" {
+			conflictRemark = conflict.Tag
+		}
+		return false, fmt.Sprintf("Port %d is already in use by inbound \"%s\" (ID: %d, Protocol: %s).", port, conflictRemark, conflict.ID, strings.ToUpper(conflict.Protocol))
+	}
+
+	// 4. If updating an inbound that is already active on this exact port, skip live socket check if unchanged
+	if ignoreID > 0 {
+		if currentIn, err := s.db.GetInbound(ignoreID); err == nil && currentIn != nil {
+			if currentIn.Port == port && currentIn.Enable {
+				// The inbound itself might currently hold this port via Xray
+				return true, ""
+			}
+		}
+	}
+
+	// 5. Test Live OS Socket Bind to detect any process (SSH, Nginx, Apache, MySQL, Docker, etc.) listening on the system
+	transport := database.GetInboundTransport(protocol, streamSettings)
+	bindListen := strings.TrimSpace(listenIP)
+	if bindListen == "" || bindListen == "0.0.0.0" || bindListen == "::" {
+		bindListen = "0.0.0.0"
+	}
+
+	if (transport & database.TransportTCP) != 0 {
+		tcpAddr := fmt.Sprintf("%s:%d", bindListen, port)
+		l, err := net.Listen("tcp", tcpAddr)
+		if err != nil {
+			return false, fmt.Sprintf("Port %d (TCP) is already in use by another service on this server.", port)
+		}
+		_ = l.Close()
+	}
+
+	if (transport & database.TransportUDP) != 0 {
+		udpAddr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", bindListen, port))
+		if err == nil {
+			conn, err := net.ListenUDP("udp", udpAddr)
+			if err != nil {
+				return false, fmt.Sprintf("Port %d (UDP) is already in use by another service on this server.", port)
+			}
+			_ = conn.Close()
+		}
+	}
+
+	return true, ""
+}
+
+func (s *Server) handleCheckPort(w http.ResponseWriter, r *http.Request) {
+	portStr := r.URL.Query().Get("port")
+	protocol := r.URL.Query().Get("protocol")
+	streamSettings := r.URL.Query().Get("streamSettings")
+	listenIP := r.URL.Query().Get("listen")
+	ignoreIDStr := r.URL.Query().Get("ignoreId")
+
+	if r.Method == http.MethodPost && portStr == "" {
+		var req struct {
+			Port           int    `json:"port"`
+			Protocol       string `json:"protocol"`
+			StreamSettings string `json:"streamSettings"`
+			Listen         string `json:"listen"`
+			IgnoreID       int    `json:"ignoreId"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			portStr = strconv.Itoa(req.Port)
+			protocol = req.Protocol
+			streamSettings = req.StreamSettings
+			listenIP = req.Listen
+			ignoreIDStr = strconv.Itoa(req.IgnoreID)
+		}
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil || port <= 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success":   false,
+			"available": false,
+			"message":   "Invalid port number",
+		})
+		return
+	}
+
+	ignoreID, _ := strconv.Atoi(ignoreIDStr)
+	if protocol == "" {
+		protocol = "vless"
+	}
+
+	available, reason := s.checkPortAvailability(listenIP, port, protocol, streamSettings, ignoreID, r.Host)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":   true,
+		"port":      port,
+		"available": available,
+		"message":   reason,
+	})
+}
+
 func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 	var in database.Inbound
 	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
@@ -390,42 +536,12 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if in.Port <= 0 || in.Port > 65535 {
-		writeJSON(w, http.StatusBadRequest, map[string]any{
-			"success": false,
-			"message": "Invalid port number. Must be between 1 and 65535.",
-		})
-		return
-	}
-
-	webPortStr := s.db.GetSetting("web_port", "8443")
-	webPort, _ := strconv.Atoi(webPortStr)
-	if webPort <= 0 {
-		webPort = 8443
-	}
-	if in.Port == webPort {
+	// Comprehensive port availability check (Web panel, Xray API, Inbounds, OS Socket)
+	available, reason := s.checkPortAvailability(in.Listen, in.Port, in.Protocol, in.StreamSettings, 0, r.Host)
+	if !available {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"success": false,
-			"message": fmt.Sprintf("Port %d is reserved for the Nexus Web Panel. Please choose a different inbound port.", in.Port),
-		})
-		return
-	}
-
-	// Validate Port Conflict against existing inbounds
-	if conflict, err := s.db.CheckInboundPortConflict(&in, in.ID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"success": false,
-			"message": "Failed to validate port availability: " + err.Error(),
-		})
-		return
-	} else if conflict != nil {
-		conflictRemark := conflict.Remark
-		if conflictRemark == "" {
-			conflictRemark = conflict.Tag
-		}
-		writeJSON(w, http.StatusConflict, map[string]any{
-			"success": false,
-			"message": fmt.Sprintf("Port %d is already in use by inbound \"%s\" (ID: %d, Protocol: %s). Duplicate listeners on the same interface and port are not allowed.", in.Port, conflictRemark, conflict.ID, strings.ToUpper(conflict.Protocol)),
+			"message": reason,
 		})
 		return
 	}
@@ -477,34 +593,12 @@ func (s *Server) handleUpdateInbound(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	webPortStr := s.db.GetSetting("web_port", "8443")
-	webPort, _ := strconv.Atoi(webPortStr)
-	if webPort <= 0 {
-		webPort = 8443
-	}
-	if in.Port == webPort {
+	// Comprehensive port availability check (Web panel, Xray API, Inbounds, OS Socket)
+	available, reason := s.checkPortAvailability(in.Listen, in.Port, in.Protocol, in.StreamSettings, in.ID, r.Host)
+	if !available {
 		writeJSON(w, http.StatusConflict, map[string]any{
 			"success": false,
-			"message": fmt.Sprintf("Port %d is reserved for the Nexus Web Panel. Please choose a different inbound port.", in.Port),
-		})
-		return
-	}
-
-	// Validate Port Conflict against other inbounds
-	if conflict, err := s.db.CheckInboundPortConflict(&in, in.ID); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]any{
-			"success": false,
-			"message": "Failed to validate port availability: " + err.Error(),
-		})
-		return
-	} else if conflict != nil {
-		conflictRemark := conflict.Remark
-		if conflictRemark == "" {
-			conflictRemark = conflict.Tag
-		}
-		writeJSON(w, http.StatusConflict, map[string]any{
-			"success": false,
-			"message": fmt.Sprintf("Port %d is already in use by inbound \"%s\" (ID: %d, Protocol: %s). Duplicate listeners on the same interface and port are not allowed.", in.Port, conflictRemark, conflict.ID, strings.ToUpper(conflict.Protocol)),
+			"message": reason,
 		})
 		return
 	}

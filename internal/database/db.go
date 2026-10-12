@@ -262,7 +262,7 @@ func (db *DB) CheckInboundPortConflict(target *Inbound, ignoreID int) (*Inbound,
 		return nil, err
 	}
 
-	targetTransport := getInboundTransport(target.Protocol, target.StreamSettings)
+	targetTransport := GetInboundTransport(target.Protocol, target.StreamSettings)
 	targetListen := normalizeListen(target.Listen)
 
 	for _, existing := range inbounds {
@@ -273,7 +273,7 @@ func (db *DB) CheckInboundPortConflict(target *Inbound, ignoreID int) (*Inbound,
 			continue
 		}
 
-		existingTransport := getInboundTransport(existing.Protocol, existing.StreamSettings)
+		existingTransport := GetInboundTransport(existing.Protocol, existing.StreamSettings)
 		// Check if L4 transport overlaps (TCP vs TCP or UDP vs UDP)
 		if (targetTransport & existingTransport) == 0 {
 			continue
@@ -289,17 +289,19 @@ func (db *DB) CheckInboundPortConflict(target *Inbound, ignoreID int) (*Inbound,
 	return nil, nil
 }
 
-type transportType uint8
+// TransportType represents L4 transport layer protocols (TCP and/or UDP)
+type TransportType uint8
 
 const (
-	transportTCP transportType = 1 << 0
-	transportUDP transportType = 1 << 1
+	TransportTCP TransportType = 1 << 0
+	TransportUDP TransportType = 1 << 1
 )
 
-func getInboundTransport(protocol, streamSettings string) transportType {
+// GetInboundTransport detects whether an inbound listens on TCP, UDP or both based on protocol and stream settings.
+func GetInboundTransport(protocol, streamSettings string) TransportType {
 	switch strings.ToLower(protocol) {
 	case "hysteria", "hysteria2", "tuic", "wireguard", "amneziawg":
-		return transportUDP
+		return TransportUDP
 	}
 
 	network := "tcp"
@@ -314,9 +316,9 @@ func getInboundTransport(protocol, streamSettings string) transportType {
 
 	switch network {
 	case "kcp", "quic":
-		return transportUDP
+		return TransportUDP
 	default:
-		return transportTCP
+		return TransportTCP
 	}
 }
 
