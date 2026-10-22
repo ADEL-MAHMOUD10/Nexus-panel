@@ -2,3 +2,5 @@
 *.tmp
 data/*.db
 data/*.json
+frontend/node_modules/
+

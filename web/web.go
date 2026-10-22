@@ -6,17 +6,25 @@ import (
 	"net/http"
 )
 
-// DistFS embeds the entire web directory including HTML, CSS, and JS components
+// DistFS embeds the compiled React frontend from dist/
 //
-//go:embed index.html assets
-var DistFS embed.FS
+//go:embed dist/*
+var embeddedDist embed.FS
 
 // FileServerHandler returns an http.Handler serving the embedded assets
 func FileServerHandler() http.Handler {
-	return http.FileServer(http.FS(DistFS))
+	sub, err := fs.Sub(embeddedDist, "dist")
+	if err != nil {
+		return http.FileServer(http.FS(embeddedDist))
+	}
+	return http.FileServer(http.FS(sub))
 }
 
-// GetIndexHTML returns index.html raw bytes
+// GetIndexHTML returns index.html raw bytes from compiled dist
 func GetIndexHTML() ([]byte, error) {
-	return fs.ReadFile(DistFS, "index.html")
+	sub, err := fs.Sub(embeddedDist, "dist")
+	if err != nil {
+		return fs.ReadFile(embeddedDist, "dist/index.html")
+	}
+	return fs.ReadFile(sub, "index.html")
 }

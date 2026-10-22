@@ -262,19 +262,14 @@ func main() {
 			return
 		}
 
-		// Any subroute under /panel/ falls back to UI shell
-		if strings.HasPrefix(r.URL.Path, "/panel/") {
-			serveUI(w, r)
-			return
-		}
-
-		// Static assets fallback
-		if strings.HasPrefix(r.URL.Path, "/assets/") {
+		// Static assets fallback and favicon
+		if strings.HasPrefix(r.URL.Path, "/assets/") || r.URL.Path == "/favicon.svg" {
 			fileServer.ServeHTTP(w, r)
 			return
 		}
 
-		http.NotFound(w, r)
+		// All other routes fall back to SPA UI shell
+		serveUI(w, r)
 	})
 
 	srv := &http.Server{

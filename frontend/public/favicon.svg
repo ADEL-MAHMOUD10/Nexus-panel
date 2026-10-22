@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <rect width="32" height="32" rx="8" fill="#090a0d"/>
+  <path d="M7 6h4.5l11.5 16V6H27v20h-4.5L11 10v16H7V6z" fill="url(#cyan_grad)"/>
+  <defs>
+    <linearGradient id="cyan_grad" x1="7" y1="6" x2="27" y2="26" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#06b6d4"/>
+      <stop offset="1" stop-color="#3b82f6"/>
+    </linearGradient>
+  </defs>
+</svg>
