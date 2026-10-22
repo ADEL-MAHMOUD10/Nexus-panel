@@ -109,6 +109,11 @@ export function App() {
           net: {
             ...prev.net,
             ...res.data.net,
+            peakSpeed: Math.max(
+              prev.net?.peakSpeed || 0,
+              res.data.net?.speedUp || 0,
+              res.data.net?.speedDown || 0
+            ),
             historyUp: [...(prev.net.historyUp.slice(-15)), res.data.net?.speedUp ? res.data.net.speedUp / 1024 : 0],
             historyDown: [...(prev.net.historyDown.slice(-15)), res.data.net?.speedDown ? res.data.net.speedDown / 1024 : 0],
           },

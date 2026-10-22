@@ -235,7 +235,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 2. MAIN SECTION: System Health Radial Arc (Left) + Network Throughput with Speed Gauges (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: System Health Arc & Core Status */}
-        <div className="lg:col-span-5 bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between relative overflow-hidden">
+        <div className="lg:col-span-5 bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
               <span className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
@@ -250,7 +250,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
 
             {/* Glowing Radial Health Arc Gauge */}
-            <RadialHealthGauge score={healthScore} title="calculated server status" />
+            <div className="my-4 flex items-center justify-center">
+              <RadialHealthGauge score={healthScore} title="calculated server status" />
+            </div>
           </div>
 
           {/* Core Service Tags */}
@@ -277,62 +279,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Right Column: Dual-stream Network Traffic Chart & Live Throughput Area */}
-        <div className="lg:col-span-7 bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between relative overflow-hidden">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-              <span className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
-                <Radio className="w-4 h-4 text-cyan-400" />
-                Network Traffic & Throughput
+        <div className="lg:col-span-7 bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+          {/* Card Header */}
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+            <span className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
+              <Radio className="w-4 h-4 text-cyan-400" />
+              Network Traffic & Throughput
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/5">
+                Peak: {formatSpeed(status.net.peakSpeed || 0)}
               </span>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-white/5 text-zinc-400 border border-white/5">
-                  Peak: {formatSpeed(status.net.peakSpeed || 0)}
-                </span>
-                {onOpenUpdatesModal && (
-                  <button
-                    onClick={onOpenUpdatesModal}
-                    className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 hover:bg-blue-500/25 transition flex items-center gap-1"
-                  >
-                    <ArrowUpCircle className="w-3 h-3" />
-                    <span>Check Updates</span>
-                  </button>
-                )}
-              </div>
+              {onOpenUpdatesModal && (
+                <button
+                  onClick={onOpenUpdatesModal}
+                  className="text-[11px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-300 border border-blue-500/30 hover:bg-blue-500/25 transition flex items-center gap-1"
+                >
+                  <ArrowUpCircle className="w-3 h-3" />
+                  <span>Check Updates</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Quick Accumulator Tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-3.5">
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <span className="text-[10px] text-zinc-500 font-sans block">Total In</span>
+              <span className="text-sm font-mono font-bold text-cyan-300 mt-0.5 block">
+                {formatBytes(status.net.bytesRecv || totalDownload)}
+              </span>
             </div>
 
-            {/* Quick Accumulator Tiles */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <span className="text-[10px] text-zinc-500 font-sans block">Total In</span>
-                <span className="text-sm font-mono font-bold text-cyan-300 mt-0.5 block">
-                  {formatBytes(status.net.bytesRecv || totalDownload)}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <span className="text-[10px] text-zinc-500 font-sans block">Total Out</span>
-                <span className="text-sm font-mono font-bold text-emerald-300 mt-0.5 block">
-                  {formatBytes(status.net.bytesSent || totalUpload)}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <span className="text-[10px] text-zinc-500 font-sans block">Active Listeners</span>
-                <span className="text-sm font-mono font-bold text-zinc-200 mt-0.5 block">
-                  {inbounds.filter((i) => i.enable).length} / {inbounds.length}
-                </span>
-              </div>
-
-              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                <span className="text-[10px] text-zinc-500 font-sans block">Online Clients</span>
-                <span className="text-sm font-mono font-bold text-emerald-400 mt-0.5 block flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  {onlineClients} / {totalClients}
-                </span>
-              </div>
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <span className="text-[10px] text-zinc-500 font-sans block">Total Out</span>
+              <span className="text-sm font-mono font-bold text-emerald-300 mt-0.5 block">
+                {formatBytes(status.net.bytesSent || totalUpload)}
+              </span>
             </div>
 
-            {/* Traffic Waveform Chart */}
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <span className="text-[10px] text-zinc-500 font-sans block">Active Listeners</span>
+              <span className="text-sm font-mono font-bold text-zinc-200 mt-0.5 block">
+                {inbounds.filter((i) => i.enable).length} / {inbounds.length}
+              </span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04]">
+              <span className="text-[10px] text-zinc-500 font-sans block">Online Clients</span>
+              <span className="text-sm font-mono font-bold text-emerald-400 mt-0.5 block flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                {onlineClients} / {totalClients}
+              </span>
+            </div>
+          </div>
+
+          {/* Traffic Waveform Chart Container */}
+          <div className="flex-1 my-1">
             <TrafficChart
               historyUp={status.net.historyUp || []}
               historyDown={status.net.historyDown || []}
@@ -342,7 +345,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             />
           </div>
 
-          <div className="pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
+          {/* Card Footer */}
+          <div className="mt-3 pt-3 border-t border-white/[0.06] flex items-center justify-between text-xs text-zinc-400">
             <span>Dynamic gRPC streaming metrics</span>
             <button
               onClick={() => onNavigateTab('inbounds')}
