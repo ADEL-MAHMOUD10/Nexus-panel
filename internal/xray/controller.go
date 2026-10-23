@@ -304,8 +304,8 @@ func (c *Controller) GetOnlineUsers() ([]string, error) {
 
 	resp, err := c.statsClient.GetUsersStats(ctx, &statsService.GetUsersStatsRequest{})
 	if err != nil {
-		c.isConnected = false
-		return nil, fmt.Errorf("failed to get users stats: %w", err)
+		// Do not tear down overall connection if GetUsersStats is unimplemented on this core
+		return nil, fmt.Errorf("users stats not supported or failed: %w", err)
 	}
 
 	now := time.Now().Unix()
@@ -373,7 +373,7 @@ func (c *Controller) IsClientOnline(email string) bool {
 	if !ok {
 		return false
 	}
-	return time.Now().Unix()-seen <= 25
+	return time.Now().Unix()-seen <= 90
 }
 
 // GetOnlineEmails returns a snapshot of all currently active client emails

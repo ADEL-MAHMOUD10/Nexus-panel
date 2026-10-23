@@ -351,7 +351,7 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbounds": result})
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "inbounds": result, "obj": result})
 }
 
 func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {

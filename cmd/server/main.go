@@ -190,8 +190,8 @@ func main() {
 				activeEmails = append(activeEmails, email)
 			}
 
-			// 4. Refresh in-memory online cache (25s grace period) & persist last_online
-			ctrl.RefreshOnline(activeEmails, now, 25)
+			// 4. Refresh in-memory online cache (90s grace period) & persist last_online
+			ctrl.RefreshOnline(activeEmails, now, 90)
 			if len(activeEmails) > 0 {
 				_ = db.UpdateClientsLastOnline(activeEmails, now)
 			}
