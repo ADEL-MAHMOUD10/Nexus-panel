@@ -80,6 +80,9 @@ export function App() {
     });
   };
 
+  // Mobile sidebar drawer state
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // Handle unauthorized event
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -368,24 +371,34 @@ export function App() {
       {/* Premium Black Background Canvas with Architectural Geometry & Nexus N */}
       <BackgroundCanvas />
 
-      {/* Sleek Sidebar */}
+      {/* Mobile Drawer Backdrop */}
+      {isMobileSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/75 backdrop-blur-xs z-40 md:hidden transition-opacity"
+          onClick={() => setIsMobileSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sleek Sidebar with Mobile Drawer support */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         xrayRunning={status.xrayRunning}
         onlineCount={onlineCount}
         inboundsCount={inbounds.length}
-        panelVersion={status.panelVersion || 'v1.1.0'}
+        panelVersion={status.panelVersion || 'v1.1.3'}
         onLogout={() => {
           localStorage.removeItem('nexus_token');
           setToken(null);
         }}
         onRestartXray={handleRestartXray}
         isRestartingXray={isRestartingXray}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10 w-full min-w-0">
         {/* Header */}
         <Header
           title={
@@ -413,6 +426,7 @@ export function App() {
           publicIP={status.publicIP}
           showPublicIP={showPublicIP}
           onToggleShowPublicIP={handleToggleShowPublicIP}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen((prev) => !prev)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onOpenUpdates={() => setIsUpdatesModalOpen(true)}
@@ -420,7 +434,7 @@ export function App() {
         />
 
         {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 bg-transparent">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 bg-transparent">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'overview' && (
               <DashboardPage

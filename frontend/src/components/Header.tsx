@@ -6,7 +6,8 @@ import {
   ShieldAlert,
   Server,
   Eye,
-  EyeOff
+  EyeOff,
+  Menu
 } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 
@@ -18,6 +19,7 @@ interface HeaderProps {
   publicIP: string;
   showPublicIP?: boolean;
   onToggleShowPublicIP?: () => void;
+  onToggleMobileSidebar?: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   onOpenUpdates?: () => void;
@@ -32,21 +34,35 @@ export const Header: React.FC<HeaderProps> = ({
   publicIP,
   showPublicIP = false,
   onToggleShowPublicIP,
+  onToggleMobileSidebar,
   searchQuery,
   setSearchQuery,
   onOpenUpdates,
   hasUpdates,
 }) => {
   return (
-    <header className="h-16 border-b border-white/[0.07] bg-[#090a0f]/80 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-20 select-none">
-      {/* View Title */}
-      <div>
-        <h1 className="text-base font-semibold text-zinc-100 tracking-tight flex items-center gap-2">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="text-xs text-zinc-400 font-sans mt-0.5">{subtitle}</p>
+    <header className="h-16 border-b border-white/[0.07] bg-[#090a0f]/80 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between sticky top-0 z-20 select-none">
+      {/* View Title & Mobile Hamburger */}
+      <div className="flex items-center gap-3">
+        {onToggleMobileSidebar && (
+          <button
+            type="button"
+            onClick={onToggleMobileSidebar}
+            className="md:hidden p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 hover:text-white transition active:scale-95"
+            title="Open Navigation Menu"
+          >
+            <Menu className="w-4 h-4" />
+          </button>
         )}
+
+        <div>
+          <h1 className="text-sm sm:text-base font-semibold text-zinc-100 tracking-tight flex items-center gap-2 truncate max-w-[200px] sm:max-w-none">
+            {title}
+          </h1>
+          {subtitle && (
+            <p className="text-[11px] sm:text-xs text-zinc-400 font-sans mt-0.5 hidden xs:block">{subtitle}</p>
+          )}
+        </div>
       </div>
 
       {/* Right Controls: Search + Public IP + Refresh */}

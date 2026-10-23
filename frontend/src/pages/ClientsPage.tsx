@@ -388,7 +388,9 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
             <span>No client accounts found matching the criteria.</span>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Desktop Table View (>= md screens) */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-white/[0.06] text-zinc-400 font-mono text-[11px] bg-white/[0.02]">
@@ -705,7 +707,240 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
               </tbody>
             </table>
           </div>
-        )}
+
+          {/* Mobile Card List View (< md screens) */}
+          <div className="block md:hidden divide-y divide-white/[0.06]">
+            {/* Mobile Select All Bar */}
+            <div className="p-3 bg-white/[0.02] border-b border-white/[0.05] flex items-center justify-between text-xs">
+              <button
+                onClick={handleSelectAll}
+                className="flex items-center gap-2 text-zinc-300 font-mono text-xs"
+              >
+                {selectedIds.length > 0 && selectedIds.length === filtered.length ? (
+                  <CheckSquare className="w-4 h-4 text-cyan-400" />
+                ) : (
+                  <Square className="w-4 h-4 text-zinc-500" />
+                )}
+                <span>Select All ({filtered.length})</span>
+              </button>
+              {selectedIds.length > 0 && (
+                <span className="text-[11px] font-mono text-cyan-400 font-medium">
+                  {selectedIds.length} selected
+                </span>
+              )}
+            </div>
+
+            {filtered.map(({ client, inbound }) => {
+              const used = (client.up || 0) + (client.down || 0);
+              const isDepleted = client.total > 0 && used >= client.total;
+              const isExpired = client.expiryTime > 0 && now > client.expiryTime;
+              const isSelected = selectedIds.includes(client.id);
+              const remainingBytes = client.total > 0 ? Math.max(0, client.total - used) : 0;
+
+              let durationLabel = '∞';
+              if (client.expiryTime > 0) {
+                const diffSec = client.expiryTime - now;
+                if (diffSec <= 0) {
+                  durationLabel = 'Expired';
+                } else {
+                  const diffDays = Math.floor(diffSec / 86400);
+                  const diffHours = Math.floor((diffSec % 86400) / 3600);
+                  durationLabel = diffDays > 0 ? `${diffDays}d left` : `${diffHours}h left`;
+                }
+              }
+
+              const percent = client.total > 0 ? Math.min(100, Math.round((used / client.total) * 100)) : 0;
+              const upSpeed = client.upSpeed || 0;
+              const downSpeed = client.downSpeed || 0;
+
+              return (
+                <div
+                  key={`mobile-${client.id}`}
+                  className={`p-4 space-y-3 transition-colors ${
+                    isSelected ? 'bg-cyan-500/[0.04]' : 'bg-transparent hover:bg-white/[0.02]'
+                  }`}
+                >
+                  {/* Top Row: Checkbox, Name, Online Badge, Switch */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-2.5">
+                      <button
+                        onClick={() => handleToggleSelect(client.id)}
+                        className="p-1 text-zinc-500 hover:text-zinc-200 transition mt-0.5"
+                      >
+                        {isSelected ? (
+                          <CheckSquare className="w-4 h-4 text-cyan-400" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-white text-sm tracking-tight">
+                            {client.email}
+                          </span>
+                          {client.isOnline ? (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                              Online
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono text-zinc-500 bg-white/[0.03] border border-white/[0.06]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-zinc-600"></span>
+                              Offline
+                            </span>
+                          )}
+                        </div>
+                        {/* Attached Inbound Pill */}
+                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-400 mt-1">
+                          <span className="px-1.5 py-0.5 rounded bg-zinc-800/80 text-zinc-200 border border-zinc-700/60 font-bold">
+                            :{inbound.port}
+                          </span>
+                          <span className="truncate max-w-[120px]">{inbound.remark || inbound.tag}</span>
+                          <span className="uppercase text-[9px] px-1 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            {inbound.protocol}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Enabled Switch */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleEnable(client)}
+                      disabled={togglingClientId === client.id}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        client.enable ? 'bg-blue-600' : 'bg-zinc-700'
+                      } ${togglingClientId === client.id ? 'opacity-50' : ''}`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          client.enable ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Speed Row (when online) */}
+                  {client.isOnline && (
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-white/[0.02] border border-white/[0.05] text-xs font-mono">
+                      <span className="text-zinc-400 flex items-center gap-1 text-[11px]">
+                        <Activity className="w-3.5 h-3.5 text-emerald-400" />
+                        Live Speed:
+                      </span>
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-emerald-400 flex items-center gap-0.5">
+                          <ArrowUpRight className="w-3 h-3" />
+                          {formatSpeed(upSpeed)}
+                        </span>
+                        <span className="text-zinc-600">/</span>
+                        <span className="text-blue-400 flex items-center gap-0.5">
+                          <ArrowDownLeft className="w-3 h-3" />
+                          {formatSpeed(downSpeed)}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Traffic Bar */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs font-mono">
+                      <span className="text-zinc-400">Traffic:</span>
+                      <span className="text-zinc-200 font-medium">
+                        {formatBytes(used)} / {client.total > 0 ? formatBytes(client.total) : '∞'}
+                        {client.total > 0 && <span className="text-zinc-500 text-[10px] ml-1">({percent}%)</span>}
+                      </span>
+                    </div>
+                    <div className="w-full bg-zinc-800/80 h-1.5 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          isDepleted
+                            ? 'bg-rose-500'
+                            : percent > 85
+                            ? 'bg-amber-400'
+                            : 'bg-gradient-to-r from-blue-500 to-cyan-400'
+                        }`}
+                        style={{ width: `${client.total > 0 ? percent : Math.min(100, (used / (100 * 1024 * 1024 * 1024)) * 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                      <span className="flex items-center gap-0.5">
+                        <ArrowUpRight className="w-2.5 h-2.5 text-emerald-400" /> {formatBytes(client.up || 0)}
+                      </span>
+                      <span className="flex items-center gap-0.5">
+                        <ArrowDownLeft className="w-2.5 h-2.5 text-blue-400" /> {formatBytes(client.down || 0)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Remaining & Duration Chips */}
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                      <span className="text-[10px] text-zinc-500 block">Remaining Quota</span>
+                      <span className={`font-medium ${isDepleted ? 'text-rose-400' : 'text-zinc-200'}`}>
+                        {client.total > 0 ? formatBytes(remainingBytes) : '∞ Unlimited'}
+                      </span>
+                    </div>
+
+                    <div className="p-2 rounded-xl bg-white/[0.02] border border-white/[0.05]">
+                      <span className="text-[10px] text-zinc-500 block">Duration / Expiry</span>
+                      <span className={`font-medium ${isExpired ? 'text-rose-400' : 'text-zinc-200'}`}>
+                        {durationLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Mobile Action Buttons */}
+                  <div className="flex items-center justify-between pt-2 border-t border-white/[0.04]">
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => onShareClient(client, inbound)}
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-xs flex items-center gap-1.5 border border-white/[0.07] transition"
+                      >
+                        <QrCode className="w-3.5 h-3.5 text-cyan-400" />
+                        <span>QR & Link</span>
+                      </button>
+
+                      <button
+                        onClick={() => setInspectClient({ client, inbound })}
+                        className="px-2.5 py-1 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 text-xs flex items-center gap-1.5 border border-white/[0.07] transition"
+                      >
+                        <Info className="w-3.5 h-3.5 text-blue-400" />
+                        <span>Details</span>
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => onResetClientTraffic(client.id)}
+                        title="Reset Traffic Counters"
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => onOpenEditClient(client)}
+                        title="Edit Client"
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition"
+                      >
+                        <Edit className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={() => onDeleteClient(client.id)}
+                        title="Delete Client"
+                        className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
       </div>
 
       {/* 4. Client Details Inspection Modal */}

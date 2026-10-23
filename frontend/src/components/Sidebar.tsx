@@ -8,7 +8,8 @@ import {
   FileText, 
   LogOut, 
   RefreshCw,
-  Power
+  Power,
+  X
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -21,6 +22,8 @@ interface SidebarProps {
   onLogout: () => void;
   onRestartXray: () => void;
   isRestartingXray: boolean;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -33,6 +36,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   onRestartXray,
   isRestartingXray,
+  isOpenMobile = false,
+  onCloseMobile,
 }) => {
   const menuItems = [
     { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
@@ -44,7 +49,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-[#090a0f]/85 backdrop-blur-2xl border-r border-white/[0.07] flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
+    <aside
+      className={`
+        fixed inset-y-0 left-0 z-50 w-64 bg-[#090a0f]/95 backdrop-blur-2xl border-r border-white/[0.07] 
+        flex flex-col justify-between shrink-0 h-screen select-none transition-transform duration-300 ease-in-out
+        md:relative md:translate-x-0 md:bg-[#090a0f]/85
+        ${isOpenMobile ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'}
+      `}
+    >
       {/* Top Branding Header */}
       <div>
         <div className="h-16 px-4 flex items-center justify-between border-b border-white/[0.06]">
@@ -64,16 +76,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          {/* Core Status indicator */}
-          <button
-            onClick={onRestartXray}
-            disabled={isRestartingXray}
-            title={xrayRunning ? 'Core Active (Click to Restart)' : 'Core Inactive (Click to Restart)'}
-            className="p-1.5 rounded-lg border border-white/[0.08] hover:border-white/[0.16] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 text-xs"
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${xrayRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-            <RefreshCw className={`w-3 h-3 text-zinc-400 ${isRestartingXray ? 'animate-spin text-emerald-400' : ''}`} />
-          </button>
+          {/* Core Status indicator & Mobile Close button */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onRestartXray}
+              disabled={isRestartingXray}
+              title={xrayRunning ? 'Core Active (Click to Restart)' : 'Core Inactive (Click to Restart)'}
+              className="p-1.5 rounded-lg border border-white/[0.08] hover:border-white/[0.16] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 text-xs"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${xrayRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+              <RefreshCw className={`w-3 h-3 text-zinc-400 ${isRestartingXray ? 'animate-spin text-emerald-400' : ''}`} />
+            </button>
+
+            {onCloseMobile && (
+              <button
+                onClick={onCloseMobile}
+                className="md:hidden p-1.5 rounded-lg border border-white/[0.08] bg-white/[0.03] text-zinc-400 hover:text-zinc-100 transition"
+                title="Close Navigation"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation Menu */}
@@ -84,7 +108,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
-                onClick={() => setActiveTab(item.id)}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (onCloseMobile) onCloseMobile();
+                }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   isActive
                     ? 'bg-zinc-800/90 text-white border border-zinc-700/60 shadow-xs'

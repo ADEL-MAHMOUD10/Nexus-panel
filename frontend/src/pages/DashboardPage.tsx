@@ -116,7 +116,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">Nexus Core Engine</h2>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
-              v1.1.2
+              v1.1.3
             </span>
           </div>
           <p className="text-xs text-zinc-400 font-sans mt-0.5">
@@ -303,7 +303,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
 
           {/* Core Service Tags */}
-          <div className="pt-3 border-t border-zinc-800 grid grid-cols-2 gap-2 text-xs font-mono">
+          <div className="pt-3 border-t border-zinc-800 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
             <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-between">
               <span className="text-zinc-500">Xray Core:</span>
               <span className={status.xrayRunning ? 'text-emerald-400 font-medium' : 'text-rose-400 font-medium'}>
