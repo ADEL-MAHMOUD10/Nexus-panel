@@ -41,28 +41,28 @@ const ToastCard: React.FC<{ toast: ToastItem; onDismiss: () => void }> = ({ toas
   const getBorderAndGlow = () => {
     switch (toast.type) {
       case 'success':
-        return 'border-emerald-500/25 shadow-[0_8px_25px_-5px_rgba(16,185,129,0.15)]';
+        return 'border-zinc-800 border-l-2 border-l-emerald-500 shadow-xl';
       case 'error':
-        return 'border-rose-500/25 shadow-[0_8px_25px_-5px_rgba(244,63,94,0.15)]';
+        return 'border-zinc-800 border-l-2 border-l-rose-500 shadow-xl';
       case 'warning':
-        return 'border-amber-500/25 shadow-[0_8px_25px_-5px_rgba(245,158,11,0.15)]';
+        return 'border-zinc-800 border-l-2 border-l-amber-500 shadow-xl';
       case 'info':
       default:
-        return 'border-cyan-500/25 shadow-[0_8px_25px_-5px_rgba(6,182,212,0.15)]';
+        return 'border-zinc-800 border-l-2 border-l-blue-500 shadow-xl';
     }
   };
 
   const getProgressColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-emerald-400';
+        return 'bg-emerald-500';
       case 'error':
-        return 'bg-rose-400';
+        return 'bg-rose-500';
       case 'warning':
-        return 'bg-amber-400';
+        return 'bg-amber-500';
       case 'info':
       default:
-        return 'bg-cyan-400';
+        return 'bg-blue-500';
     }
   };
 
@@ -70,11 +70,11 @@ const ToastCard: React.FC<{ toast: ToastItem; onDismiss: () => void }> = ({ toas
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.94 }}
+      initial={{ opacity: 0, y: 16, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 24, scale: 0.94 }}
-      transition={{ duration: 0.22, ease: 'easeOut' }}
-      className={`pointer-events-auto bg-[#101218]/95 backdrop-blur-xl border ${getBorderAndGlow()} rounded-2xl p-3.5 shadow-2xl relative overflow-hidden flex flex-col justify-between`}
+      exit={{ opacity: 0, x: 20, scale: 0.96 }}
+      transition={{ duration: 0.18, ease: 'easeOut' }}
+      className={`pointer-events-auto bg-[#121316] border ${getBorderAndGlow()} rounded-xl p-3.5 shadow-xl relative overflow-hidden flex flex-col justify-between`}
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">

@@ -37,26 +37,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-cyber-canvas flex items-center justify-center p-4 relative overflow-hidden select-none">
-      {/* Background glowing orbs */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div className="min-h-screen flex items-center justify-center p-4 relative select-none">
       {/* Login Card */}
-      <div className="w-full max-w-sm bg-[#0e1118]/90 backdrop-blur-2xl border border-white/[0.1] rounded-3xl p-8 shadow-2xl relative z-10">
+      <div className="w-full max-w-sm bg-[#121316] border border-zinc-800 rounded-2xl p-7 shadow-2xl relative z-10">
         {/* Branding */}
-        <div className="text-center mb-7">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-white/[0.05] to-transparent border border-cyan-500/40 flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(6,182,212,0.3)] mb-3.5 group">
-            <svg viewBox="0 0 24 24" className="w-7 h-7 text-cyan-300 drop-shadow-[0_0_8px_#22d3ee]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M4 20V4l16 16V4" />
-            </svg>
+        <div className="text-center mb-6">
+          <div className="w-10 h-10 rounded-xl bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-base tracking-tighter mx-auto mb-3 shadow-sm font-sans">
+            N
           </div>
-          <h2 className="text-2xl font-black tracking-[0.25em] font-mono text-nexus-gradient text-nexus-glow">
-            NEXUS
-          </h2>
-          <p className="text-xs text-zinc-400 mt-1 font-mono uppercase tracking-wider text-[11px]">
-            Quantum Proxy Core
-          </p>
+          <h2 className="text-base font-bold text-zinc-100 tracking-tight">Nexus Server Panel</h2>
+          <p className="text-xs text-zinc-500 mt-0.5">Enterprise Proxy & Routing Control</p>
         </div>
 
         {error && (
@@ -78,7 +68,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="admin"
-                className="w-full pl-9.5 pr-4 py-2.5 bg-[#090a0d] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 transition font-sans"
+                className="w-full pl-9.5 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition font-sans"
               />
             </div>
           </div>
@@ -93,7 +83,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-9.5 pr-4 py-2.5 bg-[#090a0d] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 transition font-sans"
+                className="w-full pl-9.5 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition font-sans"
               />
             </div>
           </div>
@@ -101,15 +91,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white font-medium rounded-xl text-xs shadow-[0_0_20px_rgba(16,185,129,0.3)] transition transform active:scale-95 flex items-center justify-center gap-2 mt-2"
+            className="w-full py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-medium rounded-lg text-xs transition flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
           >
-            <span>{isLoading ? 'Authenticating...' : 'Sign In'}</span>
-            <ArrowRight className="w-4 h-4" />
+            <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </form>
 
-        <div className="mt-6 pt-4 border-t border-white/[0.06] text-center text-[10px] text-zinc-500 font-mono">
-          <span>Protected by Nexus Core Guard & JWT</span>
+        <div className="mt-6 pt-4 border-t border-zinc-800/80 text-center text-[11px] text-zinc-500 font-sans flex items-center justify-center gap-1.5">
+          <ShieldCheck className="w-3.5 h-3.5 text-zinc-500" />
+          <span>Protected by Nexus Core Guard</span>
         </div>
       </div>
     </div>

@@ -337,11 +337,6 @@ export function App() {
 
   return (
     <div className="flex h-screen bg-transparent text-zinc-100 overflow-hidden font-sans select-none relative">
-      {/* Global Ambient Cyber Aurora Glows across the entire window */}
-      <div className="fixed -top-24 left-1/4 w-[700px] h-[450px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
-      <div className="fixed -bottom-24 right-1/4 w-[700px] h-[450px] bg-indigo-500/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
-      <div className="fixed top-1/3 left-0 w-[450px] h-[350px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none z-0"></div>
-
       {/* Sleek Sidebar */}
       <Sidebar
         activeTab={activeTab}

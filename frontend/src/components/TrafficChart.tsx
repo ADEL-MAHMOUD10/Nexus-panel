@@ -46,28 +46,28 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   return (
     <div className="w-full flex flex-col justify-between flex-1">
       {/* Chart Top Metrics */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.06] mb-2">
-        <div className="flex items-center gap-6">
+      <div className="flex items-center justify-between pb-2.5 border-b border-zinc-800 mb-2">
+        <div className="flex items-center gap-5">
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee]"></div>
+            <span className="w-2 h-2 rounded-full bg-blue-500"></span>
             <span className="text-xs text-zinc-400">Download</span>
-            <span className="text-xs font-mono font-semibold text-cyan-300 flex items-center gap-0.5">
-              <ArrowDownLeft className="w-3 h-3 text-cyan-400" />
+            <span className="text-xs font-mono font-medium text-zinc-200 flex items-center gap-0.5">
+              <ArrowDownLeft className="w-3 h-3 text-blue-400" />
               {formatSpeed(currentDownSpeed)}
             </span>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]"></div>
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
             <span className="text-xs text-zinc-400">Upload</span>
-            <span className="text-xs font-mono font-semibold text-emerald-300 flex items-center gap-0.5">
+            <span className="text-xs font-mono font-medium text-zinc-200 flex items-center gap-0.5">
               <ArrowUpRight className="w-3 h-3 text-emerald-400" />
               {formatSpeed(currentUpSpeed)}
             </span>
           </div>
         </div>
 
-        <span className="text-[11px] font-mono text-zinc-500 uppercase tracking-wider">Live I/O</span>
+        <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">LIVE TELEMETRY</span>
       </div>
 
       {/* Chart Canvas */}
@@ -76,12 +76,12 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
           <AreaChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 2 }}>
             <defs>
               <linearGradient id="downGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.02} />
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.0} />
               </linearGradient>
               <linearGradient id="upGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
+                <stop offset="5%" stopColor="#10b981" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="#10b981" stopOpacity={0.0} />
               </linearGradient>
             </defs>
 
@@ -89,24 +89,24 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
             <XAxis dataKey="time" hide />
             <YAxis hide domain={[0, 'auto']} />
             <Tooltip
-              cursor={{ stroke: 'rgba(255,255,255,0.15)', strokeWidth: 1, strokeDasharray: '3 3' }}
+              cursor={{ stroke: 'rgba(255,255,255,0.1)', strokeWidth: 1, strokeDasharray: '3 3' }}
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-[#14171d]/95 backdrop-blur-md border border-white/10 rounded-xl p-3 shadow-2xl text-xs font-mono select-none pointer-events-none z-40">
-                      <div className="text-cyan-400 flex items-center justify-between gap-5">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-2.5 shadow-xl text-xs font-mono select-none pointer-events-none z-40">
+                      <div className="text-blue-400 flex items-center justify-between gap-5">
+                        <span className="flex items-center gap-1.5 text-zinc-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                           Down:
                         </span>
-                        <span className="font-bold">{Number(payload[0]?.value || 0).toFixed(1)} KB/s</span>
+                        <span className="font-semibold text-zinc-200">{Number(payload[0]?.value || 0).toFixed(1)} KB/s</span>
                       </div>
-                      <div className="text-emerald-400 flex items-center justify-between gap-5 mt-1.5">
-                        <span className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <div className="text-emerald-400 flex items-center justify-between gap-5 mt-1">
+                        <span className="flex items-center gap-1.5 text-zinc-400">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                           Up:
                         </span>
-                        <span className="font-bold">{Number(payload[1]?.value || 0).toFixed(1)} KB/s</span>
+                        <span className="font-semibold text-zinc-200">{Number(payload[1]?.value || 0).toFixed(1)} KB/s</span>
                       </div>
                     </div>
                   );
@@ -117,8 +117,8 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
             <Area
               type="monotone"
               dataKey="download"
-              stroke="#06b6d4"
-              strokeWidth={2}
+              stroke="#3b82f6"
+              strokeWidth={1.5}
               fillOpacity={1}
               fill="url(#downGrad)"
             />
@@ -126,7 +126,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
               type="monotone"
               dataKey="upload"
               stroke="#10b981"
-              strokeWidth={2}
+              strokeWidth={1.5}
               fillOpacity={1}
               fill="url(#upGrad)"
             />

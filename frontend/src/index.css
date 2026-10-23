@@ -1,19 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Space Grotesk", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
-  --color-brand-bg: #090a0d;
-  --color-brand-sidebar: #0f1115;
-  --color-brand-card: #14171d;
-  --color-brand-card-hover: #191d24;
-  --color-brand-border: #232732;
-  --color-brand-border-glow: #2d3444;
-  --color-brand-input: #0e1014;
-  --color-brand-neon-emerald: #10b981;
-  --color-brand-neon-cyan: #06b6d4;
-  --color-brand-neon-indigo: #6366f1;
+  --color-zinc-950: #09090b;
+  --color-zinc-900: #121316;
+  --color-zinc-850: #18191f;
+  --color-zinc-800: #22232a;
 }
 
 :root {
@@ -24,73 +18,50 @@ html, body, #root {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  background-color: #06070a;
-  color: #f1f3f7;
+  background-color: #09090b;
+  color: #f4f4f5;
   font-family: var(--font-sans);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   background-image: 
-    radial-gradient(ellipse 100% 60% at 50% -20%, rgba(6, 182, 212, 0.15), transparent 75%),
-    radial-gradient(circle 900px at 100% 100%, rgba(99, 102, 241, 0.08), transparent 60%),
-    radial-gradient(circle 700px at 0% 50%, rgba(16, 185, 129, 0.06), transparent 60%),
-    radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-    linear-gradient(to right, rgba(255, 255, 255, 0.015) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 100% 100%, 28px 28px, 56px 56px, 56px 56px;
-  background-position: center top, right bottom, left center, 0 0, 0 0, 0 0;
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.035) 0%, transparent 60%),
+    radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 100% 100%, 28px 28px;
   background-attachment: fixed;
 }
 
-/* Custom Scrollbars */
+/* Minimalist Clean Scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.22);
 }
 
-/* Futuristic Ambient Cyber Canvas Background Classes */
-.bg-subtle-grid,
-.bg-cyber-canvas {
-  background-color: transparent;
-}
-
-/* Special Signature Nexus Typography */
-.text-nexus-gradient {
-  background: linear-gradient(135deg, #ffffff 0%, #e0f7fa 35%, #67e8f9 65%, #06b6d4 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.text-nexus-glow {
-  filter: drop-shadow(0 0 18px rgba(6, 182, 212, 0.45));
-}
-
-.nexus-logo-glow {
-  box-shadow: 
-    0 0 30px -5px rgba(6, 182, 212, 0.35),
-    inset 0 0 15px rgba(6, 182, 212, 0.2);
-}
-
-/* Card Glow Utilities */
-.neon-glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.15);
-}
-.neon-glow-cyan {
-  box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.15);
-}
-.card-border-glow {
+/* Professional Enterprise Surface Classes */
+.nexus-surface {
+  background-color: #111216;
   border: 1px solid rgba(255, 255, 255, 0.07);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.card-border-glow:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+
+.nexus-surface-hover:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Subtle clean indicator */
+.status-dot-active {
+  background-color: #10b981;
+}
+
+.status-dot-offline {
+  background-color: #ef4444;
 }
