@@ -30,7 +30,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#12141a] border border-white/10 rounded-2xl w-full max-w-sm shadow-2xl p-6 relative flex flex-col items-center text-center">
+      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl w-full max-w-sm shadow-2xl p-6 relative flex flex-col items-center text-center">
         <button
           onClick={onClose}
           className="absolute top-4 right-4 p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition"
@@ -52,7 +52,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             type="text"
             readOnly
             value={link}
-            className="flex-1 px-3 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-zinc-300 font-mono focus:outline-none"
+            className="flex-1 px-3 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-300 font-mono focus:outline-none"
           />
           <button
             onClick={handleCopy}

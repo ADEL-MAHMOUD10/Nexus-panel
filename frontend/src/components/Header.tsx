@@ -32,14 +32,14 @@ export const Header: React.FC<HeaderProps> = ({
   hasUpdates,
 }) => {
   return (
-    <header className="h-16 border-b border-zinc-800/80 bg-[#0d0e12]/80 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
+    <header className="h-16 border-b border-[#292d3e] bg-[#1a1d27]/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
       {/* View Title */}
       <div>
         <h1 className="text-base font-semibold text-zinc-100 tracking-tight flex items-center gap-2">
           {title}
         </h1>
         {subtitle && (
-          <p className="text-xs text-zinc-500 font-sans mt-0.5">{subtitle}</p>
+          <p className="text-xs text-zinc-400 font-sans mt-0.5">{subtitle}</p>
         )}
       </div>
 
@@ -47,20 +47,20 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-2.5">
         {/* Search Bar */}
         <div className="relative w-64 hidden sm:block">
-          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+          <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search ports, clients, remarks..."
-            className="w-full pl-8.5 pr-3 py-1.5 bg-zinc-900/80 border border-zinc-800 rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 transition font-sans"
+            className="w-full pl-8.5 pr-3 py-1.5 bg-[#14161f] border border-[#292d3e] rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
           />
         </div>
 
         {/* Public IP Badge */}
         {publicIP && (
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-zinc-900/80 border border-zinc-800 text-xs font-mono text-zinc-300">
-            <Server className="w-3.5 h-3.5 text-zinc-500" />
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#14161f] border border-[#292d3e] text-xs font-mono text-zinc-300">
+            <Server className="w-3.5 h-3.5 text-zinc-400" />
             <span>{publicIP}</span>
           </div>
         )}

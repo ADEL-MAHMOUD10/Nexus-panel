@@ -50,7 +50,7 @@ export const CertificatesPage: React.FC<CertificatesPageProps> = ({
 
       {/* Certificates Cards Grid */}
       {certificates.length === 0 ? (
-        <div className="py-20 text-center bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.07] rounded-2xl p-8">
+        <div className="py-20 text-center bg-[#1e2230] border border-[#292d3e] rounded-2xl p-8">
           <ShieldCheck className="w-10 h-10 text-zinc-600 mx-auto mb-3 opacity-60" />
           <h3 className="text-base font-bold text-zinc-300">No SSL Certificates Found</h3>
           <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
@@ -62,7 +62,7 @@ export const CertificatesPage: React.FC<CertificatesPageProps> = ({
           {certificates.map((cert, index) => (
             <div
               key={index}
-              className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4"
+              className="bg-[#1e2230] border border-[#292d3e] rounded-2xl p-5 shadow-xl flex flex-col justify-between space-y-4"
             >
               <div>
                 <div className="flex items-start justify-between">
@@ -112,7 +112,7 @@ export const CertificatesPage: React.FC<CertificatesPageProps> = ({
       {/* Issue Certificate Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-[#14171e] border border-white/10 rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
+          <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl w-full max-w-md p-6 shadow-2xl relative">
             <h3 className="text-base font-bold text-white">Issue Free Let's Encrypt SSL</h3>
             <p className="text-xs text-zinc-400 mt-1">
               Ensure your domain's DNS A-record points to this server IP and port 80 is not blocked.

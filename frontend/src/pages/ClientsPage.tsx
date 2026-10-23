@@ -86,7 +86,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search clients by email, UUID, or tag..."
-              className="w-full pl-9.5 pr-4 py-2 bg-[#14171e] border border-white/[0.08] rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-cyan-500/50 transition font-sans"
+              className="w-full pl-9.5 pr-4 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
             />
           </div>
 
@@ -94,7 +94,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
           <select
             value={filterInbound}
             onChange={(e) => setFilterInbound(e.target.value)}
-            className="px-3 py-2 bg-[#14171e] border border-white/[0.08] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-cyan-500/50 transition font-sans"
+            className="px-3 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-[#3d445c] transition font-sans"
           >
             <option value="all">All Inbounds</option>
             {inbounds.map((i) => (
@@ -108,7 +108,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 bg-[#14171e] border border-white/[0.08] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-cyan-500/50 transition font-sans"
+            className="px-3 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-[#3d445c] transition font-sans"
           >
             <option value="all">All Statuses</option>
             <option value="online">Online Now</option>
@@ -129,7 +129,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
       </div>
 
       {/* Clients Table Card */}
-      <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-xl overflow-hidden">
+      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl shadow-xl overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-20 text-center text-zinc-500 text-xs font-sans">
             <Users className="w-10 h-10 text-zinc-600 mx-auto mb-3 opacity-60" />

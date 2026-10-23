@@ -44,10 +44,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-[#0d0e12] border-r border-zinc-800/80 flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
+    <aside className="w-64 bg-[#1a1d27] border-r border-[#292d3e] flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
       {/* Top Branding Header */}
       <div>
-        <div className="h-16 px-4 flex items-center justify-between border-b border-zinc-800/80">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-[#292d3e]">
           <div className="flex items-center gap-2.5">
             {/* Minimalist Professional Logo Mark */}
             <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-sm tracking-tighter shadow-sm font-sans shrink-0">
@@ -56,11 +56,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm text-zinc-100 tracking-tight">Nexus</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60 font-medium">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#252938] text-zinc-300 border border-[#33384c] font-medium">
                   v1.1
                 </span>
               </div>
-              <span className="text-[11px] text-zinc-500 font-sans block leading-tight">Proxy Engine</span>
+              <span className="text-[11px] text-zinc-400 font-sans block leading-tight">Proxy Engine</span>
             </div>
           </div>
 
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onRestartXray}
             disabled={isRestartingXray}
             title={xrayRunning ? 'Core Active (Click to Restart)' : 'Core Inactive (Click to Restart)'}
-            className="p-1.5 rounded-lg border border-zinc-800 hover:border-zinc-700 bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 text-xs"
+            className="p-1.5 rounded-lg border border-[#292d3e] hover:border-[#3a4058] bg-[#14161f] hover:bg-[#202432] text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 text-xs"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${xrayRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
             <RefreshCw className={`w-3 h-3 text-zinc-400 ${isRestartingXray ? 'animate-spin text-emerald-400' : ''}`} />
@@ -117,17 +117,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Info & User Controls */}
-      <div className="p-3 border-t border-zinc-800/80 space-y-2">
+      <div className="p-3 border-t border-[#292d3e] space-y-2">
         {/* Core Quick Summary Pill */}
-        <div className="p-2.5 rounded-lg bg-zinc-900/60 border border-zinc-800/80 flex items-center justify-between">
+        <div className="p-2.5 rounded-lg bg-[#14161f] border border-[#292d3e] flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
               <Power className={`w-3 h-3 ${xrayRunning ? 'text-emerald-500' : 'text-rose-500'}`} />
               <span className="text-xs font-medium text-zinc-300">Xray Core</span>
             </div>
-            <span className="text-[11px] font-mono text-zinc-500">{xrayRunning ? 'Active & Routing' : 'Stopped'}</span>
+            <span className="text-[11px] font-mono text-zinc-400">{xrayRunning ? 'Active & Routing' : 'Stopped'}</span>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/60">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#252938] text-zinc-300 border border-[#33384c]">
             {panelVersion || 'v1.1.0'}
           </span>
         </div>
@@ -135,13 +135,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* User logout button */}
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 transition"
+          className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-[#202432] transition"
         >
           <div className="flex items-center gap-2">
-            <LogOut className="w-3.5 h-3.5 text-zinc-500" />
+            <LogOut className="w-3.5 h-3.5 text-zinc-400" />
             <span>Sign Out</span>
           </div>
-          <span className="text-[10px] font-mono text-zinc-600">Admin</span>
+          <span className="text-[10px] font-mono text-zinc-500">Admin</span>
         </button>
       </div>
     </aside>

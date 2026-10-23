@@ -39,14 +39,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative select-none">
       {/* Login Card */}
-      <div className="w-full max-w-sm bg-[#121316] border border-zinc-800 rounded-2xl p-7 shadow-2xl relative z-10">
+      <div className="w-full max-w-sm bg-[#1e2230] border border-[#292d3e] rounded-2xl p-7 shadow-2xl relative z-10">
         {/* Branding */}
         <div className="text-center mb-6">
           <div className="w-10 h-10 rounded-xl bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-base tracking-tighter mx-auto mb-3 shadow-sm font-sans">
             N
           </div>
           <h2 className="text-base font-bold text-zinc-100 tracking-tight">Nexus Server Panel</h2>
-          <p className="text-xs text-zinc-500 mt-0.5">Enterprise Proxy & Routing Control</p>
+          <p className="text-xs text-zinc-400 mt-0.5">Enterprise Proxy & Routing Control</p>
         </div>
 
         {error && (
@@ -68,7 +68,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="admin"
-                className="w-full pl-9.5 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition font-sans"
+                className="w-full pl-9.5 pr-4 py-2 bg-[#14161f] border border-[#292d3e] rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
               />
             </div>
           </div>
@@ -83,7 +83,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full pl-9.5 pr-4 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600 transition font-sans"
+                className="w-full pl-9.5 pr-4 py-2 bg-[#14161f] border border-[#292d3e] rounded-lg text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
               />
             </div>
           </div>

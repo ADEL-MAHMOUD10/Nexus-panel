@@ -229,7 +229,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#12141a] border border-white/10 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
           <div>
@@ -247,7 +247,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex border-b border-white/[0.06] px-6 bg-[#0c0d12]">
+        <div className="flex border-b border-white/[0.06] px-6 bg-[#14161f]">
           <button
             type="button"
             onClick={() => setActiveTab('basics')}
@@ -302,7 +302,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                   value={remark}
                   onChange={(e) => setRemark(e.target.value)}
                   placeholder="e.g. VLESS-TLS-CDN"
-                  className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
+                  className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50"
                 />
               </div>
 
@@ -322,7 +322,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     max={65535}
                     value={port}
                     onChange={(e) => setPort(Number(e.target.value))}
-                    className={`w-full px-3.5 py-2 bg-[#0c0d12] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
+                    className={`w-full px-3.5 py-2 bg-[#14161f] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
                       portConflict 
                         ? 'border-rose-500/80 bg-rose-500/10 text-rose-200' 
                         : 'border-white/[0.08] focus:border-cyan-500/50'
@@ -342,7 +342,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                   <select
                     value={protocol}
                     onChange={(e) => setProtocol(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none font-mono uppercase"
+                    className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none font-mono uppercase"
                   >
                     <option value="vless">VLESS</option>
                     <option value="trojan">TROJAN</option>
@@ -360,7 +360,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     value={listen}
                     onChange={(e) => setListen(e.target.value)}
                     placeholder="0.0.0.0"
-                    className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
                   />
                 </div>
                 <div>
@@ -371,7 +371,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     value={totalGB}
                     onChange={(e) => setTotalGB(Number(e.target.value))}
                     placeholder="0 = Unlimited"
-                    className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
                   />
                 </div>
               </div>
@@ -385,7 +385,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                 <select
                   value={network}
                   onChange={(e) => setNetwork(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono uppercase"
+                  className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono uppercase"
                 >
                   <option value="tcp">TCP (Standard)</option>
                   <option value="ws">WebSocket (WS)</option>
@@ -402,7 +402,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       value={wsPath}
                       onChange={(e) => setWsPath(e.target.value)}
                       placeholder="/vless-ws"
-                      className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
+                      className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
                     />
                   </div>
                   <div>
@@ -412,7 +412,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       value={wsHost}
                       onChange={(e) => setWsHost(e.target.value)}
                       placeholder="e.g. cdn.domain.com"
-                      className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
+                      className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
                     />
                   </div>
                 </div>
@@ -426,7 +426,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     value={grpcServiceName}
                     onChange={(e) => setGrpcServiceName(e.target.value)}
                     placeholder="vless-grpc"
-                    className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
+                    className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
                   />
                 </div>
               )}
@@ -440,7 +440,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                 <select
                   value={security}
                   onChange={(e) => setSecurity(e.target.value)}
-                  className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono uppercase"
+                  className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono uppercase"
                 >
                   <option value="none">None (Plaintext)</option>
                   <option value="tls">TLS (Let's Encrypt / Custom SSL)</option>
@@ -457,7 +457,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       value={tlsSNI}
                       onChange={(e) => setTlsSNI(e.target.value)}
                       placeholder="e.g. sub.domain.com"
-                      className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
+                      className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
                     />
                   </div>
                   <div>
@@ -467,7 +467,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       value={tlsALPN}
                       onChange={(e) => setTlsALPN(e.target.value)}
                       placeholder="h2,http/1.1"
-                      className="w-full px-3.5 py-2 bg-[#0c0d12] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
+                      className="w-full px-3.5 py-2 bg-[#14161f] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
                     />
                   </div>
                 </div>
@@ -498,7 +498,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         value={realityDest}
                         onChange={(e) => setRealityDest(e.target.value)}
                         placeholder="www.google.com:443"
-                        className="w-full px-3 py-1.5 bg-[#0c0d12] border border-white/[0.08] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#14161f] border border-white/[0.08] rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                     <div>
@@ -508,7 +508,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         value={realityServerNames}
                         onChange={(e) => setRealityServerNames(e.target.value)}
                         placeholder="www.google.com"
-                        className="w-full px-3 py-1.5 bg-[#0c0d12] border border-white/[0.08] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#14161f] border border-white/[0.08] rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                   </div>
@@ -529,7 +529,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         type="text"
                         value={realityShortId}
                         onChange={(e) => setRealityShortId(e.target.value)}
-                        className="w-full px-3 py-1.5 bg-[#0c0d12] border border-white/[0.08] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#14161f] border border-white/[0.08] rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                   </div>
