@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
 export type NotificationType = 'success' | 'error' | 'warning' | 'info';
 export type NotificationCategory = 'system' | 'xray' | 'clients' | 'security';
@@ -99,15 +99,27 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         action,
       };
 
-      // Add to persistent notification drawer
-      setNotifications((prev) => [newNotification, ...prev].slice(0, 50));
+      // Add to persistent notification drawer (avoid immediate duplicate spam)
+      setNotifications((prev) => {
+        if (prev.length > 0 && prev[0].title === title && prev[0].message === message) {
+          return prev;
+        }
+        return [newNotification, ...prev].slice(0, 50);
+      });
 
-      // Add to temporary active toasts
+      // Add to temporary active toasts with deduplication and max 3 limit
       const toastItem: ToastItem = {
         ...newNotification,
         duration,
       };
-      setToasts((prev) => [...prev, toastItem]);
+
+      setToasts((prev) => {
+        // Prevent duplicate toasts on screen
+        const exists = prev.some((t) => t.title === title && t.message === message);
+        if (exists) return prev;
+        // Keep at most 3 toasts visible at any time
+        return [...prev.slice(-2), toastItem];
+      });
 
       // Auto dismiss toast
       if (duration > 0) {
@@ -141,16 +153,19 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const notify = {
-    success: (title: string, message?: string, action?: NotificationAction, duration = 4000) =>
-      addNotification('success', title, message, action, duration, 'system'),
-    error: (title: string, message?: string, action?: NotificationAction, duration = 5000) =>
-      addNotification('error', title, message, action, duration, 'system'),
-    warning: (title: string, message?: string, action?: NotificationAction, duration = 4500) =>
-      addNotification('warning', title, message, action, duration, 'security'),
-    info: (title: string, message?: string, action?: NotificationAction, duration = 4000) =>
-      addNotification('info', title, message, action, duration, 'system'),
-  };
+  const notify = useMemo(
+    () => ({
+      success: (title: string, message?: string, action?: NotificationAction, duration = 4000) =>
+        addNotification('success', title, message, action, duration, 'system'),
+      error: (title: string, message?: string, action?: NotificationAction, duration = 5000) =>
+        addNotification('error', title, message, action, duration, 'system'),
+      warning: (title: string, message?: string, action?: NotificationAction, duration = 4500) =>
+        addNotification('warning', title, message, action, duration, 'security'),
+      info: (title: string, message?: string, action?: NotificationAction, duration = 4000) =>
+        addNotification('info', title, message, action, duration, 'system'),
+    }),
+    [addNotification]
+  );
 
   return (
     <NotificationContext.Provider

@@ -20,6 +20,8 @@ export const BackgroundCanvas: React.FC = () => {
       {/* 2. Geometric Architectural Vector Shapes & Nexus 'N' Insignia */}
       <svg 
         className="absolute inset-0 w-full h-full" 
+        viewBox="0 0 1600 1000"
+        preserveAspectRatio="xMidYMid slice"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>

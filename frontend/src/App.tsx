@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import api from './services/api';
 import { ServerStatus, Inbound, Client, SSLCertificate, UpdateInfo } from './types';
 import { Sidebar } from './components/Sidebar';
@@ -32,6 +32,7 @@ export function App() {
   });
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [isUpdatesModalOpen, setIsUpdatesModalOpen] = useState(false);
+  const updateNotifiedRef = useRef<string | null>(null);
 
   // Core Data
   const [status, setStatus] = useState<ServerStatus>({
@@ -152,7 +153,10 @@ export function App() {
       const res = await api.get('/api/server/check-updates');
       if (res.data) {
         setUpdates(res.data);
-        if (res.data.panel?.hasUpdate || res.data.xray?.hasUpdate) {
+        const hasUpdate = res.data.panel?.hasUpdate || res.data.xray?.hasUpdate;
+        const updateKey = `${res.data.panel?.latestVersion}-${res.data.xray?.latestVersion}`;
+        if (hasUpdate && updateNotifiedRef.current !== updateKey) {
+          updateNotifiedRef.current = updateKey;
           notify.info(
             'Update Available',
             res.data.panel?.hasUpdate 
@@ -161,7 +165,8 @@ export function App() {
             {
               label: 'View Updates',
               onClick: () => setIsUpdatesModalOpen(true),
-            }
+            },
+            6000
           );
         }
       }
