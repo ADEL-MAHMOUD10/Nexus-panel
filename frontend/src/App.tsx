@@ -14,6 +14,7 @@ import { ClientModal } from './components/ClientModal';
 import { ShareModal } from './components/ShareModal';
 import { UpdatesModal } from './components/UpdatesModal';
 import { LoginPage } from './pages/LoginPage';
+import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { useNotification } from './context/NotificationContext';
 
 export function App() {
@@ -336,7 +337,10 @@ export function App() {
   });
 
   return (
-    <div className="flex h-screen bg-transparent text-zinc-100 overflow-hidden font-sans select-none relative">
+    <div className="flex h-screen bg-[#07080b] text-zinc-100 overflow-hidden font-sans select-none relative">
+      {/* Premium Black Background Canvas with Architectural Geometry & Nexus N */}
+      <BackgroundCanvas />
+
       {/* Sleek Sidebar */}
       <Sidebar
         activeTab={activeTab}

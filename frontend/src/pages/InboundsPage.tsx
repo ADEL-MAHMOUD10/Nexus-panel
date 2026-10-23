@@ -71,7 +71,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search inbounds by port, tag, remark..."
-              className="w-full pl-9.5 pr-4 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
+              className="w-full pl-9.5 pr-4 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
             />
           </div>
 
@@ -79,7 +79,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
           <select
             value={filterProtocol}
             onChange={(e) => setFilterProtocol(e.target.value)}
-            className="px-3 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-[#3d445c] transition font-mono uppercase"
+            className="px-3 py-2 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs text-zinc-300 focus:outline-none focus:border-[#3d445c] transition font-mono uppercase"
           >
             <option value="all">All Protocols</option>
             <option value="vless">VLESS</option>
@@ -103,7 +103,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
 
       {/* Inbounds Cards Grid */}
       {filteredInbounds.length === 0 ? (
-        <div className="py-20 text-center bg-[#1e2230] border border-[#292d3e] rounded-2xl p-8">
+        <div className="py-20 text-center bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] shadow-xl rounded-2xl p-8">
           <Radio className="w-10 h-10 text-zinc-600 mx-auto mb-3 animate-pulse" />
           <h3 className="text-base font-bold text-zinc-300">No Inbounds Found</h3>
           <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
@@ -129,7 +129,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
             return (
               <div
                 key={inb.id}
-                className="bg-[#1e2230] border border-[#292d3e] hover:border-white/[0.16] rounded-2xl p-5 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden"
+                className="bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] shadow-xl hover:border-white/[0.16] rounded-2xl p-5 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden"
               >
                 {/* Protocol Accent Color Stripe */}
                 <div

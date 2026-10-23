@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { BackgroundCanvas } from '../components/BackgroundCanvas';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;
@@ -37,9 +38,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative select-none">
+    <div className="min-h-screen flex items-center justify-center p-4 relative select-none bg-[#07080b]">
+      {/* Background with geometry & Nexus monogram */}
+      <BackgroundCanvas />
+
       {/* Login Card */}
-      <div className="w-full max-w-sm bg-[#1e2230] border border-[#292d3e] rounded-2xl p-7 shadow-2xl relative z-10">
+      <div className="w-full max-w-sm bg-[#0c0d13]/85 backdrop-blur-2xl border border-white/[0.09] rounded-2xl p-7 shadow-2xl relative z-10">
         {/* Branding */}
         <div className="text-center mb-6">
           <div className="w-10 h-10 rounded-xl bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-base tracking-tighter mx-auto mb-3 shadow-sm font-sans">

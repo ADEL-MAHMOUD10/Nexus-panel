@@ -86,12 +86,12 @@ export const ConfigPage: React.FC = () => {
       )}
 
       {/* Editor Container */}
-      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl p-4 shadow-xl">
+      <div className="bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] shadow-xl rounded-2xl p-4 shadow-xl">
         <textarea
           value={configContent}
           onChange={(e) => setConfigContent(e.target.value)}
           spellCheck={false}
-          className="w-full h-[620px] bg-[#14161f] border border-[#292d3e] rounded-xl p-4 text-xs font-mono text-cyan-300 focus:outline-none focus:border-[#3d445c] leading-relaxed resize-none"
+          className="w-full h-[620px] bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 text-xs font-mono text-cyan-300 focus:outline-none focus:border-[#3d445c] leading-relaxed resize-none"
         />
       </div>
     </div>

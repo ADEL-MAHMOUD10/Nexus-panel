@@ -39,7 +39,7 @@ export const LogsPage: React.FC = () => {
           <select
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
-            className="px-3 py-1.5 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-zinc-300 font-mono"
+            className="px-3 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs text-zinc-300 font-mono"
           >
             <option value={50}>Last 50 lines</option>
             <option value={100}>Last 100 lines</option>
@@ -57,8 +57,8 @@ export const LogsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl p-4 shadow-xl">
-        <div className="bg-[#14161f] border border-[#292d3e] rounded-xl p-4 h-[620px] overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1">
+      <div className="bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] shadow-xl rounded-2xl p-4 shadow-xl">
+        <div className="bg-white/[0.03] border border-white/[0.08] rounded-xl p-4 h-[620px] overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1">
           {logs.length === 0 ? (
             <div className="text-zinc-600 text-center py-20 font-sans">
               No recent logs recorded.

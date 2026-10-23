@@ -32,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   hasUpdates,
 }) => {
   return (
-    <header className="h-16 border-b border-[#292d3e] bg-[#1a1d27]/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
+    <header className="h-16 border-b border-white/[0.07] bg-[#090a0f]/80 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-20 select-none">
       {/* View Title */}
       <div>
         <h1 className="text-base font-semibold text-zinc-100 tracking-tight flex items-center gap-2">
@@ -53,13 +53,13 @@ export const Header: React.FC<HeaderProps> = ({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search ports, clients, remarks..."
-            className="w-full pl-8.5 pr-3 py-1.5 bg-[#14161f] border border-[#292d3e] rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-[#3d445c] transition font-sans"
+            className="w-full pl-8.5 pr-3 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-lg text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-white/[0.18] transition font-sans"
           />
         </div>
 
         {/* Public IP Badge */}
         {publicIP && (
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-[#14161f] border border-[#292d3e] text-xs font-mono text-zinc-300">
+          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs font-mono text-zinc-300">
             <Server className="w-3.5 h-3.5 text-zinc-400" />
             <span>{publicIP}</span>
           </div>

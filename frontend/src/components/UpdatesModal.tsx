@@ -74,8 +74,8 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl w-full max-w-xl shadow-2xl p-6 relative">
-        <div className="flex items-center justify-between pb-3 border-b border-[#292d3e]">
+      <div className="bg-[#0c0d13]/95 backdrop-blur-2xl border border-white/[0.1] rounded-2xl w-full max-w-xl shadow-2xl p-6 relative">
+        <div className="flex items-center justify-between pb-3 border-b border-white/[0.07]">
           <div className="flex items-center gap-2">
             <ArrowUpCircle className="w-5 h-5 text-cyan-400" />
             <h3 className="text-base font-bold text-white">System & Core Updates</h3>
@@ -96,7 +96,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
 
         <div className="space-y-4 my-5">
           {/* Nexus Panel Update Tile */}
-          <div className="p-4 rounded-xl bg-[#14161f] border border-[#292d3e] flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between">
             <div>
               <span className="text-sm font-bold text-white block">Nexus Panel Daemon</span>
               <div className="text-xs font-mono text-zinc-400 mt-0.5">
@@ -119,7 +119,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
           </div>
 
           {/* Xray Core Update Tile */}
-          <div className="p-4 rounded-xl bg-[#14161f] border border-[#292d3e] flex items-center justify-between">
+          <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.07] flex items-center justify-between">
             <div>
               <span className="text-sm font-bold text-white block">Xray-core Kernel Engine</span>
               <div className="text-xs font-mono text-zinc-400 mt-0.5">

@@ -46,7 +46,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
   return (
     <div className="w-full flex flex-col justify-between flex-1">
       {/* Chart Top Metrics */}
-      <div className="flex items-center justify-between pb-2.5 border-b border-[#292d3e] mb-2">
+      <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.07] mb-2">
         <div className="flex items-center gap-5">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-blue-500"></span>
@@ -93,7 +93,7 @@ export const TrafficChart: React.FC<TrafficChartProps> = ({
               content={({ active, payload }) => {
                 if (active && payload && payload.length) {
                   return (
-                    <div className="bg-[#14161f] border border-[#292d3e] rounded-lg p-2.5 shadow-xl text-xs font-mono select-none pointer-events-none z-40">
+                    <div className="bg-[#0c0d13]/95 backdrop-blur-xl border border-white/[0.1] rounded-lg p-2.5 shadow-2xl text-xs font-mono select-none pointer-events-none z-40">
                       <div className="text-blue-400 flex items-center justify-between gap-5">
                         <span className="flex items-center gap-1.5 text-zinc-400">
                           <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>

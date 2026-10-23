@@ -74,7 +74,7 @@ const ToastCard: React.FC<{ toast: ToastItem; onDismiss: () => void }> = ({ toas
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, x: 20, scale: 0.96 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
-      className={`pointer-events-auto bg-[#1e2230] border ${getBorderAndGlow()} rounded-xl p-3.5 shadow-xl relative overflow-hidden flex flex-col justify-between`}
+      className={`pointer-events-auto bg-[#0c0d13]/95 backdrop-blur-xl border ${getBorderAndGlow()} rounded-xl p-3.5 shadow-2xl relative overflow-hidden flex flex-col justify-between`}
     >
       <div className="flex items-start gap-3">
         <div className="mt-0.5 p-1 rounded-lg bg-white/[0.04] border border-white/[0.06]">

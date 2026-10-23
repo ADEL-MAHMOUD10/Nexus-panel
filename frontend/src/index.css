@@ -4,10 +4,10 @@
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
-  --color-zinc-950: #12141c;
-  --color-zinc-900: #1a1d27;
-  --color-zinc-850: #1f2330;
-  --color-zinc-800: #292d3e;
+  --color-zinc-950: #07080b;
+  --color-zinc-900: #0d0e14;
+  --color-zinc-850: #12141c;
+  --color-zinc-800: #1b1d26;
 }
 
 :root {
@@ -18,17 +18,12 @@ html, body, #root {
   min-height: 100vh;
   margin: 0;
   padding: 0;
-  background-color: #151821;
+  background-color: #07080b;
   color: #f4f4f6;
   font-family: var(--font-sans);
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-image: 
-    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.055) 0%, transparent 65%),
-    radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 100% 100%, 28px 28px;
-  background-attachment: fixed;
 }
 
 /* Minimalist Clean Scrollbars */
@@ -40,21 +35,23 @@ html, body, #root {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.14);
   border-radius: 9999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.24);
 }
 
 /* Professional Enterprise Surface Classes */
 .nexus-surface {
-  background-color: #1e2230;
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  background-color: rgba(13, 14, 20, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .nexus-surface-hover:hover {
-  border-color: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.16);
+  background-color: rgba(18, 20, 28, 0.9);
 }
 
 /* Subtle clean indicator */

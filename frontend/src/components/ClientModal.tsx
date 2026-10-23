@@ -112,7 +112,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4">
-      <div className="bg-[#1e2230] border border-[#292d3e] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
+      <div className="bg-[#0c0d13]/95 backdrop-blur-2xl border border-white/[0.1] rounded-2xl w-full max-w-lg shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
           <h3 className="text-base font-bold text-white">
@@ -140,7 +140,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               value={inboundId}
               onChange={(e) => setInboundId(Number(e.target.value))}
               disabled={Boolean(clientToEdit)}
-              className="w-full px-3.5 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-white focus:outline-none"
+              className="w-full px-3.5 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none"
             >
               {inbounds.map((inb) => (
                 <option key={inb.id} value={inb.id}>
@@ -157,7 +157,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-white focus:outline-none font-sans"
+              className="w-full px-3.5 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-white focus:outline-none font-sans"
             />
           </div>
 
@@ -178,7 +178,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               required
               value={uuid}
               onChange={(e) => setUuid(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-white font-mono focus:outline-none"
+              className="w-full px-3.5 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
             />
           </div>
 
@@ -191,7 +191,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 value={quotaGB}
                 onChange={(e) => setQuotaGB(Number(e.target.value))}
                 placeholder="0 = Unlimited"
-                className="w-full px-3.5 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-white font-mono focus:outline-none"
+                className="w-full px-3.5 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
               />
             </div>
             <div>
@@ -202,7 +202,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 value={expiryDays}
                 onChange={(e) => setExpiryDays(Number(e.target.value))}
                 placeholder="0 = Permanent"
-                className="w-full px-3.5 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-white font-mono focus:outline-none"
+                className="w-full px-3.5 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-white font-mono focus:outline-none"
               />
             </div>
           </div>
@@ -212,7 +212,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             <select
               value={flow}
               onChange={(e) => setFlow(e.target.value)}
-              className="w-full px-3.5 py-2 bg-[#14161f] border border-[#292d3e] rounded-xl text-xs text-white font-mono"
+              className="w-full px-3.5 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-white font-mono"
             >
               <option value="xtls-rprx-vision">xtls-rprx-vision (Recommended for REALITY/TLS)</option>
               <option value="none">none (Standard)</option>

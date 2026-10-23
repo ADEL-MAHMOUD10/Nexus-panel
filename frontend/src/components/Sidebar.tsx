@@ -44,10 +44,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-[#1a1d27] border-r border-[#292d3e] flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
+    <aside className="w-64 bg-[#090a0f]/85 backdrop-blur-2xl border-r border-white/[0.07] flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
       {/* Top Branding Header */}
       <div>
-        <div className="h-16 px-4 flex items-center justify-between border-b border-[#292d3e]">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-white/[0.06]">
           <div className="flex items-center gap-2.5">
             {/* Minimalist Professional Logo Mark */}
             <div className="w-8 h-8 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-sm tracking-tighter shadow-sm font-sans shrink-0">
@@ -56,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="font-bold text-sm text-zinc-100 tracking-tight">Nexus</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#252938] text-zinc-300 border border-[#33384c] font-medium">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
                   v1.1
                 </span>
               </div>
@@ -69,7 +69,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onClick={onRestartXray}
             disabled={isRestartingXray}
             title={xrayRunning ? 'Core Active (Click to Restart)' : 'Core Inactive (Click to Restart)'}
-            className="p-1.5 rounded-lg border border-[#292d3e] hover:border-[#3a4058] bg-[#14161f] hover:bg-[#202432] text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 text-xs"
+            className="p-1.5 rounded-lg border border-white/[0.08] hover:border-white/[0.16] bg-white/[0.03] hover:bg-white/[0.06] text-zinc-400 hover:text-zinc-200 transition flex items-center gap-1.5 text-xs"
           >
             <span className={`w-1.5 h-1.5 rounded-full ${xrayRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
             <RefreshCw className={`w-3 h-3 text-zinc-400 ${isRestartingXray ? 'animate-spin text-emerald-400' : ''}`} />
@@ -117,9 +117,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Bottom Info & User Controls */}
-      <div className="p-3 border-t border-[#292d3e] space-y-2">
+      <div className="p-3 border-t border-white/[0.06] space-y-2">
         {/* Core Quick Summary Pill */}
-        <div className="p-2.5 rounded-lg bg-[#14161f] border border-[#292d3e] flex items-center justify-between">
+        <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.07] flex items-center justify-between">
           <div>
             <div className="flex items-center gap-1.5">
               <Power className={`w-3 h-3 ${xrayRunning ? 'text-emerald-500' : 'text-rose-500'}`} />
@@ -127,7 +127,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
             <span className="text-[11px] font-mono text-zinc-400">{xrayRunning ? 'Active & Routing' : 'Stopped'}</span>
           </div>
-          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#252938] text-zinc-300 border border-[#33384c]">
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
             {panelVersion || 'v1.1.0'}
           </span>
         </div>
@@ -135,7 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* User logout button */}
         <button
           onClick={onLogout}
-          className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-[#202432] transition"
+          className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] transition"
         >
           <div className="flex items-center gap-2">
             <LogOut className="w-3.5 h-3.5 text-zinc-400" />

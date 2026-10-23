@@ -88,13 +88,13 @@ export const NotificationCenter: React.FC = () => {
 
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#1e2230] border border-[#292d3e] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0c0d13]/95 backdrop-blur-2xl border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="p-3.5 border-b border-[#292d3e] flex items-center justify-between">
+          <div className="p-3.5 border-b border-white/[0.07] flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs font-semibold text-zinc-100">Notifications</span>
               {unreadCount > 0 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#252938] text-zinc-300 border border-[#33384c]">
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
                   {unreadCount} new
                 </span>
               )}
@@ -104,7 +104,7 @@ export const NotificationCenter: React.FC = () => {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-[#252938] transition"
+                  className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition"
                   title="Mark all as read"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
