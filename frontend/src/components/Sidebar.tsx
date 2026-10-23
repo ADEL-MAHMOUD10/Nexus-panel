@@ -49,19 +49,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div>
         <div className="h-18 px-5 flex items-center justify-between border-b border-white/[0.06]">
           <div className="flex items-center gap-3">
-            {/* Geometric Sliced N Logo */}
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-white/10 to-white/[0.02] border border-white/15 flex items-center justify-center shadow-lg relative overflow-hidden group">
-              <div className="absolute inset-0 bg-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              <svg viewBox="0 0 24 24" className="w-5 h-5 text-white" fill="currentColor">
-                <path d="M4 4h3.5l9 12V4H20v16h-3.5L7.5 8v12H4V4z" />
+            {/* Holographic Glowing Nexus Emblem */}
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 via-white/[0.05] to-transparent border border-cyan-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.25)] relative overflow-hidden group">
+              <div className="absolute inset-0 bg-cyan-400/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+              {/* Futuristic Angular N Glyph */}
+              <svg viewBox="0 0 24 24" className="w-5 h-5 text-cyan-300 drop-shadow-[0_0_8px_#22d3ee]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 20V4l16 16V4" />
               </svg>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="font-bold tracking-wider text-base text-white font-mono">NEXUS</span>
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-zinc-400">CORE</span>
+                <span className="font-black tracking-[0.22em] text-sm font-mono text-nexus-gradient text-nexus-glow">
+                  NEXUS
+                </span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-cyan-500/15 text-cyan-300 font-bold border border-cyan-500/30">
+                  CORE
+                </span>
               </div>
-              <span className="text-[10px] text-zinc-500 block leading-tight font-sans">Proxy Engine</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]"></span>
+                <span className="text-[10px] text-zinc-400 font-mono tracking-tight uppercase">Quantum Router</span>
+              </div>
             </div>
           </div>
 

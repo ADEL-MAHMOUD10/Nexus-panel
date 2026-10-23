@@ -37,22 +37,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen bg-[#090a0d] bg-subtle-grid flex items-center justify-center p-4 relative overflow-hidden select-none">
+    <div className="min-h-screen bg-cyber-canvas flex items-center justify-center p-4 relative overflow-hidden select-none">
       {/* Background glowing orbs */}
-      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none"></div>
-      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute top-1/4 left-1/3 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
+      <div className="absolute bottom-1/4 right-1/3 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
       {/* Login Card */}
-      <div className="w-full max-w-sm bg-[#0f1117] border border-white/[0.08] rounded-2xl p-7 shadow-2xl relative z-10">
+      <div className="w-full max-w-sm bg-[#0e1118]/90 backdrop-blur-2xl border border-white/[0.1] rounded-3xl p-8 shadow-2xl relative z-10">
         {/* Branding */}
-        <div className="text-center mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-white/10 to-white/[0.02] border border-white/15 flex items-center justify-center mx-auto shadow-xl mb-3">
-            <svg viewBox="0 0 24 24" className="w-6 h-6 text-white" fill="currentColor">
-              <path d="M4 4h3.5l9 12V4H20v16h-3.5L7.5 8v12H4V4z" />
+        <div className="text-center mb-7">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-white/[0.05] to-transparent border border-cyan-500/40 flex items-center justify-center mx-auto shadow-[0_0_25px_rgba(6,182,212,0.3)] mb-3.5 group">
+            <svg viewBox="0 0 24 24" className="w-7 h-7 text-cyan-300 drop-shadow-[0_0_8px_#22d3ee]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 20V4l16 16V4" />
             </svg>
           </div>
-          <h2 className="text-lg font-bold text-white tracking-wider font-mono">NEXUS PANEL</h2>
-          <p className="text-xs text-zinc-400 mt-1">Enterprise Proxy & Routing Control</p>
+          <h2 className="text-2xl font-black tracking-[0.25em] font-mono text-nexus-gradient text-nexus-glow">
+            NEXUS
+          </h2>
+          <p className="text-xs text-zinc-400 mt-1 font-mono uppercase tracking-wider text-[11px]">
+            Quantum Proxy Core
+          </p>
         </div>
 
         {error && (

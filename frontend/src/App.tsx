@@ -336,7 +336,7 @@ export function App() {
   });
 
   return (
-    <div className="flex h-screen bg-[#090a0d] text-zinc-100 overflow-hidden font-sans select-none">
+    <div className="flex h-screen bg-[#07080b] text-zinc-100 overflow-hidden font-sans select-none">
       {/* Sleek Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -387,7 +387,7 @@ export function App() {
         />
 
         {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 bg-subtle-grid">
+        <main className="flex-1 overflow-y-auto p-6 bg-cyber-canvas">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'overview' && (
               <DashboardPage

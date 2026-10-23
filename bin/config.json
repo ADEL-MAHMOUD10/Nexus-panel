@@ -58,6 +58,38 @@
           "fakedns"
         ]
       }
+    },
+    {
+      "tag": "in-2055-afc701",
+      "listen": "0.0.0.0",
+      "port": 2055,
+      "protocol": "vless",
+      "settings": {
+        "clients": null,
+        "decryption": "none",
+        "fallbacks": []
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "tls",
+        "tlsSettings": {
+          "alpn": [
+            "h2",
+            "http/1.1"
+          ],
+          "maxVersion": "1.3",
+          "minVersion": "1.2"
+        }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls",
+          "quic",
+          "fakedns"
+        ]
+      }
     }
   ],
   "outbounds": [
