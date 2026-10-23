@@ -14,8 +14,10 @@ import { ClientModal } from './components/ClientModal';
 import { ShareModal } from './components/ShareModal';
 import { UpdatesModal } from './components/UpdatesModal';
 import { LoginPage } from './pages/LoginPage';
+import { useNotification } from './context/NotificationContext';
 
 export function App() {
+  const { notify } = useNotification();
   const [token, setToken] = useState<string | null>(localStorage.getItem('nexus_token'));
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -149,10 +151,22 @@ export function App() {
       const res = await api.get('/api/server/check-updates');
       if (res.data) {
         setUpdates(res.data);
+        if (res.data.panel?.hasUpdate || res.data.xray?.hasUpdate) {
+          notify.info(
+            'Update Available',
+            res.data.panel?.hasUpdate 
+              ? `Nexus Panel ${res.data.panel.latestVersion} is ready to install.` 
+              : `Xray-core ${res.data.xray.latestVersion} update available.`,
+            {
+              label: 'View Updates',
+              onClick: () => setIsUpdatesModalOpen(true),
+            }
+          );
+        }
       }
     } catch (e) {}
     setIsCheckingUpdates(false);
-  }, []);
+  }, [notify]);
 
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
@@ -175,8 +189,11 @@ export function App() {
     setIsRestartingXray(true);
     try {
       await api.post('/api/server/restart-xray');
+      notify.success('Xray Core Restarted', 'Core service reloaded and synced with running configuration.');
       await refreshAll();
-    } catch (e) {}
+    } catch (e: any) {
+      notify.error('Restart Failed', e.response?.data?.message || 'Could not reload Xray kernel process');
+    }
     setIsRestartingXray(false);
   };
 
@@ -184,6 +201,7 @@ export function App() {
   const handleToggleEnable = async (inb: Inbound) => {
     try {
       await api.post(`/api/inbounds/toggle/${inb.id}`);
+      notify.info('Inbound Updated', `Listener on port ${inb.port} status changed.`);
       fetchInbounds();
     } catch (e) {}
   };
@@ -192,6 +210,7 @@ export function App() {
     if (!window.confirm('Reset traffic counters for this inbound?')) return;
     try {
       await api.post(`/api/inbounds/reset-traffic/${id}`);
+      notify.success('Traffic Counters Reset', 'Inbound traffic stats have been reset to zero.');
       fetchInbounds();
     } catch (e) {}
   };
@@ -199,6 +218,7 @@ export function App() {
   const handleCloneInbound = async (id: number) => {
     try {
       await api.post(`/api/inbounds/clone/${id}`);
+      notify.success('Inbound Cloned', 'Cloned listener created with unique port and credentials.');
       fetchInbounds();
     } catch (e) {}
   };
@@ -207,6 +227,7 @@ export function App() {
     if (!window.confirm('Are you sure you want to delete this inbound listener and all its client routes?')) return;
     try {
       await api.post('/api/inbounds/delete', { id });
+      notify.info('Inbound Deleted', 'Inbound listener has been removed.');
       fetchInbounds();
     } catch (e) {}
   };
@@ -216,6 +237,7 @@ export function App() {
     if (!window.confirm('Are you sure you want to delete this client account?')) return;
     try {
       await api.post('/api/clients/delete', { id });
+      notify.info('Client Deleted', 'Client account has been removed.');
       fetchInbounds();
     } catch (e) {}
   };
@@ -223,6 +245,7 @@ export function App() {
   const handleResetClientTraffic = async (id: number) => {
     try {
       await api.post(`/api/clients/reset-traffic/${id}`);
+      notify.success('Traffic Reset', 'Client usage statistics cleared.');
       fetchInbounds();
     } catch (e) {}
   };
@@ -273,7 +296,7 @@ export function App() {
         link,
       });
     } else {
-      alert('This inbound listener has no client accounts assigned yet.');
+      notify.warning('No Clients Found', 'This inbound listener has no client accounts assigned yet.');
     }
   };
 
@@ -290,13 +313,13 @@ export function App() {
     try {
       const res = await api.post('/api/server/issue-cert', { domain });
       if (res.data && res.data.success) {
-        alert(`SSL Certificate successfully issued for ${domain}!`);
+        notify.success('SSL Certificate Active', `Certificate successfully issued for ${domain}!`);
         fetchCertificates();
         return true;
       }
-      alert(res.data?.message || 'Certificate issuance failed');
+      notify.error('Issuance Failed', res.data?.message || 'Certificate issuance failed');
     } catch (e: any) {
-      alert(e.response?.data?.message || 'Failed to issue SSL certificate');
+      notify.error('SSL Error', e.response?.data?.message || 'Failed to issue SSL certificate');
     }
     return false;
   };

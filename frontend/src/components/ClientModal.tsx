@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, RefreshCw, Key } from 'lucide-react';
 import api from '../services/api';
 import { Client, Inbound } from '../types';
+import { useNotification } from '../context/NotificationContext';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   inbounds,
   clientToEdit,
 }) => {
+  const { notify } = useNotification();
   const [inboundId, setInboundId] = useState<number>(inbounds[0]?.id || 1);
   const [email, setEmail] = useState('');
   const [uuid, setUuid] = useState('');
@@ -89,13 +91,18 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
       const res = await api.post(endpoint, payload);
       if (res.data && res.data.success) {
+        notify.success('Client Saved', clientToEdit ? `Client ${email} updated successfully.` : `New client ${email} added.`);
         onSaved();
         onClose();
       } else {
-        setError(res.data?.message || 'Failed to save client');
+        const msg = res.data?.message || 'Failed to save client';
+        setError(msg);
+        notify.error('Save Failed', msg);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Error communicating with server');
+      const msg = err.response?.data?.message || 'Error communicating with server';
+      setError(msg);
+      notify.error('Save Error', msg);
     } finally {
       setIsSubmitting(false);
     }

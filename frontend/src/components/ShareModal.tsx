@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Copy, Check, QrCode as QrIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { useNotification } from '../context/NotificationContext';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   title,
   link,
 }) => {
+  const { notify } = useNotification();
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -22,6 +24,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   const handleCopy = () => {
     navigator.clipboard.writeText(link);
     setCopied(true);
+    notify.success('Copied to Clipboard', 'VLESS subscription URL copied to clipboard.');
     setTimeout(() => setCopied(false), 2000);
   };
 

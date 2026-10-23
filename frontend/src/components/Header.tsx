@@ -6,6 +6,7 @@ import {
   ShieldAlert,
   Server
 } from 'lucide-react';
+import { NotificationCenter } from './NotificationCenter';
 
 interface HeaderProps {
   title: string;
@@ -89,6 +90,9 @@ export const Header: React.FC<HeaderProps> = ({
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-cyan-400' : ''}`} />
         </button>
+
+        {/* Next-gen Notification Center */}
+        <NotificationCenter />
       </div>
     </header>
   );

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, RefreshCw, ArrowUpCircle, CheckCircle, AlertTriangle } from 'lucide-react';
 import api from '../services/api';
 import { UpdateInfo } from '../types';
+import { useNotification } from '../context/NotificationContext';
 
 interface UpdatesModalProps {
   isOpen: boolean;
@@ -18,6 +19,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
   onRefresh,
   isChecking,
 }) => {
+  const { notify } = useNotification();
   const [isUpdatingPanel, setIsUpdatingPanel] = useState(false);
   const [isUpdatingXray, setIsUpdatingXray] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -31,12 +33,17 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
       const res = await api.post('/api/server/update-panel', { version: updates.panel.latestVersion || 'latest' });
       if (res.data && res.data.success) {
         setToastMsg('Panel update launched successfully! Reloading in 3 seconds...');
+        notify.success('Panel Updating', 'New binary downloading, service will reload in 3s.');
         setTimeout(() => window.location.reload(), 3000);
       } else {
-        setToastMsg(res.data?.message || 'Panel update failed');
+        const msg = res.data?.message || 'Panel update failed';
+        setToastMsg(msg);
+        notify.error('Update Failed', msg);
       }
     } catch (e: any) {
-      setToastMsg('Update error: ' + (e.response?.data?.message || e.message));
+      const msg = 'Update error: ' + (e.response?.data?.message || e.message);
+      setToastMsg(msg);
+      notify.error('Update Error', msg);
     } finally {
       setIsUpdatingPanel(false);
     }
@@ -49,12 +56,17 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
       const res = await api.post('/api/server/update-xray', { version: updates.xray.latestVersion || 'v26.10.10' });
       if (res.data && res.data.success) {
         setToastMsg('Xray-core updated and restarted successfully!');
+        notify.success('Xray Updated', 'Kernel replaced and reloaded successfully.');
         onRefresh();
       } else {
-        setToastMsg(res.data?.message || 'Xray kernel update failed');
+        const msg = res.data?.message || 'Xray kernel update failed';
+        setToastMsg(msg);
+        notify.error('Xray Update Failed', msg);
       }
     } catch (e: any) {
-      setToastMsg('Update error: ' + (e.response?.data?.message || e.message));
+      const msg = 'Update error: ' + (e.response?.data?.message || e.message);
+      setToastMsg(msg);
+      notify.error('Xray Error', msg);
     } finally {
       setIsUpdatingXray(false);
     }

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, AlertCircle, Key, RefreshCw, Shield, Sparkles } from 'lucide-react';
 import api from '../services/api';
 import { Inbound } from '../types';
+import { useNotification } from '../context/NotificationContext';
 
 interface InboundModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   onSaved,
   inboundToEdit,
 }) => {
+  const { notify } = useNotification();
   const [activeTab, setActiveTab] = useState<'basics' | 'transport' | 'security'>('basics');
   
   // Basics Form
@@ -206,13 +208,18 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
       const res = await api.post(endpoint, payload);
       if (res.data && res.data.success) {
+        notify.success('Inbound Saved', inboundToEdit ? 'Inbound listener updated successfully.' : 'New inbound listener created successfully.');
         onSaved();
         onClose();
       } else {
-        setErrorMessage(res.data?.message || 'Failed to save inbound listener');
+        const msg = res.data?.message || 'Failed to save inbound listener';
+        setErrorMessage(msg);
+        notify.error('Save Failed', msg);
       }
     } catch (e: any) {
-      setErrorMessage(e.response?.data?.message || 'Error communicating with server');
+      const msg = e.response?.data?.message || 'Error communicating with server';
+      setErrorMessage(msg);
+      notify.error('Save Error', msg);
     } finally {
       setIsSubmitting(false);
     }
