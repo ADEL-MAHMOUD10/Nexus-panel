@@ -128,18 +128,27 @@ func main() {
 		defer ctrl.Close()
 	}
 
-	// Background Traffic & Online Monitoring Worker (every 5 seconds, matching 3x-ui)
+	// Background Traffic & Online Monitoring Worker (every 2.5 seconds for responsive real-time speed & online tracking)
 	go func() {
-		ticker := time.NewTicker(5 * time.Second)
+		ticker := time.NewTicker(2500 * time.Millisecond)
 		defer ticker.Stop()
+		lastTickTime := time.Now()
 
 		for range ticker.C {
 			if ctrl == nil {
 				continue
 			}
 
-			now := time.Now().Unix()
+			nowTime := time.Now()
+			dt := nowTime.Sub(lastTickTime).Seconds()
+			if dt <= 0 {
+				dt = 2.5
+			}
+			lastTickTime = nowTime
+
+			now := nowTime.Unix()
 			activeEmailsMap := make(map[string]bool)
+			var activeThisTick []string
 
 			// 1. Query live traffic deltas from Xray core
 			inboundTraffics, clientTraffics, err := ctrl.GetTraffic()
@@ -151,14 +160,19 @@ func main() {
 					}
 				}
 
-				// Record client traffic deltas
+				// Record client traffic deltas & compute real-time transfer rates
 				for _, ct := range clientTraffics {
 					if ct.Up > 0 || ct.Down > 0 {
 						activeEmailsMap[ct.Email] = true
+						activeThisTick = append(activeThisTick, ct.Email)
 						_ = db.AddClientTraffic(ct.Email, ct.Up, ct.Down, now)
+						ctrl.UpdateClientSpeed(ct.Email, ct.Up, ct.Down, dt)
 					}
 				}
 			}
+
+			// Decay speeds for clients with zero traffic this cycle
+			ctrl.DecayClientSpeeds(activeThisTick)
 
 			// 2. Query currently connected users from Xray (StatsUserOnline)
 			onlineUsers, err := ctrl.GetOnlineUsers()

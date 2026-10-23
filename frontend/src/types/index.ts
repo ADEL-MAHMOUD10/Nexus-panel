@@ -81,6 +81,13 @@ export interface Client {
   subId: string;
   lastOnline?: number;
   isOnline?: boolean;
+  upSpeed?: number;
+  downSpeed?: number;
+  inboundTag?: string;
+  inboundPort?: number;
+  inboundProtocol?: string;
+  inboundRemark?: string;
+  link?: string;
 }
 
 export interface Inbound {

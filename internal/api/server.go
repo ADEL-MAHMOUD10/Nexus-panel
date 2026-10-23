@@ -34,6 +34,7 @@ import (
 	"github.com/shirou/gopsutil/v3/host"
 	"github.com/shirou/gopsutil/v3/mem"
 	psNet "github.com/shirou/gopsutil/v3/net"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 // Server handles REST API endpoints for Nexus
@@ -130,6 +131,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/clients/update", s.authMiddleware(s.handleUpdateClient))
 	mux.HandleFunc("POST /api/clients/update/{email}", s.authMiddleware(s.handleUpdateClient))
 	mux.HandleFunc("POST /panel/api/clients/update/{email}", s.authMiddleware(s.handleUpdateClient))
+	mux.HandleFunc("POST /api/clients/toggle/{id}", s.authMiddleware(s.handleToggleClient))
+	mux.HandleFunc("POST /panel/api/clients/toggle/{id}", s.authMiddleware(s.handleToggleClient))
 
 	mux.HandleFunc("POST /api/clients/delete", s.authMiddleware(s.handleDeleteClient))
 	mux.HandleFunc("POST /api/clients/del/{email}", s.authMiddleware(s.handleDeleteClient))
@@ -304,12 +307,14 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 
 	type ClientWithLink struct {
 		database.Client
-		Link            string `json:"link"`
-		InboundTag      string `json:"inboundTag"`
-		InboundPort     int    `json:"inboundPort"`
-		InboundProtocol string `json:"inboundProtocol"`
-		InboundRemark   string `json:"inboundRemark"`
-		IsOnline        bool   `json:"isOnline"`
+		Link            string  `json:"link"`
+		InboundTag      string  `json:"inboundTag"`
+		InboundPort     int     `json:"inboundPort"`
+		InboundProtocol string  `json:"inboundProtocol"`
+		InboundRemark   string  `json:"inboundRemark"`
+		IsOnline        bool    `json:"isOnline"`
+		UpSpeed         float64 `json:"upSpeed"`
+		DownSpeed       float64 `json:"downSpeed"`
 	}
 
 	type InboundWithClients struct {
@@ -324,6 +329,10 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
 			isOnline := s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)
+			var upSpd, downSpd float64
+			if s.xrayController != nil {
+				upSpd, downSpd = s.xrayController.GetClientSpeed(c.Email)
+			}
 			clientsWithLinks = append(clientsWithLinks, ClientWithLink{
 				Client:          c,
 				Link:            link,
@@ -332,6 +341,8 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 				InboundProtocol: in.Protocol,
 				InboundRemark:   in.Remark,
 				IsOnline:        isOnline,
+				UpSpeed:         upSpd,
+				DownSpeed:       downSpd,
 			})
 		}
 		result = append(result, InboundWithClients{
@@ -358,12 +369,14 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 
 	type ClientItem struct {
 		database.Client
-		Link            string `json:"link"`
-		InboundTag      string `json:"inboundTag"`
-		InboundPort     int    `json:"inboundPort"`
-		InboundProtocol string `json:"inboundProtocol"`
-		InboundRemark   string `json:"inboundRemark"`
-		IsOnline        bool   `json:"isOnline"`
+		Link            string  `json:"link"`
+		InboundTag      string  `json:"inboundTag"`
+		InboundPort     int     `json:"inboundPort"`
+		InboundProtocol string  `json:"inboundProtocol"`
+		InboundRemark   string  `json:"inboundRemark"`
+		IsOnline        bool    `json:"isOnline"`
+		UpSpeed         float64 `json:"upSpeed"`
+		DownSpeed       float64 `json:"downSpeed"`
 	}
 
 	var allClients []ClientItem
@@ -372,6 +385,10 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
 			isOnline := s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)
+			var upSpd, downSpd float64
+			if s.xrayController != nil {
+				upSpd, downSpd = s.xrayController.GetClientSpeed(c.Email)
+			}
 			allClients = append(allClients, ClientItem{
 				Client:          c,
 				Link:            link,
@@ -380,6 +397,8 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 				InboundProtocol: in.Protocol,
 				InboundRemark:   in.Remark,
 				IsOnline:        isOnline,
+				UpSpeed:         upSpd,
+				DownSpeed:       downSpd,
 			})
 		}
 	}
@@ -857,6 +876,71 @@ func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "client": c})
+}
+
+func (s *Server) handleToggleClient(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil || id <= 0 {
+		http.Error(w, "invalid client id", http.StatusBadRequest)
+		return
+	}
+
+	inbounds, err := s.db.GetAllInbounds()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var targetClient *database.Client
+	var targetInbound *database.Inbound
+
+	for _, in := range inbounds {
+		clients, _ := s.db.GetClientsByInbound(in.ID)
+		for _, c := range clients {
+			if c.ID == id {
+				cp := c
+				targetClient = &cp
+				inp := in
+				targetInbound = &inp
+				break
+			}
+		}
+		if targetClient != nil {
+			break
+		}
+	}
+
+	if targetClient == nil {
+		http.Error(w, "client not found", http.StatusNotFound)
+		return
+	}
+
+	targetClient.Enable = !targetClient.Enable
+	if err := s.db.SaveClient(targetClient); err != nil {
+		http.Error(w, "failed to update client: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Update live Xray controller dynamically
+	if s.xrayController != nil && targetInbound != nil {
+		if targetClient.Enable {
+			if targetInbound.Protocol == "vless" {
+				_ = s.xrayController.AddVlessUser(targetInbound.Tag, targetClient.Email, targetClient.UUID, targetClient.Flow)
+			} else if targetInbound.Protocol == "trojan" {
+				_ = s.xrayController.AddTrojanUser(targetInbound.Tag, targetClient.Email, targetClient.Password)
+			}
+		} else {
+			_ = s.xrayController.RemoveUser(targetInbound.Tag, targetClient.Email)
+		}
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"enable":  targetClient.Enable,
+		"id":      targetClient.ID,
+		"email":   targetClient.Email,
+	})
 }
 
 func (s *Server) getXrayVersion() string {
@@ -1720,11 +1804,37 @@ func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 		udpCount = 2
 	}
 
-	// Panel Telemetry
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-	panelMemMB := float64(memStats.Alloc) / (1024 * 1024)
+	// Panel & Core Real Physical Memory Footprint (OS Resident Set Size / RSS Working Set)
+	panelMemMB := float64(0)
 	threads := runtime.NumGoroutine()
+
+	if curProc, err := process.NewProcess(int32(os.Getpid())); err == nil {
+		if mInfo, err := curProc.MemoryInfo(); err == nil && mInfo.RSS > 0 {
+			panelMemMB = float64(mInfo.RSS) / (1024 * 1024)
+		}
+		if numTh, err := curProc.NumThreads(); err == nil && numTh > 0 {
+			threads = int(numTh)
+		}
+	}
+
+	// Include child Xray kernel process physical RSS if active
+	if s.processManager != nil && s.processManager.GetPid() > 0 {
+		if xProc, err := process.NewProcess(int32(s.processManager.GetPid())); err == nil {
+			if mInfo, err := xProc.MemoryInfo(); err == nil && mInfo.RSS > 0 {
+				panelMemMB += float64(mInfo.RSS) / (1024 * 1024)
+			}
+			if numTh, err := xProc.NumThreads(); err == nil && numTh > 0 {
+				threads += int(numTh)
+			}
+		}
+	}
+
+	// Fallback to runtime OS memory allocation (Sys) if OS process query was unavailable
+	if panelMemMB <= 0 {
+		var memStats runtime.MemStats
+		runtime.ReadMemStats(&memStats)
+		panelMemMB = float64(memStats.Sys) / (1024 * 1024)
+	}
 
 	// Real Public IP Detection
 	publicIP := s.getRealPublicIP(r)

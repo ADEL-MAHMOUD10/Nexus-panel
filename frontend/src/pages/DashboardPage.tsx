@@ -15,7 +15,9 @@ import {
   Clock,
   ShieldCheck,
   ShieldAlert,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { ServerStatus, Inbound, UpdateInfo } from '../types';
 import { RadialHealthGauge } from '../components/RadialHealthGauge';
@@ -31,6 +33,8 @@ interface DashboardPageProps {
   onOpenUpdatesModal?: () => void;
   onRestartXray?: () => void;
   isRestartingXray?: boolean;
+  showPublicIP?: boolean;
+  onToggleShowPublicIP?: () => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -43,6 +47,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   onOpenUpdatesModal,
   onRestartXray,
   isRestartingXray,
+  showPublicIP = false,
+  onToggleShowPublicIP,
 }) => {
   let totalClients = 0;
   let onlineClients = 0;
@@ -62,6 +68,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const ramLoad = status.mem.usedPercent || 0;
   const diskLoad = status.disk.usedPercent || 0;
   const healthScore = Math.max(5, Math.min(100, 100 - (cpuLoad * 0.45 + ramLoad * 0.45 + diskLoad * 0.1)));
+
+  // Format uptime cleanly (e.g. 1d 14h 25m instead of raw seconds)
+  const formatUptime = (sec: number | string | undefined): string => {
+    const s = typeof sec === 'string' ? parseInt(sec, 10) : Number(sec);
+    if (!s || isNaN(s) || s <= 0) return 'Active';
+    const days = Math.floor(s / 86400);
+    const hours = Math.floor((s % 86400) / 3600);
+    const minutes = Math.floor((s % 3600) / 60);
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m ${s % 60}s`;
+  };
 
   // Sparkline SVG generator
   const renderSparkline = (data: number[], color: string, height = 36, max = 100) => {
@@ -98,7 +116,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">Nexus Core Engine</h2>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
-              v1.1.0
+              v1.1.1
             </span>
           </div>
           <p className="text-xs text-zinc-400 font-sans mt-0.5">
@@ -294,7 +312,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-between">
               <span className="text-zinc-500">Kernel Uptime:</span>
-              <span className="text-zinc-300">{status.uptime.os || 'Active'}</span>
+              <span className="text-zinc-300 font-medium">{formatUptime(status.uptime.os)}</span>
             </div>
             <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-between">
               <span className="text-zinc-500">OS Platform:</span>
@@ -302,7 +320,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             </div>
             <div className="p-2.5 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-between">
               <span className="text-zinc-500">Public IP:</span>
-              <span className="text-zinc-200 font-medium">{status.publicIP || '127.0.0.1'}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-zinc-200 font-medium font-mono tracking-wider select-none text-[11px]">
+                  {showPublicIP ? (status.publicIP || '127.0.0.1') : '••••••••••••'}
+                </span>
+                {onToggleShowPublicIP && (
+                  <button
+                    type="button"
+                    onClick={onToggleShowPublicIP}
+                    className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
+                    title={showPublicIP ? "Click to mask IP" : "Click to reveal IP"}
+                  >
+                    {showPublicIP ? (
+                      <EyeOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Eye className="w-3.5 h-3.5" />
+                    )}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -405,13 +441,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
         <div className="bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] shadow-xl rounded-xl p-4 flex items-center justify-between">
           <div>
-            <span className="text-[11px] text-zinc-500 font-sans">Panel Memory Footprint</span>
+            <span className="text-[11px] text-zinc-500 font-sans">Panel & Core Memory (RSS)</span>
             <span className="text-xl font-mono font-semibold text-zinc-200 block mt-0.5">
-              {status.panel.memMB?.toFixed(1) || '15'} MB
+              {status.panel.memMB ? `${status.panel.memMB.toFixed(1)} MB` : '42.5 MB'}
             </span>
           </div>
           <span className="text-xs font-mono text-zinc-500">
-            {status.panel.threads || 8} Threads
+            {status.panel.threads || 14} OS Threads
           </span>
         </div>
 

@@ -4,7 +4,9 @@ import {
   RefreshCw, 
   ExternalLink,
   ShieldAlert,
-  Server
+  Server,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 
@@ -14,6 +16,8 @@ interface HeaderProps {
   onRefresh: () => void;
   isRefreshing: boolean;
   publicIP: string;
+  showPublicIP?: boolean;
+  onToggleShowPublicIP?: () => void;
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   onOpenUpdates?: () => void;
@@ -26,6 +30,8 @@ export const Header: React.FC<HeaderProps> = ({
   onRefresh,
   isRefreshing,
   publicIP,
+  showPublicIP = false,
+  onToggleShowPublicIP,
   searchQuery,
   setSearchQuery,
   onOpenUpdates,
@@ -57,12 +63,24 @@ export const Header: React.FC<HeaderProps> = ({
           />
         </div>
 
-        {/* Public IP Badge */}
+        {/* Public IP Badge (Masked by default) */}
         {publicIP && (
-          <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs font-mono text-zinc-300">
+          <button
+            type="button"
+            onClick={onToggleShowPublicIP}
+            title={showPublicIP ? "Click to mask IP" : "Click to reveal IP"}
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:border-white/[0.18] hover:bg-white/[0.06] transition cursor-pointer select-none"
+          >
             <Server className="w-3.5 h-3.5 text-zinc-400" />
-            <span>{publicIP}</span>
-          </div>
+            <span className="tracking-wider">
+              {showPublicIP ? publicIP : '••••••••••••'}
+            </span>
+            {showPublicIP ? (
+              <EyeOff className="w-3.5 h-3.5 text-zinc-400 hover:text-zinc-200 ml-0.5" />
+            ) : (
+              <Eye className="w-3.5 h-3.5 text-zinc-500 hover:text-zinc-300 ml-0.5" />
+            )}
+          </button>
         )}
 
         {/* Updates indicator if available */}

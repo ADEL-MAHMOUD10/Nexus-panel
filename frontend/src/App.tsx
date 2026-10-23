@@ -67,6 +67,19 @@ export function App() {
     link: '',
   });
 
+  // Public IP visibility (masked by default, persists in localStorage)
+  const [showPublicIP, setShowPublicIP] = useState<boolean>(() => {
+    return localStorage.getItem('nexus_show_public_ip') === 'true';
+  });
+
+  const handleToggleShowPublicIP = () => {
+    setShowPublicIP((prev) => {
+      const next = !prev;
+      localStorage.setItem('nexus_show_public_ip', String(next));
+      return next;
+    });
+  };
+
   // Handle unauthorized event
   useEffect(() => {
     const handleUnauthorized = () => {
@@ -85,11 +98,17 @@ export function App() {
   };
 
   const formatSpeed = (bytesPerSec: number): string => {
-    if (!bytesPerSec || bytesPerSec === 0) return '0 KB/s';
-    if (bytesPerSec >= 1024 * 1024) {
-      return (bytesPerSec / (1024 * 1024)).toFixed(1) + ' MB/s';
+    if (!bytesPerSec || bytesPerSec === 0) return '0 B/s';
+    if (bytesPerSec >= 1024 * 1024 * 1024) {
+      return (bytesPerSec / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s';
     }
-    return (bytesPerSec / 1024).toFixed(1) + ' KB/s';
+    if (bytesPerSec >= 1024 * 1024) {
+      return (bytesPerSec / (1024 * 1024)).toFixed(2) + ' MB/s';
+    }
+    if (bytesPerSec >= 1024) {
+      return (bytesPerSec / 1024).toFixed(2) + ' KB/s';
+    }
+    return Math.round(bytesPerSec) + ' B/s';
   };
 
   // Fetch telemetry status
@@ -186,9 +205,12 @@ export function App() {
     refreshAll();
     const interval = setInterval(() => {
       fetchStatus();
+      if (activeTab === 'clients' || activeTab === 'inbounds') {
+        fetchInbounds();
+      }
     }, 2500);
     return () => clearInterval(interval);
-  }, [token, refreshAll, fetchStatus]);
+  }, [token, refreshAll, fetchStatus, fetchInbounds, activeTab]);
 
   // Restart Xray-core
   const handleRestartXray = async () => {
@@ -389,6 +411,8 @@ export function App() {
           onRefresh={refreshAll}
           isRefreshing={isRefreshing}
           publicIP={status.publicIP}
+          showPublicIP={showPublicIP}
+          onToggleShowPublicIP={handleToggleShowPublicIP}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
           onOpenUpdates={() => setIsUpdatesModalOpen(true)}
@@ -409,6 +433,8 @@ export function App() {
                 onOpenUpdatesModal={() => setIsUpdatesModalOpen(true)}
                 onRestartXray={handleRestartXray}
                 isRestartingXray={isRestartingXray}
+                showPublicIP={showPublicIP}
+                onToggleShowPublicIP={handleToggleShowPublicIP}
               />
             )}
 
@@ -447,6 +473,8 @@ export function App() {
                 onResetClientTraffic={handleResetClientTraffic}
                 onShareClient={handleShareClient}
                 formatBytes={formatBytes}
+                formatSpeed={formatSpeed}
+                onRefreshInbounds={fetchInbounds}
               />
             )}
 

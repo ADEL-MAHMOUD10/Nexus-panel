@@ -43,6 +43,13 @@ type UserTraffic struct {
 	Downlink int64  `json:"downlink"`
 }
 
+// ClientSpeed holds real-time transfer rate for a user
+type ClientSpeed struct {
+	UpSpeed   float64 `json:"upSpeed"`   // Bytes/sec
+	DownSpeed float64 `json:"downSpeed"` // Bytes/sec
+	LastSeen  int64   `json:"lastSeen"`
+}
+
 // Controller manages the Xray-core instance via its internal gRPC API
 type Controller struct {
 	mu            sync.Mutex
@@ -56,6 +63,9 @@ type Controller struct {
 	onlineMu     sync.RWMutex
 	lastSeenMap  map[string]int64
 	onlineEmails []string
+
+	speedMu      sync.RWMutex
+	clientSpeeds map[string]*ClientSpeed
 }
 
 // NewController creates a new gRPC controller for Xray core and attempts initial connection
@@ -65,6 +75,7 @@ func NewController(apiAddress string) (*Controller, error) {
 		lastStats:    make(map[string]int64),
 		lastSeenMap:  make(map[string]int64),
 		onlineEmails: make([]string, 0),
+		clientSpeeds: make(map[string]*ClientSpeed),
 	}
 
 	_ = c.ensureConnected()
@@ -391,4 +402,64 @@ func (c *Controller) QueryTraffic() (map[string]*UserTraffic, error) {
 		}
 	}
 	return result, nil
+}
+
+// UpdateClientSpeed registers a delta transfer for an email over dt seconds
+func (c *Controller) UpdateClientSpeed(email string, deltaUp, deltaDown int64, dt float64) {
+	c.speedMu.Lock()
+	defer c.speedMu.Unlock()
+	if c.clientSpeeds == nil {
+		c.clientSpeeds = make(map[string]*ClientSpeed)
+	}
+	if dt <= 0 {
+		dt = 1.0
+	}
+	upSpd := float64(deltaUp) / dt
+	downSpd := float64(deltaDown) / dt
+	c.clientSpeeds[email] = &ClientSpeed{
+		UpSpeed:   upSpd,
+		DownSpeed: downSpd,
+		LastSeen:  time.Now().Unix(),
+	}
+}
+
+// GetClientSpeed returns the latest up and down transfer rates (bytes/sec) for an email
+func (c *Controller) GetClientSpeed(email string) (float64, float64) {
+	c.speedMu.RLock()
+	defer c.speedMu.RUnlock()
+	if c.clientSpeeds == nil {
+		return 0, 0
+	}
+	if spd, ok := c.clientSpeeds[email]; ok {
+		// If last active was > 10s ago, speed drops to 0
+		if time.Now().Unix()-spd.LastSeen > 10 {
+			return 0, 0
+		}
+		return spd.UpSpeed, spd.DownSpeed
+	}
+	return 0, 0
+}
+
+// DecayClientSpeeds decays speeds to 0 for clients not present in active list
+func (c *Controller) DecayClientSpeeds(activeThisTick []string) {
+	c.speedMu.Lock()
+	defer c.speedMu.Unlock()
+	if c.clientSpeeds == nil {
+		return
+	}
+	activeMap := make(map[string]bool)
+	for _, e := range activeThisTick {
+		activeMap[e] = true
+	}
+	now := time.Now().Unix()
+	for email, spd := range c.clientSpeeds {
+		if !activeMap[email] {
+			spd.UpSpeed = 0
+			spd.DownSpeed = 0
+			// If not seen for over 30s, prune
+			if now-spd.LastSeen > 30 {
+				delete(c.clientSpeeds, email)
+			}
+		}
+	}
 }

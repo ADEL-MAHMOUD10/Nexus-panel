@@ -53,6 +53,16 @@ func (m *ProcessManager) IsRunning() bool {
 	return m.running
 }
 
+// GetPid returns the operating system process ID if running, or 0
+func (m *ProcessManager) GetPid() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	if !m.running || m.cmd == nil || m.cmd.Process == nil {
+		return 0
+	}
+	return m.cmd.Process.Pid
+}
+
 // GetUptime returns how long Xray core has been running
 func (m *ProcessManager) GetUptime() time.Duration {
 	m.mu.RLock()
