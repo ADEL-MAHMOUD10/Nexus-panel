@@ -336,7 +336,12 @@ export function App() {
   });
 
   return (
-    <div className="flex h-screen bg-[#07080b] text-zinc-100 overflow-hidden font-sans select-none">
+    <div className="flex h-screen bg-transparent text-zinc-100 overflow-hidden font-sans select-none relative">
+      {/* Global Ambient Cyber Aurora Glows across the entire window */}
+      <div className="fixed -top-24 left-1/4 w-[700px] h-[450px] bg-cyan-500/10 rounded-full blur-[140px] pointer-events-none z-0"></div>
+      <div className="fixed -bottom-24 right-1/4 w-[700px] h-[450px] bg-indigo-500/10 rounded-full blur-[150px] pointer-events-none z-0"></div>
+      <div className="fixed top-1/3 left-0 w-[450px] h-[350px] bg-emerald-500/5 rounded-full blur-[140px] pointer-events-none z-0"></div>
+
       {/* Sleek Sidebar */}
       <Sidebar
         activeTab={activeTab}
@@ -354,7 +359,7 @@ export function App() {
       />
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10">
         {/* Header */}
         <Header
           title={
@@ -387,7 +392,7 @@ export function App() {
         />
 
         {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-6 bg-cyber-canvas">
+        <main className="flex-1 overflow-y-auto p-6 bg-transparent">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'overview' && (
               <DashboardPage

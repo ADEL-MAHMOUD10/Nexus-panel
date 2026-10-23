@@ -32,7 +32,7 @@ export const Header: React.FC<HeaderProps> = ({
   hasUpdates,
 }) => {
   return (
-    <header className="h-18 border-b border-white/[0.06] bg-[#0c0d12]/60 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-20 select-none">
+    <header className="h-18 border-b border-white/[0.07] bg-[#07090e]/60 backdrop-blur-xl px-6 flex items-center justify-between sticky top-0 z-20 select-none">
       {/* View Title */}
       <div>
         <h1 className="text-lg font-bold text-white tracking-wide flex items-center gap-2">

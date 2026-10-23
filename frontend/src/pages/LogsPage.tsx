@@ -57,7 +57,7 @@ export const LogsPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-[#0f1117] border border-white/[0.07] rounded-2xl p-4 shadow-xl">
+      <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 shadow-xl">
         <div className="bg-[#090a0d] border border-white/[0.06] rounded-xl p-4 h-[620px] overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1">
           {logs.length === 0 ? (
             <div className="text-zinc-600 text-center py-20 font-sans">

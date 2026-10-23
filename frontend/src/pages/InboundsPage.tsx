@@ -103,7 +103,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
 
       {/* Inbounds Cards Grid */}
       {filteredInbounds.length === 0 ? (
-        <div className="py-20 text-center bg-[#0f1117] border border-white/[0.06] rounded-2xl p-8">
+        <div className="py-20 text-center bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.07] rounded-2xl p-8">
           <Radio className="w-10 h-10 text-zinc-600 mx-auto mb-3 animate-pulse" />
           <h3 className="text-base font-bold text-zinc-300">No Inbounds Found</h3>
           <p className="text-xs text-zinc-500 mt-1 max-w-sm mx-auto">
@@ -129,7 +129,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
             return (
               <div
                 key={inb.id}
-                className="bg-[#0f1117] border border-white/[0.07] hover:border-white/[0.14] rounded-2xl p-5 shadow-lg flex flex-col justify-between transition-all group relative overflow-hidden"
+                className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] rounded-2xl p-5 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden"
               >
                 {/* Protocol Accent Color Stripe */}
                 <div

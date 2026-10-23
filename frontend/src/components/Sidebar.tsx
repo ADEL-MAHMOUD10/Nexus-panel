@@ -44,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-[#0c0d12] border-r border-white/[0.06] flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
+    <aside className="w-64 bg-[#07090e]/80 backdrop-blur-2xl border-r border-white/[0.07] flex flex-col justify-between shrink-0 h-screen select-none relative z-30">
       {/* Top Branding Header */}
       <div>
         <div className="h-18 px-5 flex items-center justify-between border-b border-white/[0.06]">

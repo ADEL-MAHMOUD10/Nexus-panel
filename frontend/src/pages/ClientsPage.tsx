@@ -129,7 +129,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
       </div>
 
       {/* Clients Table Card */}
-      <div className="bg-[#0f1117] border border-white/[0.07] rounded-2xl shadow-xl overflow-hidden">
+      <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl shadow-xl overflow-hidden">
         {filtered.length === 0 ? (
           <div className="py-20 text-center text-zinc-500 text-xs font-sans">
             <Users className="w-10 h-10 text-zinc-600 mx-auto mb-3 opacity-60" />

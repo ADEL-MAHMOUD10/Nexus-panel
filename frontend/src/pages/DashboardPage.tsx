@@ -93,20 +93,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   return (
     <div className="space-y-6">
       {/* 0. NEXUS EXECUTIVE HERO BRANDING BANNER */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0b0e14] via-[#0e121a] to-[#0b0e14] border border-white/[0.08] p-6 shadow-2xl">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[#0a0d16]/85 via-[#0e121e]/85 to-[#0a0d16]/85 backdrop-blur-2xl border border-white/[0.09] p-6 shadow-2xl">
         {/* Ambient Glows */}
-        <div className="absolute -top-20 -left-20 w-64 h-64 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -top-20 -left-20 w-64 h-64 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
 
         {/* Ambient Big Translucent NEXUS Watermark in Background */}
-        <div className="absolute right-6 -bottom-6 select-none pointer-events-none font-mono font-black text-7xl sm:text-8xl tracking-[0.25em] text-white/[0.02] uppercase">
+        <div className="absolute right-6 -bottom-6 select-none pointer-events-none font-mono font-black text-7xl sm:text-8xl tracking-[0.25em] text-white/[0.03] uppercase">
           NEXUS
         </div>
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             {/* Glowing Emblem */}
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-white/[0.04] to-transparent border border-cyan-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.25)] shrink-0 group">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500/25 via-white/[0.06] to-transparent border border-cyan-500/40 flex items-center justify-center shadow-[0_0_25px_rgba(6,182,212,0.3)] shrink-0 group">
               <svg viewBox="0 0 24 24" className="w-7 h-7 text-cyan-300 drop-shadow-[0_0_10px_#22d3ee]" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M4 20V4l16 16V4" />
               </svg>
@@ -117,7 +117,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
                 <h2 className="text-2xl sm:text-3xl font-black tracking-[0.26em] font-mono text-nexus-gradient text-nexus-glow">
                   NEXUS
                 </h2>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gradient-to-r from-cyan-500/15 to-blue-500/15 text-cyan-300 font-bold border border-cyan-500/30 uppercase tracking-wider">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-cyan-300 font-bold border border-cyan-500/30 uppercase tracking-wider">
                   Quantum Core
                 </span>
               </div>
@@ -129,7 +129,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
           {/* Quick Status Tags */}
           <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-            <div className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center gap-2">
               <span className={`w-2 h-2 rounded-full ${status.xrayRunning ? 'bg-emerald-400 shadow-[0_0_8px_#34d399]' : 'bg-rose-500'}`}></span>
               <span className="text-zinc-400">CORE:</span>
               <span className={status.xrayRunning ? 'text-emerald-400 font-bold' : 'text-rose-400 font-bold'}>
@@ -137,12 +137,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
               </span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center gap-2">
               <span className="text-zinc-500">ENGINE:</span>
               <span className="text-cyan-300 font-bold">XRAY {status.xrayVersion}</span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] flex items-center gap-2">
               <span className="text-zinc-500">VERSION:</span>
               <span className="text-zinc-200">v1.1.0</span>
             </div>
@@ -153,7 +153,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 1. TOP STATS BAR: 4 Deep Hardware Cards (CPU Model/Freq, RAM Speed/Display, SWAP, Storage) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* CPU Card */}
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4.5 shadow-lg flex flex-col justify-between hover:border-white/20 transition">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4.5 shadow-xl flex flex-col justify-between hover:border-white/20 transition">
           <div>
             <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
               <span className="font-semibold text-white flex items-center gap-1.5">
@@ -184,7 +184,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* RAM Card */}
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4.5 shadow-lg flex flex-col justify-between hover:border-white/20 transition">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4.5 shadow-xl flex flex-col justify-between hover:border-white/20 transition">
           <div>
             <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
               <div className="flex items-center gap-1.5">
@@ -225,7 +225,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* SWAP Card */}
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4.5 shadow-lg flex flex-col justify-between hover:border-white/20 transition">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4.5 shadow-xl flex flex-col justify-between hover:border-white/20 transition">
           <div>
             <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
               <span className="font-semibold text-white flex items-center gap-1.5">
@@ -254,7 +254,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Storage Card */}
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4.5 shadow-lg flex flex-col justify-between hover:border-white/20 transition">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4.5 shadow-xl flex flex-col justify-between hover:border-white/20 transition">
           <div>
             <div className="flex items-center justify-between text-xs text-zinc-400 mb-1">
               <span className="font-semibold text-white flex items-center gap-1.5">
@@ -293,7 +293,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       {/* 2. MAIN SECTION: System Health Radial Arc (Left) + Network Throughput with Speed Gauges (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: System Health Arc & Core Status */}
-        <div className="lg:col-span-5 bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-5 bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
               <span className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
@@ -337,7 +337,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Right Column: Dual-stream Network Traffic Chart & Live Throughput Area */}
-        <div className="lg:col-span-7 bg-[#0f1117] border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between">
+        <div className="lg:col-span-7 bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 shadow-xl flex flex-col justify-between">
           {/* Card Header */}
           <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
             <span className="text-sm font-bold text-white tracking-wide flex items-center gap-2">
@@ -419,7 +419,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
       {/* 3. Sockets & Process Stats Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between shadow-xl">
           <div>
             <span className="text-[11px] text-zinc-500 font-sans">Open Socket Handles</span>
             <span className="text-xl font-mono font-bold text-white block mt-0.5">
@@ -432,7 +432,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </div>
         </div>
 
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between shadow-xl">
           <div>
             <span className="text-[11px] text-zinc-500 font-sans">Panel Memory Footprint</span>
             <span className="text-xl font-mono font-bold text-zinc-200 block mt-0.5">
@@ -444,7 +444,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           </span>
         </div>
 
-        <div className="bg-[#0f1117] border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between">
+        <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 flex items-center justify-between shadow-xl">
           <div>
             <span className="text-[11px] text-zinc-500 font-sans">Xray Core Release</span>
             <span className="text-xl font-mono font-bold text-emerald-400 block mt-0.5">

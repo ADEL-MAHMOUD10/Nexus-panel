@@ -86,7 +86,7 @@ export const ConfigPage: React.FC = () => {
       )}
 
       {/* Editor Container */}
-      <div className="bg-[#0f1117] border border-white/[0.07] rounded-2xl p-4 shadow-xl">
+      <div className="bg-[#0a0d16]/75 backdrop-blur-xl border border-white/[0.08] rounded-2xl p-4 shadow-xl">
         <textarea
           value={configContent}
           onChange={(e) => setConfigContent(e.target.value)}
