@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"crypto/ecdh"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
@@ -295,11 +296,45 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 		return fmt.Sprintf("ss://%s@%s#%s", userInfo, joinHostPort(serverAddress, inbound.Port), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
 
 	case "wireguard":
-		pubKey := client.Password
-		if pubKey == "" {
-			pubKey = client.UUID
+		var serverPubKey string
+		var mtu int = 1420
+		if inbound.Settings != "" {
+			var sett map[string]any
+			if json.Unmarshal([]byte(inbound.Settings), &sett) == nil {
+				if m, ok := sett["mtu"].(float64); ok && m > 0 {
+					mtu = int(m)
+				}
+				if sp, ok := sett["serverPublicKey"].(string); ok && sp != "" {
+					serverPubKey = sp
+				} else if sk, ok := sett["secretKey"].(string); ok && sk != "" {
+					if skBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(sk)); err == nil && len(skBytes) == 32 {
+						if priv, err := ecdh.X25519().NewPrivateKey(skBytes); err == nil {
+							serverPubKey = base64.StdEncoding.EncodeToString(priv.PublicKey().Bytes())
+						}
+					}
+				}
+			}
 		}
-		return fmt.Sprintf("wireguard://%s@%s?publickey=%s#%s", pubKey, joinHostPort(serverAddress, inbound.Port), url.QueryEscape(pubKey), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
+
+		clientPrivKey := client.UUID
+		if clientPrivKey == "" {
+			clientPrivKey = client.Password
+		}
+		clientPubKey := client.Password
+		if clientPubKey == "" {
+			clientPubKey = client.UUID
+		}
+
+		if serverPubKey == "" {
+			serverPubKey = clientPubKey
+		}
+
+		return fmt.Sprintf("wireguard://%s@%s?publickey=%s&address=10.0.0.2/32&mtu=%d#%s",
+			url.QueryEscape(clientPrivKey),
+			joinHostPort(serverAddress, inbound.Port),
+			url.QueryEscape(serverPubKey),
+			mtu,
+			strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
 
 	case "hysteria", "hysteria2":
 		auth := client.Password

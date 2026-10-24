@@ -1,12 +1,15 @@
 package xray
 
 import (
+	"crypto/ecdh"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
 
+	"nexus/internal/crypto"
 	"nexus/internal/database"
 	"nexus/internal/logger"
 )
@@ -207,32 +210,133 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 		if _, ok := wgSettings["mtu"]; !ok {
 			wgSettings["mtu"] = 1420
 		}
+
+		// 1. Strict Validation & Auto-Healing of Server Private Key (secretKey)
+		// Must be exactly 32-byte Base64-encoded Curve25519 key
+		serverPrivKey, _ := wgSettings["secretKey"].(string)
+		serverPrivKey = strings.TrimSpace(serverPrivKey)
+		privBytes, privErr := base64.StdEncoding.DecodeString(serverPrivKey)
+		needSaveInbound := false
+
+		if privErr != nil || len(privBytes) != 32 {
+			wgPair, genErr := crypto.GenerateWireGuardKeyPair()
+			if genErr == nil {
+				serverPrivKey = wgPair.PrivateKey
+				wgSettings["secretKey"] = serverPrivKey
+				wgSettings["serverPublicKey"] = wgPair.PublicKey
+				needSaveInbound = true
+			}
+		} else {
+			// Ensure serverPublicKey is also recorded in settings if derivable
+			if _, hasPub := wgSettings["serverPublicKey"]; !hasPub {
+				if privKeyObj, err := ecdh.X25519().NewPrivateKey(privBytes); err == nil {
+					wgSettings["serverPublicKey"] = base64.StdEncoding.EncodeToString(privKeyObj.PublicKey().Bytes())
+					needSaveInbound = true
+				}
+			}
+		}
+
+		if needSaveInbound && db != nil {
+			if updatedSett, err := json.Marshal(wgSettings); err == nil {
+				in.Settings = string(updatedSett)
+				_ = db.SaveInbound(in)
+			}
+		}
+
+		// 2. Strict Validation & Auto-Healing of Client Peers
 		type wgPeer struct {
 			PublicKey    string   `json:"publicKey"`
 			PreSharedKey string   `json:"preSharedKey,omitempty"`
+			KeepAlive    int      `json:"keepAlive,omitempty"`
 			AllowedIPs   []string `json:"allowedIPs"`
 			Email        string   `json:"email"`
 			Level        int      `json:"level"`
 		}
+
+		// If no clients exist in DB, auto-provision an initial client
+		if len(clients) == 0 && db != nil {
+			clientPair, genErr := crypto.GenerateWireGuardKeyPair()
+			if genErr == nil {
+				initClient := database.Client{
+					InboundID:  in.ID,
+					Email:      fmt.Sprintf("peer_%d", in.Port),
+					UUID:       clientPair.PrivateKey,
+					Password:   clientPair.PublicKey,
+					Enable:     true,
+					ExpiryTime: 0,
+				}
+				_ = db.SaveClient(&initClient)
+				clients = []database.Client{initClient}
+			}
+		}
+
 		var peers []wgPeer
+		peerIndex := 0
 		for _, c := range clients {
 			if !c.Enable {
 				continue
 			}
-			pubKey := c.Password
-			if pubKey == "" {
-				pubKey = c.UUID
+
+			// In Xray WireGuard, peer publicKey must be exactly 32-byte Base64
+			var clientPubKey string
+			cPass := strings.TrimSpace(c.Password)
+			cUUID := strings.TrimSpace(c.UUID)
+
+			pBytes, pErr := base64.StdEncoding.DecodeString(cPass)
+			uBytes, uErr := base64.StdEncoding.DecodeString(cUUID)
+
+			if pErr == nil && len(pBytes) == 32 {
+				clientPubKey = cPass
+			} else if uErr == nil && len(uBytes) == 32 {
+				clientPubKey = cUUID
+				c.Password = clientPubKey
+				if db != nil {
+					_ = db.SaveClient(&c)
+				}
+			} else {
+				// Client has an invalid key (e.g. legacy shortId hex or UUID) -> auto-heal with genuine Curve25519 keypair
+				clientPair, genErr := crypto.GenerateWireGuardKeyPair()
+				if genErr == nil {
+					clientPubKey = clientPair.PublicKey
+					c.Password = clientPair.PublicKey
+					c.UUID = clientPair.PrivateKey
+					if db != nil {
+						_ = db.SaveClient(&c)
+					}
+				}
 			}
+
+			if clientPubKey == "" {
+				continue
+			}
+
+			// Assign non-overlapping allowedIPs per peer according to official Xray documentation
+			var allowedIPs []string
+			if len(clients) == 1 {
+				allowedIPs = []string{"0.0.0.0/0", "::/0"}
+			} else {
+				ipOctet := (peerIndex % 250) + 2
+				allowedIPs = []string{
+					fmt.Sprintf("10.0.0.%d/32", ipOctet),
+					fmt.Sprintf("fd00::%x/128", ipOctet),
+				}
+			}
+			peerIndex++
+
 			peers = append(peers, wgPeer{
-				PublicKey:  pubKey,
-				AllowedIPs: []string{"0.0.0.0/0", "::/0"},
+				PublicKey:  clientPubKey,
+				AllowedIPs: allowedIPs,
 				Email:      c.Email,
 				Level:      0,
 			})
 		}
+
 		if len(peers) > 0 {
 			wgSettings["peers"] = peers
+		} else {
+			wgSettings["peers"] = []wgPeer{}
 		}
+
 		settingsBytes, _ = json.Marshal(wgSettings)
 
 	case "hysteria", "hysteria2":
@@ -361,10 +465,10 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 				delete(streamMap, "realitySettings")
 
 			case "trojan":
-				// Trojan in public networks requires TLS or REALITY.
-				sec, _ := streamMap["security"].(string)
-				if sec != "reality" && sec != "tls" {
-					streamMap["security"] = "tls"
+				// If security is none, remove any extraneous TLS or REALITY settings
+				if sec, ok := streamMap["security"].(string); ok && sec == "none" {
+					delete(streamMap, "realitySettings")
+					delete(streamMap, "tlsSettings")
 				}
 
 			case "vless":
@@ -408,13 +512,18 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 		tag = fmt.Sprintf("in-%d", in.Port)
 	}
 
+	var streamJson json.RawMessage
+	if proto != "wireguard" && len(streamSettingsBytes) > 0 {
+		streamJson = json.RawMessage(streamSettingsBytes)
+	}
+
 	return &InboundConfig{
 		Tag:            tag,
 		Listen:         listen,
 		Port:           in.Port,
 		Protocol:       proto,
 		Settings:       json.RawMessage(settingsBytes),
-		StreamSettings: json.RawMessage(streamSettingsBytes),
+		StreamSettings: streamJson,
 		Sniffing:       sniffing,
 	}, nil
 }

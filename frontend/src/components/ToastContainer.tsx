@@ -13,7 +13,7 @@ export const ToastContainer: React.FC = () => {
   const { toasts, dismissToast } = useNotification();
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none select-none">
+    <div className="fixed top-5 right-5 z-[9999] flex flex-col gap-2.5 max-w-sm w-full pointer-events-none select-none">
       <AnimatePresence>
         {toasts.map((toast) => (
           <ToastCard key={toast.id} toast={toast} onDismiss={() => dismissToast(toast.id)} />
@@ -70,9 +70,9 @@ const ToastCard: React.FC<{ toast: ToastItem; onDismiss: () => void }> = ({ toas
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 16, scale: 0.96 }}
+      initial={{ opacity: 0, y: -20, scale: 0.96 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 20, scale: 0.96 }}
+      exit={{ opacity: 0, y: -16, scale: 0.96 }}
       transition={{ duration: 0.18, ease: 'easeOut' }}
       className={`pointer-events-auto bg-[#0c0d13]/95 backdrop-blur-xl border ${getBorderAndGlow()} rounded-xl p-3.5 shadow-2xl relative overflow-hidden flex flex-col justify-between`}
     >

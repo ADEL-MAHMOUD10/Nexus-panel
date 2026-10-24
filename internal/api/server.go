@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -724,6 +725,31 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 	}
 	in.Enable = true
 
+	// Ensure WireGuard inbounds have a valid 32-byte Base64 secretKey
+	if strings.ToLower(in.Protocol) == "wireguard" {
+		var wgMap map[string]any
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &wgMap)
+		}
+		if wgMap == nil {
+			wgMap = make(map[string]any)
+		}
+		secKey, _ := wgMap["secretKey"].(string)
+		secBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(secKey))
+		if err != nil || len(secBytes) != 32 {
+			serverPair, genErr := crypto.GenerateWireGuardKeyPair()
+			if genErr == nil {
+				wgMap["secretKey"] = serverPair.PrivateKey
+				wgMap["serverPublicKey"] = serverPair.PublicKey
+			}
+		}
+		if _, ok := wgMap["mtu"]; !ok {
+			wgMap["mtu"] = 1420
+		}
+		settBytes, _ := json.Marshal(wgMap)
+		in.Settings = string(settBytes)
+	}
+
 	if err := s.db.SaveInbound(&in); err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]any{
 			"success": false,
@@ -755,7 +781,11 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 		case "trojan":
 			clientPassword, _ = crypto.GenerateShortID(8)
 		case "wireguard":
-			clientPassword, _ = crypto.GenerateShortID(8)
+			wgPair, _ := crypto.GenerateWireGuardKeyPair()
+			if wgPair != nil {
+				clientPassword = wgPair.PublicKey
+				clientUUID = wgPair.PrivateKey
+			}
 		default:
 			clientPassword = clientUUID
 		}
@@ -823,6 +853,31 @@ func (s *Server) handleUpdateInbound(w http.ResponseWriter, r *http.Request) {
 
 	if in.Tag == "" {
 		in.Tag = fmt.Sprintf("in-%d", in.Port)
+	}
+
+	// Ensure WireGuard inbounds have a valid 32-byte Base64 secretKey
+	if strings.ToLower(in.Protocol) == "wireguard" {
+		var wgMap map[string]any
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &wgMap)
+		}
+		if wgMap == nil {
+			wgMap = make(map[string]any)
+		}
+		secKey, _ := wgMap["secretKey"].(string)
+		secBytes, err := base64.StdEncoding.DecodeString(strings.TrimSpace(secKey))
+		if err != nil || len(secBytes) != 32 {
+			serverPair, genErr := crypto.GenerateWireGuardKeyPair()
+			if genErr == nil {
+				wgMap["secretKey"] = serverPair.PrivateKey
+				wgMap["serverPublicKey"] = serverPair.PublicKey
+			}
+		}
+		if _, ok := wgMap["mtu"]; !ok {
+			wgMap["mtu"] = 1420
+		}
+		settBytes, _ := json.Marshal(wgMap)
+		in.Settings = string(settBytes)
 	}
 
 	if err := s.db.SaveInbound(&in); err != nil {
@@ -1028,9 +1083,34 @@ func (s *Server) handleCreateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if c.UUID == "" && c.Password == "" {
-		c.UUID = uuid.NewString()
+	inbounds, _ := s.db.GetAllInbounds()
+	var parentInbound *database.Inbound
+	for _, in := range inbounds {
+		if in.ID == c.InboundID {
+			inp := in
+			parentInbound = &inp
+			break
+		}
 	}
+
+	if parentInbound != nil && strings.ToLower(parentInbound.Protocol) == "wireguard" {
+		pBytes, pErr := base64.StdEncoding.DecodeString(strings.TrimSpace(c.Password))
+		uBytes, uErr := base64.StdEncoding.DecodeString(strings.TrimSpace(c.UUID))
+		if (pErr != nil || len(pBytes) != 32) && (uErr != nil || len(uBytes) != 32) {
+			pair, _ := crypto.GenerateWireGuardKeyPair()
+			if pair != nil {
+				c.Password = pair.PublicKey
+				c.UUID = pair.PrivateKey
+			}
+		} else if pErr != nil || len(pBytes) != 32 {
+			c.Password = c.UUID
+		}
+	} else {
+		if c.UUID == "" && c.Password == "" {
+			c.UUID = uuid.NewString()
+		}
+	}
+
 	if c.SubID == "" {
 		c.SubID = uuid.NewString()[:12]
 	}
@@ -1041,16 +1121,15 @@ func (s *Server) handleCreateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Dynamically apply to Xray via gRPC without restarting
-	inbounds, _ := s.db.GetAllInbounds()
-	for _, in := range inbounds {
-		if in.ID == c.InboundID {
-			if in.Protocol == "vless" && s.xrayController != nil {
-				_ = s.xrayController.AddVlessUser(in.Tag, c.Email, c.UUID, c.Flow)
-			} else if in.Protocol == "trojan" && s.xrayController != nil {
-				_ = s.xrayController.AddTrojanUser(in.Tag, c.Email, c.Password)
-			}
-			break
+	// Dynamically apply to Xray via gRPC or apply full config
+	if parentInbound != nil {
+		proto := strings.ToLower(parentInbound.Protocol)
+		if proto == "vless" && s.xrayController != nil {
+			_ = s.xrayController.AddVlessUser(parentInbound.Tag, c.Email, c.UUID, c.Flow)
+		} else if proto == "trojan" && s.xrayController != nil {
+			_ = s.xrayController.AddTrojanUser(parentInbound.Tag, c.Email, c.Password)
+		} else {
+			_ = s.applyXrayConfig()
 		}
 	}
 
@@ -1069,9 +1148,40 @@ func (s *Server) handleUpdateClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	inbounds, _ := s.db.GetAllInbounds()
+	var parentInbound *database.Inbound
+	for _, in := range inbounds {
+		if in.ID == c.InboundID {
+			inp := in
+			parentInbound = &inp
+			break
+		}
+	}
+
+	if parentInbound != nil && strings.ToLower(parentInbound.Protocol) == "wireguard" {
+		pBytes, pErr := base64.StdEncoding.DecodeString(strings.TrimSpace(c.Password))
+		uBytes, uErr := base64.StdEncoding.DecodeString(strings.TrimSpace(c.UUID))
+		if (pErr != nil || len(pBytes) != 32) && (uErr != nil || len(uBytes) != 32) {
+			pair, _ := crypto.GenerateWireGuardKeyPair()
+			if pair != nil {
+				c.Password = pair.PublicKey
+				c.UUID = pair.PrivateKey
+			}
+		} else if pErr != nil || len(pBytes) != 32 {
+			c.Password = c.UUID
+		}
+	}
+
 	if err := s.db.SaveClient(&c); err != nil {
 		http.Error(w, "failed to update client: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if parentInbound != nil {
+		proto := strings.ToLower(parentInbound.Protocol)
+		if proto != "vless" && proto != "trojan" {
+			_ = s.applyXrayConfig()
+		}
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "client": c})
@@ -1121,16 +1231,21 @@ func (s *Server) handleToggleClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update live Xray controller dynamically
-	if s.xrayController != nil && targetInbound != nil {
-		if targetClient.Enable {
-			if targetInbound.Protocol == "vless" {
-				_ = s.xrayController.AddVlessUser(targetInbound.Tag, targetClient.Email, targetClient.UUID, targetClient.Flow)
-			} else if targetInbound.Protocol == "trojan" {
-				_ = s.xrayController.AddTrojanUser(targetInbound.Tag, targetClient.Email, targetClient.Password)
+	// Update live Xray controller dynamically or reload config
+	if targetInbound != nil {
+		proto := strings.ToLower(targetInbound.Protocol)
+		if s.xrayController != nil && (proto == "vless" || proto == "trojan") {
+			if targetClient.Enable {
+				if proto == "vless" {
+					_ = s.xrayController.AddVlessUser(targetInbound.Tag, targetClient.Email, targetClient.UUID, targetClient.Flow)
+				} else if proto == "trojan" {
+					_ = s.xrayController.AddTrojanUser(targetInbound.Tag, targetClient.Email, targetClient.Password)
+				}
+			} else {
+				_ = s.xrayController.RemoveUser(targetInbound.Tag, targetClient.Email)
 			}
 		} else {
-			_ = s.xrayController.RemoveUser(targetInbound.Tag, targetClient.Email)
+			_ = s.applyXrayConfig()
 		}
 	}
 
@@ -1537,10 +1652,11 @@ func (s *Server) handleDeleteClient(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Live remove via gRPC
+	// Live remove via gRPC and synchronize config
 	if s.xrayController != nil && req.InboundTag != "" && req.Email != "" {
 		_ = s.xrayController.RemoveUser(req.InboundTag, req.Email)
 	}
+	_ = s.applyXrayConfig()
 
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }

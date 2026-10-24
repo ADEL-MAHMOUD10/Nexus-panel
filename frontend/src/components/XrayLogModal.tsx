@@ -19,6 +19,7 @@ import {
 import api from '../services/api';
 import { useNotification } from '../context/NotificationContext';
 import { XrayLogEntry } from '../types';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface XrayLogModalProps {
   isOpen: boolean;
@@ -83,12 +84,16 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
     }
   };
 
-  const handleCopyLogs = () => {
+  const handleCopyLogs = async () => {
     const text = logs.map((l) => l.raw || `[${l.timestamp}] [${l.level.toUpperCase()}] ${l.message}`).join('\n');
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    notify.success('Copied', 'All filtered logs copied to clipboard.');
-    setTimeout(() => setCopied(false), 2000);
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopied(true);
+      notify.success('Copied', 'All filtered logs copied to clipboard.');
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      notify.error('Copy Failed', 'Could not copy logs to clipboard.');
+    }
   };
 
   const handleDownloadLogs = () => {

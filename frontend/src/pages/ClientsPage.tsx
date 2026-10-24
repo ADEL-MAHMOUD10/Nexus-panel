@@ -28,6 +28,7 @@ import { Client, Inbound } from '../types';
 import api from '../services/api';
 import { useNotification } from '../context/NotificationContext';
 import { useConfirm } from '../context/ConfirmContext';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface ClientsPageProps {
   inbounds: Inbound[];
@@ -138,10 +139,13 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
   }, [allClients]);
 
   // Copy helper
-  const handleCopy = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1800);
+  const handleCopy = async (text: string, key: string) => {
+    const success = await copyToClipboard(text);
+    if (success) {
+      setCopiedKey(key);
+      notify.success('Copied', 'Text copied to clipboard.');
+      setTimeout(() => setCopiedKey(null), 1800);
+    }
   };
 
   // Toggle client active status

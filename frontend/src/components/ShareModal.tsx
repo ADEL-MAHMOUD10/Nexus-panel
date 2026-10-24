@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Copy, Check, QrCode as QrIcon } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNotification } from '../context/NotificationContext';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface ShareModalProps {
   isOpen: boolean;
@@ -21,11 +22,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(link);
-    setCopied(true);
-    notify.success('Copied to Clipboard', 'VLESS subscription URL copied to clipboard.');
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    const success = await copyToClipboard(link);
+    if (success) {
+      setCopied(true);
+      notify.success('Copied to Clipboard', 'Connection link copied successfully.');
+      setTimeout(() => setCopied(false), 2000);
+    } else {
+      notify.error('Copy Failed', 'Could not copy link automatically. Please select and copy manually.');
+    }
   };
 
   return (
@@ -52,14 +57,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
             type="text"
             readOnly
             value={link}
-            className="flex-1 px-3 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-zinc-300 font-mono focus:outline-none"
+            onClick={(e) => (e.target as HTMLInputElement).select()}
+            className="flex-1 px-3 py-2 bg-[#08090d] border border-white/[0.08] rounded-xl text-xs text-zinc-300 font-mono focus:outline-none cursor-pointer"
           />
           <button
             onClick={handleCopy}
-            className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition ${
+            className={`px-3 py-2 rounded-xl text-xs font-medium flex items-center gap-1.5 transition cursor-pointer shrink-0 ${
               copied
                 ? 'bg-emerald-500 text-white'
-                : 'bg-white/10 hover:bg-white/15 text-white'
+                : 'bg-white/10 hover:bg-white/15 text-white active:scale-95'
             }`}
           >
             {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}

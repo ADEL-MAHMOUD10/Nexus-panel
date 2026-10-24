@@ -112,8 +112,8 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   // TCP Header
   const [tcpHeaderType, setTcpHeaderType] = useState('none');
 
-  // 3. Security (TLS / REALITY)
-  const [security, setSecurity] = useState('reality'); // none, tls, reality
+  // 3. Security (None / TLS / REALITY)
+  const [security, setSecurity] = useState('none'); // none, tls, reality
   const [tlsSNI, setTlsSNI] = useState('');
   const [tlsALPN, setTlsALPN] = useState('h2,http/1.1');
   const [tlsMinVersion, setTlsMinVersion] = useState('1.2');
@@ -269,9 +269,8 @@ export const InboundModal: React.FC<InboundModalProps> = ({
       setListen('0.0.0.0');
       setProtocol('vless');
       setNetwork('tcp');
-      setSecurity('reality');
-      setRemark(getSuggestedRemark('vless', 'reality', 2053));
-      handleGenerateRealityKeys();
+      setSecurity('none');
+      setRemark(getSuggestedRemark('vless', 'none', 2053));
     }
   }, [inboundToEdit, isOpen]);
 
@@ -358,10 +357,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         handleGenerateWireGuardKeys();
       }
     } else if (protoId === 'trojan') {
-      if (security === 'none') {
-        setSecurity('reality');
-        nextSec = 'reality';
-      }
+      // Trojan supports 'none', 'tls', or 'reality' - keep user's current security choice
     } else if (protoId === 'vmess') {
       if (security === 'reality') {
         setSecurity('tls');
@@ -511,9 +507,19 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         network: ssNetwork,
       };
     } else if (protocol === 'wireguard') {
+      let keyToUse = wgSecretKey;
+      if (!keyToUse) {
+        try {
+          const res = await api.get('/api/crypto/wireguard-keys');
+          if (res.data?.success && res.data.privateKey) {
+            keyToUse = res.data.privateKey;
+            setWgSecretKey(keyToUse);
+          }
+        } catch (e) {}
+      }
       settingsObj = {
-        secretKey: wgSecretKey,
-        mtu: wgMtu,
+        secretKey: keyToUse,
+        mtu: wgMtu || 1420,
         peers: [],
       };
     } else if (protocol === 'hysteria') {
@@ -1447,9 +1453,9 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {[
-                        { id: 'reality', title: 'REALITY', desc: 'Zero-Cert TLS Camouflage', icon: Shield, badge: 'Recommended', supported: protocol === 'vless' || protocol === 'trojan' },
-                        { id: 'tls', title: 'TLS 1.3', desc: 'Standard SSL / Let\'s Encrypt', icon: Lock, badge: 'Standard', supported: protocol === 'vless' || protocol === 'trojan' || protocol === 'vmess' || protocol === 'hysteria' },
-                        { id: 'none', title: 'None', desc: 'Plaintext (Internal / CDN WS)', icon: Globe, badge: 'Plain', supported: protocol === 'vless' || protocol === 'vmess' },
+                        { id: 'none', title: 'None', desc: 'Plaintext (Internal / CDN WS / Reverse Proxy)', icon: Globe, badge: 'Standard', supported: protocol === 'vless' || protocol === 'vmess' || protocol === 'trojan' || protocol === 'shadowsocks' || protocol === 'wireguard' || protocol === 'socks' || protocol === 'http' || protocol === 'dokodemo-door' },
+                        { id: 'tls', title: 'TLS 1.3', desc: 'Standard SSL / Let\'s Encrypt', icon: Lock, badge: 'Encrypted', supported: protocol === 'vless' || protocol === 'trojan' || protocol === 'vmess' || protocol === 'hysteria' || protocol === 'hysteria2' },
+                        { id: 'reality', title: 'REALITY', desc: 'Zero-Cert TLS Camouflage', icon: Shield, badge: 'Stealth', supported: protocol === 'vless' || protocol === 'trojan' },
                       ]
                         .filter((s) => s.supported)
                         .map((s) => {

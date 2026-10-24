@@ -431,8 +431,10 @@ export function App() {
         return `hy2://${encodeURIComponent(hyAuth)}@${host}:${inb.port}?sni=${encodeURIComponent(hySni)}#${encodeURIComponent(remark)}`;
 
       case 'wireguard':
-        const wgKey = c.password || c.uuid;
-        return `wireguard://${encodeURIComponent(wgKey)}@${host}:${inb.port}?publickey=${encodeURIComponent(wgKey)}#${encodeURIComponent(remark)}`;
+        const wgClientPriv = c.uuid || c.password || '';
+        const wgServerPub = settings.serverPublicKey || c.password || c.uuid || '';
+        const wgMtu = settings.mtu || 1420;
+        return `wireguard://${encodeURIComponent(wgClientPriv)}@${host}:${inb.port}?publickey=${encodeURIComponent(wgServerPub)}&address=10.0.0.2/32&mtu=${wgMtu}#${encodeURIComponent(remark)}`;
 
       case 'socks':
         return `socks5://${encodeURIComponent(c.email)}:${encodeURIComponent(c.password || c.uuid)}@${host}:${inb.port}#${encodeURIComponent(remark)}`;

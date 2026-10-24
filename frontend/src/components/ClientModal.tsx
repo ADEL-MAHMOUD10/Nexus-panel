@@ -23,6 +23,7 @@ import {
 import api from '../services/api';
 import { Client, Inbound } from '../types';
 import { useNotification } from '../context/NotificationContext';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface ClientModalProps {
   isOpen: boolean;
@@ -57,6 +58,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   const isVless = protocol === 'vless';
   const isTrojan = protocol === 'trojan';
   const isShadowsocks = protocol === 'shadowsocks';
+  const isWireGuard = protocol === 'wireguard';
 
   const generateUuid = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
@@ -85,11 +87,25 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     return btoa(binary);
   };
 
-  const handleCopyKey = () => {
+  const handleGenerateWireGuardKeys = async () => {
+    try {
+      const res = await api.get('/api/crypto/wireguard-keys');
+      if (res.data?.success && res.data.publicKey) {
+        setUuid(res.data.publicKey);
+        notify.success('WireGuard Key Generated', 'Generated valid 32-byte Curve25519 peer key.');
+        return;
+      }
+    } catch (e) {}
+    setUuid(generateBase64Key(32));
+  };
+
+  const handleCopyKey = async () => {
     if (!uuid) return;
-    navigator.clipboard.writeText(uuid);
-    setCopiedKey(true);
-    setTimeout(() => setCopiedKey(false), 2000);
+    const success = await copyToClipboard(uuid);
+    if (success) {
+      setCopiedKey(true);
+      setTimeout(() => setCopiedKey(false), 2000);
+    }
   };
 
   useEffect(() => {
@@ -111,7 +127,12 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       const initialInbound = inbounds[0]?.id || 1;
       setInboundId(initialInbound);
       setEmail('user_' + Math.floor(Math.random() * 9000 + 1000));
-      setUuid(generateUuid());
+      const targetInb = inbounds.find(i => i.id === initialInbound);
+      if (targetInb && targetInb.protocol.toLowerCase() === 'wireguard') {
+        handleGenerateWireGuardKeys();
+      } else {
+        setUuid(generateUuid());
+      }
       setFlow('xtls-rprx-vision');
       setQuotaGB(0);
       setExpiryDays(0);
@@ -265,7 +286,14 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
             <select
               value={inboundId}
-              onChange={(e) => setInboundId(Number(e.target.value))}
+              onChange={(e) => {
+                const newId = Number(e.target.value);
+                setInboundId(newId);
+                const targetInb = inbounds.find((i) => i.id === newId);
+                if (targetInb?.protocol.toLowerCase() === 'wireguard' && (!uuid || uuid.includes('-'))) {
+                  handleGenerateWireGuardKeys();
+                }
+              }}
               disabled={Boolean(clientToEdit)}
               className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50 disabled:opacity-60 transition font-sans"
             >
@@ -341,7 +369,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             )}
           </div>
 
-          {/* 3. Credentials (UUID / Password) */}
+          {/* 3. Credentials (UUID / Password / WireGuard Key) */}
           <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
@@ -349,15 +377,17 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   <Key className="w-3.5 h-3.5" />
                 </div>
                 <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
-                  {isTrojan || isShadowsocks ? 'Client Password / Shared Key' : 'Client UUID Key'}
+                  {isWireGuard ? 'Client WireGuard Public Key (Base64)' : isTrojan || isShadowsocks ? 'Client Password / Shared Key' : 'Client UUID Key'}
                 </span>
               </div>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
-                {isTrojan || isShadowsocks ? 'SECRET' : 'UUIDv4'}
+                {isWireGuard ? 'CURVE25519' : isTrojan || isShadowsocks ? 'SECRET' : 'UUIDv4'}
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 mb-3 font-normal">
-              Cryptographic authentication credential required by clients to establish connections.
+              {isWireGuard
+                ? 'Client 32-byte Base64 Public Key required by WireGuard tunnel for peer verification.'
+                : 'Cryptographic authentication credential required by clients to establish connections.'}
             </p>
 
             <div className="flex items-center gap-2">
@@ -367,7 +397,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   required
                   value={uuid}
                   onChange={(e) => setUuid(e.target.value)}
-                  placeholder={isTrojan ? 'Enter password' : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'}
+                  placeholder={isWireGuard ? 'Client 32-byte Base64 Public Key' : isTrojan ? 'Enter password' : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'}
                   className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-amber-300/90 font-mono focus:outline-none focus:border-amber-500/50 transition"
                 />
               </div>
@@ -384,15 +414,29 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               </button>
 
               {/* Generate Buttons */}
-              <button
-                type="button"
-                onClick={() => setUuid(generateUuid())}
-                className="px-3 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
-                title="Generate UUID"
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>{isTrojan || isShadowsocks ? 'UUID' : 'Generate'}</span>
-              </button>
+              {!isWireGuard && (
+                <button
+                  type="button"
+                  onClick={() => setUuid(generateUuid())}
+                  className="px-3 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  title="Generate UUID"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{isTrojan || isShadowsocks ? 'UUID' : 'Generate'}</span>
+                </button>
+              )}
+
+              {isWireGuard && (
+                <button
+                  type="button"
+                  onClick={handleGenerateWireGuardKeys}
+                  className="px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 text-blue-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  title="Generate WireGuard Curve25519 Keypair"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>WG Key</span>
+                </button>
+              )}
 
               {isTrojan && (
                 <button
