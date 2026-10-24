@@ -3,6 +3,7 @@ import { X, RefreshCw, ArrowUpCircle, CheckCircle, AlertTriangle } from 'lucide-
 import api from '../services/api';
 import { UpdateInfo } from '../types';
 import { useNotification } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 interface UpdatesModalProps {
   isOpen: boolean;
@@ -20,6 +21,7 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
   isChecking,
 }) => {
   const { notify } = useNotification();
+  const confirm = useConfirm();
   const [isUpdatingPanel, setIsUpdatingPanel] = useState(false);
   const [isUpdatingXray, setIsUpdatingXray] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -27,7 +29,16 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
   if (!isOpen) return null;
 
   const handleUpdatePanel = async () => {
-    if (!window.confirm('Upgrade Nexus Panel now? The service will automatically fetch the new release binary and restart.')) return;
+    const ok = await confirm({
+      title: 'Upgrade Nexus Panel',
+      message: 'Upgrade Nexus Panel now? The service will automatically download the new release binary and restart the service without interrupting active routing.',
+      confirmText: 'Upgrade & Restart',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      icon: 'upgrade',
+    });
+    if (!ok) return;
+
     setIsUpdatingPanel(true);
     try {
       const res = await api.post('/api/server/update-panel', { version: updates.panel.latestVersion || 'latest' });
@@ -50,7 +61,16 @@ export const UpdatesModal: React.FC<UpdatesModalProps> = ({
   };
 
   const handleUpdateXray = async () => {
-    if (!window.confirm('Upgrade Xray-core kernel? The binary will be downloaded and reloaded.')) return;
+    const ok = await confirm({
+      title: 'Upgrade Xray-Core Kernel',
+      message: 'Upgrade Xray-core kernel now? The official release binary will be downloaded and reloaded gracefully.',
+      confirmText: 'Upgrade Core',
+      cancelText: 'Cancel',
+      variant: 'primary',
+      icon: 'upgrade',
+    });
+    if (!ok) return;
+
     setIsUpdatingXray(true);
     try {
       const res = await api.post('/api/server/update-xray', { version: updates.xray.latestVersion || 'v26.10.10' });

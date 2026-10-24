@@ -16,9 +16,11 @@ import { UpdatesModal } from './components/UpdatesModal';
 import { LoginPage } from './pages/LoginPage';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { useNotification } from './context/NotificationContext';
+import { useConfirm } from './context/ConfirmContext';
 
 export function App() {
   const { notify } = useNotification();
+  const confirm = useConfirm();
   const [token, setToken] = useState<string | null>(localStorage.getItem('nexus_token'));
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -27,7 +29,7 @@ export function App() {
 
   // Updates
   const [updates, setUpdates] = useState<UpdateInfo>({
-    panel: { currentVersion: 'v1.1.0', latestVersion: 'v1.1.0', hasUpdate: false, releaseNotes: '', publishedAt: '' },
+    panel: { currentVersion: 'v1.1.4', latestVersion: 'v1.1.4', hasUpdate: false, releaseNotes: '', publishedAt: '' },
     xray: { currentVersion: 'v26.9.30', latestVersion: 'v26.9.30', hasUpdate: false, releaseNotes: '', publishedAt: '' },
   });
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
@@ -238,7 +240,16 @@ export function App() {
   };
 
   const handleResetTraffic = async (id: number) => {
-    if (!window.confirm('Reset traffic counters for this inbound?')) return;
+    const ok = await confirm({
+      title: 'Reset Inbound Traffic',
+      message: 'Reset upload and download traffic counters for this inbound listener to zero?',
+      confirmText: 'Reset Counters',
+      cancelText: 'Cancel',
+      variant: 'warning',
+      icon: 'reset',
+    });
+    if (!ok) return;
+
     try {
       await api.post(`/api/inbounds/reset-traffic/${id}`);
       notify.success('Traffic Counters Reset', 'Inbound traffic stats have been reset to zero.');
@@ -255,7 +266,16 @@ export function App() {
   };
 
   const handleDeleteInbound = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this inbound listener and all its client routes?')) return;
+    const ok = await confirm({
+      title: 'Delete Inbound Listener',
+      message: 'Are you sure you want to delete this inbound listener and all its associated client routes? This action cannot be undone.',
+      confirmText: 'Delete Inbound',
+      cancelText: 'Cancel',
+      variant: 'danger',
+      icon: 'trash',
+    });
+    if (!ok) return;
+
     try {
       await api.post('/api/inbounds/delete', { id });
       notify.info('Inbound Deleted', 'Inbound listener has been removed.');
@@ -265,7 +285,16 @@ export function App() {
 
   // Client Handlers
   const handleDeleteClient = async (id: number) => {
-    if (!window.confirm('Are you sure you want to delete this client account?')) return;
+    const ok = await confirm({
+      title: 'Delete Client Account',
+      message: 'Are you sure you want to delete this client account? Their access credentials will be immediately revoked from the Xray routing kernel.',
+      confirmText: 'Delete Client',
+      cancelText: 'Cancel',
+      variant: 'danger',
+      icon: 'trash',
+    });
+    if (!ok) return;
+
     try {
       await api.post('/api/clients/delete', { id });
       notify.info('Client Deleted', 'Client account has been removed.');
@@ -274,6 +303,16 @@ export function App() {
   };
 
   const handleResetClientTraffic = async (id: number) => {
+    const ok = await confirm({
+      title: 'Reset Client Usage',
+      message: 'Reset upload and download traffic statistics for this client account to zero?',
+      confirmText: 'Reset Usage',
+      cancelText: 'Cancel',
+      variant: 'warning',
+      icon: 'reset',
+    });
+    if (!ok) return;
+
     try {
       await api.post(`/api/clients/reset-traffic/${id}`);
       notify.success('Traffic Reset', 'Client usage statistics cleared.');

@@ -116,7 +116,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
           <div className="flex items-center gap-2.5">
             <h2 className="text-lg font-semibold text-zinc-100 tracking-tight">Nexus Core Engine</h2>
             <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
-              v1.1.3
+              v1.1.4
             </span>
           </div>
           <p className="text-xs text-zinc-400 font-sans mt-0.5">

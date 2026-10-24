@@ -27,6 +27,7 @@ import {
 import { Client, Inbound } from '../types';
 import api from '../services/api';
 import { useNotification } from '../context/NotificationContext';
+import { useConfirm } from '../context/ConfirmContext';
 
 interface ClientsPageProps {
   inbounds: Inbound[];
@@ -52,6 +53,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
   onRefreshInbounds,
 }) => {
   const { notify } = useNotification();
+  const confirm = useConfirm();
   const [search, setSearch] = useState<string>('');
   const [filterInbound, setFilterInbound] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all'); // all, online, active, depleted, expired
@@ -183,15 +185,27 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
     if (selectedIds.length === 0) return;
 
     if (action === 'delete') {
-      if (!window.confirm(`Are you sure you want to delete ${selectedIds.length} selected clients? This action cannot be undone.`)) {
-        return;
-      }
+      const ok = await confirm({
+        title: `Delete ${selectedIds.length} Selected Clients`,
+        message: `Are you sure you want to permanently delete ${selectedIds.length} selected clients? Their routing credentials will be immediately revoked from the Xray kernel. This action cannot be undone.`,
+        confirmText: `Delete ${selectedIds.length} Clients`,
+        cancelText: 'Cancel',
+        variant: 'danger',
+        icon: 'trash',
+      });
+      if (!ok) return;
     }
 
     if (action === 'reset-traffic') {
-      if (!window.confirm(`Reset traffic counters to zero for ${selectedIds.length} selected clients?`)) {
-        return;
-      }
+      const ok = await confirm({
+        title: `Reset Traffic for ${selectedIds.length} Clients`,
+        message: `Reset upload and download traffic statistics to zero for ${selectedIds.length} selected clients?`,
+        confirmText: 'Reset Traffic',
+        cancelText: 'Cancel',
+        variant: 'warning',
+        icon: 'reset',
+      });
+      if (!ok) return;
     }
 
     setIsBatchProcessing(true);
