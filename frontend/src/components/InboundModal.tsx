@@ -314,6 +314,34 @@ export const InboundModal: React.FC<InboundModalProps> = ({
     } catch (e) {}
   };
 
+  const handleSelectProtocol = (protoId: string) => {
+    setProtocol(protoId);
+    if (protoId === 'shadowsocks') {
+      setNetwork('tcp');
+      setSecurity('none');
+      if (!ssPassword) {
+        handleGenerateShadowsocksKey();
+      }
+    } else if (protoId === 'wireguard') {
+      setNetwork('tcp');
+      setSecurity('none');
+      if (!wgSecretKey) {
+        handleGenerateWireGuardKeys();
+      }
+    } else if (protoId === 'trojan') {
+      if (security === 'none') {
+        setSecurity('reality');
+      }
+    } else if (protoId === 'vmess') {
+      if (security === 'reality') {
+        setSecurity('tls');
+      }
+    } else if (protoId === 'hysteria' || protoId === 'hysteria2') {
+      setSecurity('tls');
+      setNetwork('tcp');
+    }
+  };
+
   // Find next free port
   const handlePickNextAvailablePort = async () => {
     const commonPorts = [2053, 2083, 2087, 2096, 8443, 8080, 443, 10443, 20443];
@@ -651,7 +679,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       <button
                         key={p.id}
                         type="button"
-                        onClick={() => setProtocol(p.id)}
+                        onClick={() => handleSelectProtocol(p.id)}
                         className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
                           isSelected
                             ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/40'
@@ -889,6 +917,110 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Protocol-Specific Primary Credentials (Shadowsocks / WireGuard) */}
+              {protocol === 'shadowsocks' && (
+                <div className="p-4 rounded-2xl bg-amber-500/[0.04] border border-amber-500/20 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-amber-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        Shadowsocks 2022 / AEAD Primary Key
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGenerateShadowsocksKey}
+                      className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Generate Key</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Encryption Method</label>
+                      <select
+                        value={ssMethod}
+                        onChange={(e) => setSsMethod(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-amber-400/60 focus:outline-none"
+                      >
+                        <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm (16-byte key)</option>
+                        <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm (32-byte key)</option>
+                        <option value="2022-blake3-chacha20-poly1305">2022-blake3-chacha20-poly1305 (32-byte key)</option>
+                        <option value="aes-256-gcm">aes-256-gcm (AEAD)</option>
+                        <option value="aes-128-gcm">aes-128-gcm (AEAD)</option>
+                        <option value="chacha20-poly1305">chacha20-poly1305 (AEAD)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Network Relay</label>
+                      <select
+                        value={ssNetwork}
+                        onChange={(e) => setSsNetwork(e.target.value)}
+                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-amber-400/60 focus:outline-none"
+                      >
+                        <option value="tcp,udp">TCP + UDP (Standard)</option>
+                        <option value="tcp">TCP Only</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">Shared Secret Password / Base64 Key</label>
+                    <input
+                      type="text"
+                      value={ssPassword}
+                      onChange={(e) => setSsPassword(e.target.value)}
+                      placeholder="Click 'Generate Key' for 2022 key or enter password"
+                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-amber-300 font-mono focus:border-amber-400/60 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {protocol === 'wireguard' && (
+                <div className="p-4 rounded-2xl bg-blue-500/[0.04] border border-blue-500/20 space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                        WireGuard Inbound Tunnel Parameters
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGenerateWireGuardKeys}
+                      className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      <span>Generate Keypair</span>
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Server Private Key (Base64)</label>
+                      <input
+                        type="text"
+                        value={wgSecretKey}
+                        onChange={(e) => setWgSecretKey(e.target.value)}
+                        placeholder="Click Generate Keypair"
+                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-blue-300 font-mono focus:border-blue-400/60 focus:outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Tunnel MTU</label>
+                      <input
+                        type="number"
+                        min={1280}
+                        max={1500}
+                        value={wgMtu}
+                        onChange={(e) => setWgMtu(Number(e.target.value))}
+                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -896,56 +1028,80 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           {activeTab === 'transport' && (
             <div className="space-y-5">
               
-              {/* Transport Network Selector Grid */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                      <Radio className="w-3 h-3" />
-                    </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                      Network Stream Transport Layer
-                    </label>
+              {protocol === 'shadowsocks' || protocol === 'wireguard' ? (
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center space-y-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto">
+                    <Radio className="w-5 h-5" />
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
-                    {network.toUpperCase()}
-                  </span>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                    {protocol === 'shadowsocks' ? 'Native L4 TCP + FullCone UDP Socket' : 'Native WireGuard UDP Tunnel'}
+                  </h4>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                    {protocol === 'shadowsocks'
+                      ? 'Shadowsocks operates directly over Layer 4 raw sockets. Stream encapsulation (WebSocket, gRPC, SplitHTTP) is not supported by standard Xray Shadowsocks inbounds.'
+                      : 'WireGuard operates exclusively over UDP packets with internal kernel-style encryption.'}
+                  </p>
                 </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {TRANSPORTS.map((t) => {
-                    const isSelected = network === t.id;
-                    const Icon = t.icon;
-                    return (
-                      <button
-                        key={t.id}
-                        type="button"
-                        onClick={() => setNetwork(t.id)}
-                        className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/40'
-                            : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-zinc-500'}`} />
-                            <span className={`text-xs font-bold font-mono ${isSelected ? 'text-cyan-300' : 'text-zinc-200'}`}>
-                              {t.name}
-                            </span>
-                          </div>
-                          {isSelected && (
-                            <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 flex items-center justify-center text-black">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </div>
-                          )}
+              ) : (
+                <>
+                  {/* Transport Network Selector Grid */}
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                          <Radio className="w-3 h-3" />
                         </div>
-                        <p className="text-[10px] text-zinc-500 leading-tight">{t.desc}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                        <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                          Network Stream Transport Layer
+                        </label>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                        {network.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {TRANSPORTS.filter((t) => {
+                        if (security === 'reality') {
+                          // Official Xray docs: "REALITY only supports RAW (TCP), XHTTP, and gRPC transports."
+                          return t.id === 'tcp' || t.id === 'splithttp' || t.id === 'grpc';
+                        }
+                        return true;
+                      }).map((t) => {
+                        const isSelected = network === t.id;
+                        const Icon = t.icon;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => setNetwork(t.id)}
+                            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                              isSelected
+                                ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/40'
+                                : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                                <span className={`text-xs font-bold font-mono ${isSelected ? 'text-cyan-300' : 'text-zinc-200'}`}>
+                                  {t.name}
+                                </span>
+                              </div>
+                              {isSelected && (
+                                <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 flex items-center justify-center text-black">
+                                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                </div>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 leading-tight">{t.desc}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Dynamic Transport Sub-Panels with Rich Label UI */}
 
@@ -1212,60 +1368,80 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           {activeTab === 'security' && (
             <div className="space-y-5">
               
-              {/* Security Protocol Cards */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                      <Shield className="w-3 h-3" />
-                    </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                      Security & Encryption Layer
-                    </label>
+              {protocol === 'shadowsocks' || protocol === 'wireguard' ? (
+                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center space-y-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
+                    <Shield className="w-5 h-5" />
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                    {security.toUpperCase()}
-                  </span>
+                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                    {protocol === 'shadowsocks' ? 'Native SS2022 / AEAD Cryptography' : 'Native WireGuard Noise Cryptography'}
+                  </h4>
+                  <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+                    {protocol === 'shadowsocks'
+                      ? 'Shadowsocks encrypts all packets end-to-end using BLAKE3 or AEAD ciphers. Per official Xray documentation, external TLS / REALITY stream wrapping is not supported for Shadowsocks.'
+                      : 'WireGuard provides its own asymmetric Curve25519 tunnel encryption. Stream security is locked to None.'}
+                  </p>
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                  {[
-                    { id: 'reality', title: 'REALITY', desc: 'Zero-Cert TLS Camouflage', icon: Shield, badge: 'Recommended' },
-                    { id: 'tls', title: 'TLS 1.3', desc: 'Standard SSL / Let\'s Encrypt', icon: Lock, badge: 'Standard' },
-                    { id: 'none', title: 'None', desc: 'Plaintext (Internal / CDN WS)', icon: Globe, badge: 'Plain' },
-                  ].map((s) => {
-                    const isSelected = security === s.id;
-                    const Icon = s.icon;
-                    return (
-                      <button
-                        key={s.id}
-                        type="button"
-                        onClick={() => setSecurity(s.id)}
-                        className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                          isSelected
-                            ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-emerald-400/60 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/40'
-                            : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-1.5">
-                          <div className="flex items-center gap-2">
-                            <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                            <span className={`text-xs font-bold font-mono ${isSelected ? 'text-emerald-300' : 'text-zinc-200'}`}>
-                              {s.title}
-                            </span>
-                          </div>
-                          {isSelected && (
-                            <div className="w-3.5 h-3.5 rounded-full bg-emerald-400 flex items-center justify-center text-black">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </div>
-                          )}
+              ) : (
+                <>
+                  {/* Security Protocol Cards */}
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-5 h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                          <Shield className="w-3 h-3" />
                         </div>
-                        <p className="text-[10px] text-zinc-500 leading-tight">{s.desc}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                        <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                          Security & Encryption Layer
+                        </label>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
+                        {security.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                      {[
+                        { id: 'reality', title: 'REALITY', desc: 'Zero-Cert TLS Camouflage', icon: Shield, badge: 'Recommended', supported: protocol === 'vless' || protocol === 'trojan' },
+                        { id: 'tls', title: 'TLS 1.3', desc: 'Standard SSL / Let\'s Encrypt', icon: Lock, badge: 'Standard', supported: protocol === 'vless' || protocol === 'trojan' || protocol === 'vmess' || protocol === 'hysteria' },
+                        { id: 'none', title: 'None', desc: 'Plaintext (Internal / CDN WS)', icon: Globe, badge: 'Plain', supported: protocol === 'vless' || protocol === 'vmess' },
+                      ]
+                        .filter((s) => s.supported)
+                        .map((s) => {
+                          const isSelected = security === s.id;
+                          const Icon = s.icon;
+                          return (
+                            <button
+                              key={s.id}
+                              type="button"
+                              onClick={() => setSecurity(s.id)}
+                              className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                isSelected
+                                  ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-emerald-400/60 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/40'
+                                  : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-zinc-500'}`} />
+                                  <span className={`text-xs font-bold font-mono ${isSelected ? 'text-emerald-300' : 'text-zinc-200'}`}>
+                                    {s.title}
+                                  </span>
+                                </div>
+                                {isSelected && (
+                                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-400 flex items-center justify-center text-black">
+                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-zinc-500 leading-tight">{s.desc}</p>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* REALITY Settings Card */}
               {security === 'reality' && (

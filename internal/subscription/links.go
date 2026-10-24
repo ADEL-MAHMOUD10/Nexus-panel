@@ -235,11 +235,23 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 	switch proto {
 	case "vless":
 		params["encryption"] = "none"
+		// XTLS-Vision flow is strictly valid ONLY on TCP (RAW) with REALITY or TLS
+		if network != "tcp" || (security != "tls" && security != "reality") {
+			delete(params, "flow")
+		} else if client.Flow != "" {
+			params["flow"] = client.Flow
+		}
 		baseURI := fmt.Sprintf("vless://%s@%s", client.UUID, joinHostPort(serverAddress, inbound.Port))
 		return buildURLWithQuery(baseURI, params, remarkText)
 
 	case "trojan":
-		baseURI := fmt.Sprintf("trojan://%s@%s", encodeUserinfo(client.Password), joinHostPort(serverAddress, inbound.Port))
+		pwd := client.Password
+		if pwd == "" {
+			pwd = client.UUID
+		}
+		// Trojan in Xray-core does not support XTLS Vision flow
+		delete(params, "flow")
+		baseURI := fmt.Sprintf("trojan://%s@%s", encodeUserinfo(pwd), joinHostPort(serverAddress, inbound.Port))
 		return buildURLWithQuery(baseURI, params, remarkText)
 
 	case "vmess":
@@ -274,9 +286,12 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 		}
 		pwd := client.Password
 		if pwd == "" {
+			pwd = client.UUID
+		}
+		if pwd == "" {
 			pwd, _ = settings["password"].(string)
 		}
-		userInfo := base64.URLEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", method, pwd)))
+		userInfo := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", method, pwd)))
 		return fmt.Sprintf("ss://%s@%s#%s", userInfo, joinHostPort(serverAddress, inbound.Port), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
 
 	case "wireguard":
@@ -300,6 +315,12 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 			hyParams["insecure"] = "1"
 		}
 		return buildURLWithQuery(baseURI, hyParams, remarkText)
+
+	case "socks":
+		return fmt.Sprintf("socks5://%s:%s@%s#%s", encodeUserinfo(client.Email), encodeUserinfo(client.Password), joinHostPort(serverAddress, inbound.Port), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
+
+	case "http":
+		return fmt.Sprintf("http://%s:%s@%s#%s", encodeUserinfo(client.Email), encodeUserinfo(client.Password), joinHostPort(serverAddress, inbound.Port), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
 
 	default:
 		return ""

@@ -75,6 +75,16 @@ export const ClientModal: React.FC<ClientModalProps> = ({
     return res;
   };
 
+  const generateBase64Key = (bytes = 16) => {
+    const array = new Uint8Array(bytes);
+    window.crypto.getRandomValues(array);
+    let binary = '';
+    for (let i = 0; i < array.length; i++) {
+      binary += String.fromCharCode(array[i]);
+    }
+    return btoa(binary);
+  };
+
   const handleCopyKey = () => {
     if (!uuid) return;
     navigator.clipboard.writeText(uuid);
@@ -384,7 +394,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 <span>{isTrojan || isShadowsocks ? 'UUID' : 'Generate'}</span>
               </button>
 
-              {(isTrojan || isShadowsocks) && (
+              {isTrojan && (
                 <button
                   type="button"
                   onClick={() => setUuid(generateAlphanumericPassword(16))}
@@ -393,6 +403,18 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 >
                   <Key className="w-3.5 h-3.5" />
                   <span>Pass</span>
+                </button>
+              )}
+
+              {isShadowsocks && (
+                <button
+                  type="button"
+                  onClick={() => setUuid(generateBase64Key(16))}
+                  className="px-3 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  title="Generate SS2022 Base64 Key"
+                >
+                  <Key className="w-3.5 h-3.5" />
+                  <span>SS2022</span>
                 </button>
               )}
             </div>

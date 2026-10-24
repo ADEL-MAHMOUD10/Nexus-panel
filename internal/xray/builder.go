@@ -306,6 +306,62 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 				}
 			}
 
+			// Pre-Flight Protocol Compatibility Validation (Strict Xray-core Rulebook)
+			switch proto {
+			case "shadowsocks":
+				// Shadowsocks is a self-encrypting Layer 4 protocol (SS2022/AEAD) over raw TCP/UDP.
+				// In Xray-core, it does NOT support TLS or REALITY stream wrapping.
+				streamMap["security"] = "none"
+				delete(streamMap, "realitySettings")
+				delete(streamMap, "tlsSettings")
+				streamMap["network"] = "tcp"
+
+			case "wireguard":
+				// WireGuard has its own internal cryptographic tunnel over UDP.
+				streamMap["security"] = "none"
+				delete(streamMap, "realitySettings")
+				delete(streamMap, "tlsSettings")
+
+			case "vmess":
+				// VMess does NOT support REALITY or XTLS-Vision.
+				if sec, ok := streamMap["security"].(string); ok && sec == "reality" {
+					streamMap["security"] = "tls"
+					delete(streamMap, "realitySettings")
+				}
+
+			case "hysteria", "hysteria2":
+				// Hysteria requires built-in QUIC TLS.
+				streamMap["security"] = "tls"
+				delete(streamMap, "realitySettings")
+
+			case "trojan":
+				// Trojan in public networks requires TLS or REALITY.
+				sec, _ := streamMap["security"].(string)
+				if sec != "reality" && sec != "tls" {
+					streamMap["security"] = "tls"
+				}
+
+			case "vless":
+				// XTLS-Vision flow is strictly invalid on non-TCP or non-TLS/REALITY transports.
+				transportNet, _ := streamMap["network"].(string)
+				sec, _ := streamMap["security"].(string)
+				if transportNet != "tcp" || (sec != "tls" && sec != "reality") {
+					// Re-serialize settingsBytes to strip any flow
+					var vlessRaw map[string]any
+					if json.Unmarshal(settingsBytes, &vlessRaw) == nil {
+						if cList, ok := vlessRaw["clients"].([]any); ok {
+							for _, item := range cList {
+								if cMap, ok := item.(map[string]any); ok {
+									delete(cMap, "flow")
+								}
+							}
+							vlessRaw["clients"] = cList
+							settingsBytes, _ = json.Marshal(vlessRaw)
+						}
+					}
+				}
+			}
+
 			streamSettingsBytes, _ = json.Marshal(streamMap)
 		} else {
 			streamSettingsBytes = []byte(in.StreamSettings)

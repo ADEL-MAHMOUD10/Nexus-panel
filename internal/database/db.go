@@ -392,6 +392,28 @@ func (db *DB) GetClientsBySubID(subID string) ([]Client, error) {
 	return clients, nil
 }
 
+func (db *DB) GetClientByID(id int) (*Client, error) {
+	row := db.conn.QueryRow("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE id = ?", id)
+	var c Client
+	var enableInt int
+	if err := row.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
+		return nil, err
+	}
+	c.Enable = enableInt == 1
+	return &c, nil
+}
+
+func (db *DB) GetClientByEmail(email string) (*Client, error) {
+	row := db.conn.QueryRow("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE email = ?", email)
+	var c Client
+	var enableInt int
+	if err := row.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
+		return nil, err
+	}
+	c.Enable = enableInt == 1
+	return &c, nil
+}
+
 func (db *DB) SaveClient(c *Client) error {
 	enableInt := 0
 	if c.Enable {

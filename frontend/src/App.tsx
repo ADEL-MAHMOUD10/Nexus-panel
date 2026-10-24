@@ -336,16 +336,23 @@ export function App() {
     } catch (e) {}
   };
 
-  // Share Generator
-  const generateVlessLink = (c: Client, inb: Inbound) => {
-    const host = status.publicIP || window.location.hostname;
+  // Universal Multi-Protocol Share Link Generator
+  const buildUniversalClientLink = (c: Client, inb: Inbound, host: string): string => {
     let streamSettings: any = {};
     try {
       streamSettings = JSON.parse(inb.streamSettings || '{}');
     } catch (e) {}
 
-    const net = streamSettings.network || 'tcp';
+    let settings: any = {};
+    try {
+      settings = JSON.parse(inb.settings || '{}');
+    } catch (e) {}
+
+    const proto = (inb.protocol || 'vless').toLowerCase();
+    const net = streamSettings.network || streamSettings.method || 'tcp';
     const sec = streamSettings.security || 'none';
+    const remark = `${inb.remark || inb.tag}${c.email ? '-' + c.email : ''}`;
+
     const params = new URLSearchParams({
       type: net,
       security: sec,
@@ -356,38 +363,129 @@ export function App() {
       params.set('sni', streamSettings.realitySettings.serverNames?.[0] || 'www.google.com');
       params.set('sid', streamSettings.realitySettings.shortIds?.[0] || '');
       params.set('fp', 'chrome');
-      if (c.flow) params.set('flow', c.flow);
+      if (proto === 'vless' && net === 'tcp' && c.flow) {
+        params.set('flow', c.flow);
+      }
     } else if (sec === 'tls' && streamSettings.tlsSettings) {
       if (streamSettings.tlsSettings.serverName) params.set('sni', streamSettings.tlsSettings.serverName);
-      if (c.flow) params.set('flow', c.flow);
+      if (proto === 'vless' && net === 'tcp' && c.flow) {
+        params.set('flow', c.flow);
+      }
     }
 
     if (net === 'ws' && streamSettings.wsSettings) {
-      params.set('path', streamSettings.wsSettings.path || '/vless-ws');
+      params.set('path', streamSettings.wsSettings.path || '/ws');
       if (streamSettings.wsSettings.headers?.Host) params.set('host', streamSettings.wsSettings.headers.Host);
     } else if (net === 'grpc' && streamSettings.grpcSettings) {
-      params.set('serviceName', streamSettings.grpcSettings.serviceName || 'vless-grpc');
+      params.set('serviceName', streamSettings.grpcSettings.serviceName || 'grpc');
+    } else if (net === 'httpupgrade' && streamSettings.httpupgradeSettings) {
+      params.set('path', streamSettings.httpupgradeSettings.path || '/httpupgrade');
+      if (streamSettings.httpupgradeSettings.host) params.set('host', streamSettings.httpupgradeSettings.host);
+    } else if (net === 'xhttp' && streamSettings.xhttpSettings) {
+      params.set('path', streamSettings.xhttpSettings.path || '/');
+      if (streamSettings.xhttpSettings.host) params.set('host', streamSettings.xhttpSettings.host);
     }
 
-    return `vless://${c.uuid}@${host}:${inb.port}?${params.toString()}#${encodeURIComponent(c.email)}`;
+    switch (proto) {
+      case 'vless':
+        params.set('encryption', 'none');
+        return `vless://${c.uuid}@${host}:${inb.port}?${params.toString()}#${encodeURIComponent(remark)}`;
+
+      case 'trojan':
+        const trojanPwd = c.password || c.uuid;
+        params.delete('flow');
+        return `trojan://${encodeURIComponent(trojanPwd)}@${host}:${inb.port}?${params.toString()}#${encodeURIComponent(remark)}`;
+
+      case 'vmess':
+        const vmessObj = {
+          v: '2',
+          ps: remark,
+          add: host,
+          port: inb.port,
+          id: c.uuid,
+          aid: 0,
+          scy: 'auto',
+          net: net,
+          type: 'none',
+          host: params.get('host') || '',
+          path: params.get('path') || '',
+          tls: sec,
+          sni: params.get('sni') || '',
+        };
+        return `vmess://${btoa(unescape(encodeURIComponent(JSON.stringify(vmessObj))))}`;
+
+      case 'shadowsocks':
+        const method = settings.method || '2022-blake3-aes-128-gcm';
+        const ssPwd = c.password || c.uuid || settings.password || '';
+        const userInfo = btoa(`${method}:${ssPwd}`);
+        return `ss://${userInfo}@${host}:${inb.port}#${encodeURIComponent(remark)}`;
+
+      case 'hysteria':
+      case 'hysteria2':
+        const hyAuth = c.password || c.uuid;
+        const hySni = params.get('sni') || host;
+        return `hy2://${encodeURIComponent(hyAuth)}@${host}:${inb.port}?sni=${encodeURIComponent(hySni)}#${encodeURIComponent(remark)}`;
+
+      case 'wireguard':
+        const wgKey = c.password || c.uuid;
+        return `wireguard://${encodeURIComponent(wgKey)}@${host}:${inb.port}?publickey=${encodeURIComponent(wgKey)}#${encodeURIComponent(remark)}`;
+
+      case 'socks':
+        return `socks5://${encodeURIComponent(c.email)}:${encodeURIComponent(c.password || c.uuid)}@${host}:${inb.port}#${encodeURIComponent(remark)}`;
+
+      case 'http':
+        return `http://${encodeURIComponent(c.email)}:${encodeURIComponent(c.password || c.uuid)}@${host}:${inb.port}#${encodeURIComponent(remark)}`;
+
+      default:
+        return `vless://${c.uuid}@${host}:${inb.port}?${params.toString()}#${encodeURIComponent(remark)}`;
+    }
   };
 
-  const handleShareInbound = (inb: Inbound) => {
+  const handleShareInbound = async (inb: Inbound) => {
     const client = inb.clients?.[0];
-    if (client) {
-      const link = generateVlessLink(client, inb);
-      setShareModal({
-        isOpen: true,
-        title: `${inb.remark || inb.tag} (${inb.protocol.toUpperCase()})`,
-        link,
-      });
-    } else {
+    if (!client) {
       notify.warning('No Clients Found', 'This inbound listener has no client accounts assigned yet.');
+      return;
     }
+
+    let link = client.link || '';
+    if (!link) {
+      try {
+        const res = await api.get(`/api/inbounds/link/${inb.id}`);
+        if (res.data?.success && res.data?.link) {
+          link = res.data.link;
+        }
+      } catch (e) {}
+    }
+
+    if (!link) {
+      const host = status.publicIP || window.location.hostname;
+      link = buildUniversalClientLink(client, inb, host);
+    }
+
+    setShareModal({
+      isOpen: true,
+      title: `${inb.remark || inb.tag} (${inb.protocol.toUpperCase()})`,
+      link,
+    });
   };
 
-  const handleShareClient = (client: Client, inb: Inbound) => {
-    const link = generateVlessLink(client, inb);
+  const handleShareClient = async (client: Client, inb: Inbound) => {
+    let link = client.link || '';
+    if (!link) {
+      try {
+        const res = await api.get(`/api/clients/link/${client.id}`);
+        if (res.data?.success && res.data?.link) {
+          link = res.data.link;
+        }
+      } catch (e) {}
+    }
+
+    if (!link) {
+      const host = status.publicIP || window.location.hostname;
+      link = buildUniversalClientLink(client, inb, host);
+    }
+
     setShareModal({
       isOpen: true,
       title: `${client.email} (${inb.protocol.toUpperCase()})`,

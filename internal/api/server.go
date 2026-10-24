@@ -123,6 +123,12 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	// Clients
 	mux.HandleFunc("GET /api/clients/list", s.authMiddleware(s.handleListClients))
 	mux.HandleFunc("GET /panel/api/clients/list", s.authMiddleware(s.handleListClients))
+	mux.HandleFunc("GET /api/clients/link/{id}", s.authMiddleware(s.handleGetClientLink))
+	mux.HandleFunc("GET /panel/api/clients/link/{id}", s.authMiddleware(s.handleGetClientLink))
+	mux.HandleFunc("GET /api/clients/link-by-email/{email}", s.authMiddleware(s.handleGetClientLinkByEmail))
+	mux.HandleFunc("GET /panel/api/clients/link-by-email/{email}", s.authMiddleware(s.handleGetClientLinkByEmail))
+	mux.HandleFunc("GET /api/inbounds/link/{id}", s.authMiddleware(s.handleGetInboundLink))
+	mux.HandleFunc("GET /panel/api/inbounds/link/{id}", s.authMiddleware(s.handleGetInboundLink))
 
 	mux.HandleFunc("POST /api/clients/create", s.authMiddleware(s.handleCreateClient))
 	mux.HandleFunc("POST /api/clients/add", s.authMiddleware(s.handleCreateClient))
@@ -406,6 +412,116 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "clients": allClients, "total": len(allClients)})
+}
+
+func (s *Server) handleGetClientLink(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "invalid client ID"})
+		return
+	}
+
+	client, err := s.db.GetClientByID(id)
+	if err != nil || client == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "client not found"})
+		return
+	}
+
+	inbound, err := s.db.GetInbound(client.InboundID)
+	if err != nil || inbound == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "parent inbound not found"})
+		return
+	}
+
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	serverHost := s.db.GetSetting("server_host", host)
+
+	link := subscription.BuildInboundLink(inbound, client, serverHost)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":  true,
+		"link":     link,
+		"protocol": inbound.Protocol,
+		"remark":   inbound.Remark,
+		"email":    client.Email,
+		"port":     inbound.Port,
+	})
+}
+
+func (s *Server) handleGetClientLinkByEmail(w http.ResponseWriter, r *http.Request) {
+	email := r.PathValue("email")
+	if email == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "email required"})
+		return
+	}
+
+	client, err := s.db.GetClientByEmail(email)
+	if err != nil || client == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "client not found"})
+		return
+	}
+
+	inbound, err := s.db.GetInbound(client.InboundID)
+	if err != nil || inbound == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "parent inbound not found"})
+		return
+	}
+
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	serverHost := s.db.GetSetting("server_host", host)
+
+	link := subscription.BuildInboundLink(inbound, client, serverHost)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":  true,
+		"link":     link,
+		"protocol": inbound.Protocol,
+		"remark":   inbound.Remark,
+		"email":    client.Email,
+		"port":     inbound.Port,
+	})
+}
+
+func (s *Server) handleGetInboundLink(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"success": false, "message": "invalid inbound ID"})
+		return
+	}
+
+	inbound, err := s.db.GetInbound(id)
+	if err != nil || inbound == nil {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "inbound not found"})
+		return
+	}
+
+	clients, _ := s.db.GetClientsByInbound(inbound.ID)
+	if len(clients) == 0 {
+		writeJSON(w, http.StatusNotFound, map[string]any{"success": false, "message": "no client accounts assigned to this inbound listener"})
+		return
+	}
+
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	serverHost := s.db.GetSetting("server_host", host)
+
+	link := subscription.BuildInboundLink(inbound, &clients[0], serverHost)
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":  true,
+		"link":     link,
+		"protocol": inbound.Protocol,
+		"remark":   inbound.Remark,
+		"email":    clients[0].Email,
+		"port":     inbound.Port,
+	})
 }
 
 // checkPortAvailability checks whether a port can be used by an inbound listener.
