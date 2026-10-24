@@ -10,7 +10,8 @@ import {
   Menu,
   X,
   Terminal,
-  Activity
+  Activity,
+  Database
 } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 
@@ -29,6 +30,7 @@ interface HeaderProps {
   hasUpdates?: boolean;
   onOpenXrayLogs?: () => void;
   onOpenXrayMetrics?: () => void;
+  onOpenBackup?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -46,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   hasUpdates,
   onOpenXrayLogs,
   onOpenXrayMetrics,
+  onOpenBackup,
 }) => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
@@ -174,6 +177,19 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Activity className="w-3.5 h-3.5 text-purple-400" />
                 <span className="hidden md:inline">Matrix</span>
+              </button>
+            )}
+
+            {/* Database Backup & Disaster Recovery */}
+            {onOpenBackup && (
+              <button
+                type="button"
+                onClick={onOpenBackup}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Database Backup & Disaster Recovery"
+              >
+                <Database className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="hidden md:inline">Backup</span>
               </button>
             )}
 

@@ -15,6 +15,7 @@ import { ShareModal } from './components/ShareModal';
 import { UpdatesModal } from './components/UpdatesModal';
 import { XrayLogModal } from './components/XrayLogModal';
 import { XrayMetricsModal } from './components/XrayMetricsModal';
+import { BackupModal } from './components/BackupModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { LoginPage } from './pages/LoginPage';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
@@ -32,13 +33,14 @@ export function App() {
 
   // Updates
   const [updates, setUpdates] = useState<UpdateInfo>({
-    panel: { currentVersion: 'v1.1.7', latestVersion: 'v1.1.7', hasUpdate: false, releaseNotes: '', publishedAt: '' },
+    panel: { currentVersion: 'v1.2.7', latestVersion: 'v1.2.7', hasUpdate: false, releaseNotes: '', publishedAt: '' },
     xray: { currentVersion: 'v26.9.30', latestVersion: 'v26.9.30', hasUpdate: false, releaseNotes: '', publishedAt: '' },
   });
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [isUpdatesModalOpen, setIsUpdatesModalOpen] = useState(false);
   const [isXrayLogModalOpen, setIsXrayLogModalOpen] = useState(false);
   const [isXrayMetricsModalOpen, setIsXrayMetricsModalOpen] = useState(false);
+  const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const updateNotifiedRef = useRef<string | null>(null);
 
   // Core Data
@@ -545,7 +547,7 @@ export function App() {
         xrayRunning={status.xrayRunning}
         onlineCount={onlineCount}
         inboundsCount={inbounds.length}
-        panelVersion={status.panelVersion || 'v1.1.7'}
+        panelVersion={status.panelVersion || 'v1.2.7'}
         publicIP={status.publicIP}
         onLogout={() => {
           localStorage.removeItem('nexus_token');
@@ -598,6 +600,7 @@ export function App() {
           hasUpdates={updates.panel.hasUpdate || updates.xray.hasUpdate}
           onOpenXrayLogs={() => setIsXrayLogModalOpen(true)}
           onOpenXrayMetrics={() => setIsXrayMetricsModalOpen(true)}
+          onOpenBackup={() => setIsBackupModalOpen(true)}
         />
 
         {/* Scrollable Viewport */}
@@ -669,7 +672,7 @@ export function App() {
               />
             )}
 
-            {activeTab === 'config' && <ConfigPage />}
+            {activeTab === 'config' && <ConfigPage onOpenBackup={() => setIsBackupModalOpen(true)} />}
 
             {activeTab === 'logs' && <LogsPage />}
           </div>
@@ -726,6 +729,12 @@ export function App() {
         onClose={() => setIsXrayMetricsModalOpen(false)}
         formatBytes={formatBytes}
         formatSpeed={formatSpeed}
+      />
+
+      <BackupModal
+        isOpen={isBackupModalOpen}
+        onClose={() => setIsBackupModalOpen(false)}
+        onRestoreSuccess={refreshAll}
       />
     </div>
   );

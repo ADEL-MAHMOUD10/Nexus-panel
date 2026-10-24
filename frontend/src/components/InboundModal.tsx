@@ -384,8 +384,12 @@ export const InboundModal: React.FC<InboundModalProps> = ({
       nextSec = 'tls';
       setNetwork('tcp');
     }
-    if (!isRemarkCustom) {
+
+    const isAutoRemark = !isRemarkCustom || !remark || 
+      /^(VLESS|Trojan|SS-2022|VMess|WG|HY2|Socks5|HTTP)/i.test(remark);
+    if (isAutoRemark) {
       setRemark(getSuggestedRemark(protoId, nextSec, port));
+      setIsRemarkCustom(false);
     }
   };
 
@@ -692,37 +696,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           {activeTab === 'basics' && (
             <div className="space-y-5">
               
-              {/* Field 1: Inbound Remark with Styled UI Label */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                      <Tag className="w-3 h-3" />
-                    </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                      Inbound Remark & Label
-                    </label>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-zinc-400">
-                    Friendly Identifier
-                  </span>
-                </div>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    value={remark}
-                    onChange={(e) => {
-                      setRemark(e.target.value);
-                      setIsRemarkCustom(true);
-                    }}
-                    placeholder="e.g. VLESS-REALITY-Port443"
-                    className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/20 font-mono transition"
-                  />
-                </div>
-              </div>
-
-              {/* Protocol Visual Selector */}
+              {/* Protocol Visual Selector (First Priority) */}
               <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -767,6 +741,36 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       </button>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Field 2: Inbound Remark with Dynamic Placeholder */}
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                      <Tag className="w-3 h-3" />
+                    </div>
+                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                      Inbound Remark & Label
+                    </label>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-zinc-400">
+                    Friendly Identifier
+                  </span>
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    value={remark}
+                    onChange={(e) => {
+                      setRemark(e.target.value);
+                      setIsRemarkCustom(true);
+                    }}
+                    placeholder={`e.g. ${getSuggestedRemark(protocol, security, port)}`}
+                    className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/20 font-mono transition"
+                  />
                 </div>
               </div>
 

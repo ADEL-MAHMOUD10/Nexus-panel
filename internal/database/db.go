@@ -3,7 +3,9 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"path/filepath"
@@ -51,6 +53,7 @@ type Client struct {
 // DB wraps SQLite operations for Nexus
 type DB struct {
 	conn *sql.DB
+	path string
 }
 
 // Open initializes and migrates the SQLite database file
@@ -67,7 +70,13 @@ func Open(dbPath string) (*DB, error) {
 	// Single connection / busy timeout for reliable embedded SQLite
 	conn.SetMaxOpenConns(1)
 
-	db := &DB{conn: conn}
+	// Enable WAL mode, Foreign Keys, and Busy Timeout for optimal SQLite performance
+	_, _ = conn.Exec("PRAGMA journal_mode = WAL;")
+	_, _ = conn.Exec("PRAGMA foreign_keys = ON;")
+	_, _ = conn.Exec("PRAGMA busy_timeout = 5000;")
+	_, _ = conn.Exec("PRAGMA synchronous = NORMAL;")
+
+	db := &DB{conn: conn, path: dbPath}
 	if err := db.migrate(); err != nil {
 		_ = conn.Close()
 		return nil, fmt.Errorf("migration failed: %w", err)
@@ -79,6 +88,138 @@ func Open(dbPath string) (*DB, error) {
 // Close closes the database connection
 func (db *DB) Close() error {
 	return db.conn.Close()
+}
+
+// Path returns the SQLite database file path on disk
+func (db *DB) Path() string {
+	return db.path
+}
+
+// Backup creates a clean, consistent snapshot of the active SQLite database to destPath
+func (db *DB) Backup(destPath string) error {
+	_ = os.Remove(destPath)
+	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+		return err
+	}
+
+	escaped := strings.ReplaceAll(destPath, "'", "''")
+	query := fmt.Sprintf("VACUUM INTO '%s'", escaped)
+	_, err := db.conn.Exec(query)
+	if err != nil {
+		// Fallback: If VACUUM INTO fails, perform a safe file copy
+		return db.safeFileCopy(destPath)
+	}
+	return nil
+}
+
+func (db *DB) safeFileCopy(destPath string) error {
+	srcFile, err := os.Open(db.path)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+
+	destFile, err := os.OpenFile(destPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, srcFile)
+	return err
+}
+
+// ValidateSQLiteDB inspects an arbitrary database file and validates schema and integrity
+func ValidateSQLiteDB(dbPath string) error {
+	fileInfo, err := os.Stat(dbPath)
+	if err != nil {
+		return fmt.Errorf("backup file does not exist: %w", err)
+	}
+	if fileInfo.Size() < 512 {
+		return errors.New("backup file is too small to be a valid SQLite database")
+	}
+
+	testConn, err := sql.Open("sqlite", dbPath)
+	if err != nil {
+		return fmt.Errorf("failed to open uploaded database: %w", err)
+	}
+	defer testConn.Close()
+
+	// Check SQLite integrity
+	var integrity string
+	if err := testConn.QueryRow("PRAGMA integrity_check;").Scan(&integrity); err != nil || integrity != "ok" {
+		return fmt.Errorf("database integrity check failed: %s", integrity)
+	}
+
+	// Verify essential tables exist
+	requiredTables := []string{"inbounds", "clients", "settings", "admins"}
+	for _, tbl := range requiredTables {
+		var count int
+		err := testConn.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = ?", tbl).Scan(&count)
+		if err != nil || count == 0 {
+			return fmt.Errorf("backup database is missing required table: %s", tbl)
+		}
+	}
+
+	return nil
+}
+
+// Restore validates the provided database file, creates a safety backup of the existing database,
+// swaps in the new file, re-opens database connections, and re-runs schema migration.
+func (db *DB) Restore(sourcePath string) error {
+	if err := ValidateSQLiteDB(sourcePath); err != nil {
+		return fmt.Errorf("validation failed: %w", err)
+	}
+
+	// 1. Create a safety backup of current live DB
+	backupPath := db.path + ".bak"
+	_ = db.Backup(backupPath)
+
+	// 2. Close current database connection
+	if db.conn != nil {
+		_ = db.conn.Close()
+	}
+
+	// 3. Remove WAL and SHM journal files
+	_ = os.Remove(db.path + "-wal")
+	_ = os.Remove(db.path + "-shm")
+
+	// 4. Overwrite live DB with new database
+	srcBytes, err := os.ReadFile(sourcePath)
+	if err != nil {
+		_ = db.reopen()
+		return fmt.Errorf("failed to read source backup: %w", err)
+	}
+
+	if err := os.WriteFile(db.path, srcBytes, 0644); err != nil {
+		_ = os.Rename(backupPath, db.path)
+		_ = db.reopen()
+		return fmt.Errorf("failed to write restored database: %w", err)
+	}
+
+	// 5. Re-open connection & re-apply pragmas and migrations
+	if err := db.reopen(); err != nil {
+		return fmt.Errorf("failed to re-open restored database: %w", err)
+	}
+
+	// 6. Run migrations to ensure any newly added columns/indexes exist
+	_ = db.migrate()
+
+	return nil
+}
+
+func (db *DB) reopen() error {
+	conn, err := sql.Open("sqlite", db.path)
+	if err != nil {
+		return err
+	}
+	conn.SetMaxOpenConns(1)
+	_, _ = conn.Exec("PRAGMA journal_mode = WAL;")
+	_, _ = conn.Exec("PRAGMA foreign_keys = ON;")
+	_, _ = conn.Exec("PRAGMA busy_timeout = 5000;")
+	_, _ = conn.Exec("PRAGMA synchronous = NORMAL;")
+	db.conn = conn
+	return nil
 }
 
 func (db *DB) migrate() error {
@@ -129,6 +270,10 @@ func (db *DB) migrate() error {
 		UNIQUE(inbound_id, email)
 	);
 	CREATE INDEX IF NOT EXISTS idx_client_sub_id ON clients(sub_id);
+	CREATE INDEX IF NOT EXISTS idx_clients_inbound_id ON clients(inbound_id);
+	CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
+	CREATE INDEX IF NOT EXISTS idx_clients_last_online ON clients(last_online);
+	CREATE INDEX IF NOT EXISTS idx_inbounds_port ON inbounds(port);
 	`
 	if _, err := db.conn.Exec(schema); err != nil {
 		return err
@@ -470,10 +615,40 @@ func (db *DB) UpdateClientsLastOnline(emails []string, now int64) error {
 	if len(emails) == 0 {
 		return nil
 	}
-	for _, email := range emails {
-		_, _ = db.conn.Exec("UPDATE clients SET last_online = ? WHERE email = ?", now, email)
+	tx, err := db.conn.Begin()
+	if err != nil {
+		return err
 	}
-	return nil
+	stmt, err := tx.Prepare("UPDATE clients SET last_online = ? WHERE email = ?")
+	if err != nil {
+		_ = tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for _, email := range emails {
+		_, _ = stmt.Exec(now, email)
+	}
+	return tx.Commit()
+}
+
+// GetOnlineClientsFromDB returns all unique client emails that have been seen online within graceSec seconds
+func (db *DB) GetOnlineClientsFromDB(graceSec int64) ([]string, error) {
+	threshold := time.Now().Unix() - graceSec
+	rows, err := db.conn.Query("SELECT DISTINCT email FROM clients WHERE last_online >= ?", threshold)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var emails []string
+	for rows.Next() {
+		var email string
+		if err := rows.Scan(&email); err == nil && email != "" {
+			emails = append(emails, email)
+		}
+	}
+	return emails, nil
 }
 
 func (db *DB) AddTraffic(email string, up, down int64) error {

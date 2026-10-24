@@ -218,6 +218,14 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/server/issue-cert", s.authMiddleware(s.handleIssueCertificate))
 	mux.HandleFunc("POST /panel/api/server/issue-cert", s.authMiddleware(s.handleIssueCertificate))
 
+	// Database Backup & Disaster Recovery Restore
+	mux.HandleFunc("GET /api/server/backup", s.authMiddleware(s.handleExportBackup))
+	mux.HandleFunc("GET /panel/api/server/backup", s.authMiddleware(s.handleExportBackup))
+	mux.HandleFunc("GET /panel/api/server/getDb", s.authMiddleware(s.handleExportBackup))
+	mux.HandleFunc("POST /api/server/restore", s.authMiddleware(s.handleImportBackup))
+	mux.HandleFunc("POST /panel/api/server/restore", s.authMiddleware(s.handleImportBackup))
+	mux.HandleFunc("POST /panel/api/server/importDB", s.authMiddleware(s.handleImportBackup))
+
 	// Subscription endpoint (Public with token)
 	mux.HandleFunc("GET /sub/{subId}", s.handleSubscription)
 }
@@ -359,7 +367,8 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 			if s.xrayController != nil {
 				upSpd, downSpd = s.xrayController.GetClientSpeed(c.Email)
 			}
-			isOnline := (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
+			now := time.Now().Unix()
+			isOnline := (c.LastOnline > 0 && (now-c.LastOnline <= 90)) || (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
 			clientUpSum += upSpd
 			clientDownSum += downSpd
 
@@ -432,7 +441,8 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 			if s.xrayController != nil {
 				upSpd, downSpd = s.xrayController.GetClientSpeed(c.Email)
 			}
-			isOnline := (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
+			now := time.Now().Unix()
+			isOnline := (c.LastOnline > 0 && (now-c.LastOnline <= 90)) || (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
 			allClients = append(allClients, ClientItem{
 				Client:          c,
 				Link:            link,
@@ -1699,10 +1709,33 @@ func (s *Server) handleBulkClients(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleGetOnlineClients(w http.ResponseWriter, r *http.Request) {
+	onlineSet := make(map[string]bool)
 	var onlines []string
+
+	// 1. From live gRPC controller memory cache
 	if s.xrayController != nil {
-		onlines = s.xrayController.GetOnlineEmails()
+		for _, e := range s.xrayController.GetOnlineEmails() {
+			trimmed := strings.TrimSpace(e)
+			if trimmed != "" && !onlineSet[trimmed] {
+				onlineSet[trimmed] = true
+				onlines = append(onlines, trimmed)
+			}
+		}
 	}
+
+	// 2. Union with persistent last_online within 90s grace period from database
+	if s.db != nil {
+		if dbOnlines, err := s.db.GetOnlineClientsFromDB(90); err == nil {
+			for _, e := range dbOnlines {
+				trimmed := strings.TrimSpace(e)
+				if trimmed != "" && !onlineSet[trimmed] {
+					onlineSet[trimmed] = true
+					onlines = append(onlines, trimmed)
+				}
+			}
+		}
+	}
+
 	if onlines == nil {
 		onlines = []string{}
 	}
@@ -2100,6 +2133,113 @@ func (s *Server) handleSaveConfig(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"success": true})
 }
 
+// -----------------------------------------------------------------------------
+// Database Backup & Disaster Recovery
+// -----------------------------------------------------------------------------
+
+func (s *Server) handleExportBackup(w http.ResponseWriter, r *http.Request) {
+	if s.db == nil || s.db.Path() == "" {
+		http.Error(w, "database path not configured", http.StatusInternalServerError)
+		return
+	}
+
+	timestamp := time.Now().Format("2006-01-02-150405")
+	filename := fmt.Sprintf("nexus-backup-%s.db", timestamp)
+
+	tempFile := filepath.Join(os.TempDir(), fmt.Sprintf("nexus-backup-%d.db", time.Now().UnixNano()))
+	defer os.Remove(tempFile)
+
+	if err := s.db.Backup(tempFile); err != nil {
+		logger.Errorf("NEXUS: failed to create database backup snapshot: %v", err)
+		http.Error(w, "failed to create database snapshot: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	data, err := os.ReadFile(tempFile)
+	if err != nil {
+		http.Error(w, "failed to read backup snapshot", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/x-sqlite3")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+	w.Header().Set("Content-Length", strconv.Itoa(len(data)))
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(data)
+}
+
+func (s *Server) handleImportBackup(w http.ResponseWriter, r *http.Request) {
+	// Accept up to 100MB database file upload
+	if err := r.ParseMultipartForm(100 << 20); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success": false,
+			"message": "failed to parse multipart upload: " + err.Error(),
+		})
+		return
+	}
+
+	file, header, err := r.FormFile("db")
+	if err != nil {
+		file, header, err = r.FormFile("file")
+	}
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success": false,
+			"message": "no database file provided (field 'db' or 'file' required)",
+		})
+		return
+	}
+	defer file.Close()
+
+	tempUpload := filepath.Join(os.TempDir(), fmt.Sprintf("nexus-upload-%d.db", time.Now().UnixNano()))
+	defer os.Remove(tempUpload)
+
+	out, err := os.OpenFile(tempUpload, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"message": "failed to create temporary upload file",
+		})
+		return
+	}
+	if _, err := io.Copy(out, file); err != nil {
+		out.Close()
+		writeJSON(w, http.StatusInternalServerError, map[string]any{
+			"success": false,
+			"message": "failed to save uploaded file",
+		})
+		return
+	}
+	out.Close()
+
+	// Restore database safely
+	if err := s.db.Restore(tempUpload); err != nil {
+		logger.Errorf("NEXUS: database restore failed: %v", err)
+		writeJSON(w, http.StatusBadRequest, map[string]any{
+			"success": false,
+			"message": "Database validation/restore failed: " + err.Error(),
+		})
+		return
+	}
+
+	logger.Infof("NEXUS: database successfully restored from %s", header.Filename)
+
+	// Reapply configuration to Xray-core
+	baseDir := filepath.Dir(s.db.Path())
+	if filepath.Base(baseDir) == "data" {
+		baseDir = filepath.Dir(baseDir)
+	}
+	configPath := filepath.Join(baseDir, "bin", "config.json")
+	if err := xray.SaveAndApplyConfig(s.db, 62789, configPath, s.processManager); err != nil {
+		logger.Warningf("NEXUS: notice reloading xray after restore: %v", err)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"message": "Database successfully restored and listeners applied. Panel and Xray core are synchronized.",
+	})
+}
+
 func (s *Server) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 	isXrayRunning := false
 	xrayUptime := uint64(0)
@@ -2351,7 +2491,21 @@ func (s *Server) handleSubscription(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var links []string
+	var totalUp, totalDown, totalLimit int64
+	var minExpiry int64
+
 	for _, c := range clients {
+		totalUp += c.Up
+		totalDown += c.Down
+		if c.Total > 0 {
+			totalLimit += c.Total
+		}
+		if c.ExpiryTime > 0 {
+			if minExpiry == 0 || c.ExpiryTime < minExpiry {
+				minExpiry = c.ExpiryTime
+			}
+		}
+
 		if !c.Enable || s.db.CheckClientExpiredOrDepleted(&c) {
 			continue
 		}
@@ -2369,6 +2523,9 @@ func (s *Server) handleSubscription(w http.ResponseWriter, r *http.Request) {
 
 	base64Subscription := subscription.ExportBase64Subscription(links)
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	w.Header().Set("Subscription-Userinfo", fmt.Sprintf("upload=%d; download=%d; total=%d; expire=%d", totalUp, totalDown, totalLimit, minExpiry))
+	w.Header().Set("Profile-Update-Interval", "24")
+	w.Header().Set("Content-Disposition", `inline; filename="subscription.txt"`)
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte(base64Subscription))
 }
