@@ -87,6 +87,11 @@ func (c *Controller) ensureConnected() error {
 		return nil
 	}
 
+	if c.conn != nil {
+		_ = c.conn.Close()
+		c.conn = nil
+	}
+
 	conn, err := grpc.NewClient(c.apiAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		c.isConnected = false
@@ -315,13 +320,13 @@ func (c *Controller) GetOnlineUsers() ([]string, error) {
 			continue
 		}
 
-		// A client is online if they have at least one active connection dispatched recently (within 20s)
+		// A client is online if they have an active connection (seen within 90s grace period or zero-timestamp connection)
 		hasLiveConnection := false
 		for _, entry := range u.GetIps() {
 			if entry == nil || entry.GetIp() == "" {
 				continue
 			}
-			if entry.GetLastSeen() > 0 && (now-entry.GetLastSeen() <= 20) {
+			if entry.GetLastSeen() == 0 || (now-entry.GetLastSeen() <= 90) {
 				hasLiveConnection = true
 				break
 			}
@@ -440,7 +445,7 @@ func (c *Controller) GetClientSpeed(email string) (float64, float64) {
 	return 0, 0
 }
 
-// DecayClientSpeeds decays speeds to 0 for clients not present in active list
+// DecayClientSpeeds decays speeds gracefully for clients not present in active list
 func (c *Controller) DecayClientSpeeds(activeThisTick []string) {
 	c.speedMu.Lock()
 	defer c.speedMu.Unlock()
@@ -454,10 +459,19 @@ func (c *Controller) DecayClientSpeeds(activeThisTick []string) {
 	now := time.Now().Unix()
 	for email, spd := range c.clientSpeeds {
 		if !activeMap[email] {
-			spd.UpSpeed = 0
-			spd.DownSpeed = 0
-			// If not seen for over 30s, prune
-			if now-spd.LastSeen > 30 {
+			// If not seen for over 5s, decay down smoothly rather than immediate zeroing
+			if now-spd.LastSeen > 5 {
+				spd.UpSpeed *= 0.4
+				spd.DownSpeed *= 0.4
+				if spd.UpSpeed < 20 {
+					spd.UpSpeed = 0
+				}
+				if spd.DownSpeed < 20 {
+					spd.DownSpeed = 0
+				}
+			}
+			// If not seen for over 60s, prune
+			if now-spd.LastSeen > 60 {
 				delete(c.clientSpeeds, email)
 			}
 		}
