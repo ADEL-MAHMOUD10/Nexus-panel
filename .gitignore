@@ -3,4 +3,7 @@
 data/*.db
 data/*.json
 frontend/node_modules/
+docs/
+xray-config-reference/
+
 
