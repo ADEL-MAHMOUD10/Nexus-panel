@@ -31,7 +31,8 @@
           {
             "id": "7a7eae58-99ad-4f2f-ad89-c177eb73eb53",
             "flow": "xtls-rprx-vision",
-            "email": "user_5573"
+            "email": "user_5573",
+            "level": 0
           }
         ],
         "decryption": "none",
@@ -99,7 +100,9 @@
       "settings": {
         "clients": [],
         "decryption": "none",
-        "fallbacks": []
+        "fallbacks": [],
+        "method": "2022-blake3-aes-128-gcm",
+        "network": "tcp,udp"
       },
       "streamSettings": {
         "network": "tcp",
@@ -139,6 +142,16 @@
   "policy": {
     "levels": {
       "0": {
+        "statsUserUplink": true,
+        "statsUserDownlink": true,
+        "statsUserOnline": true
+      },
+      "1": {
+        "statsUserUplink": true,
+        "statsUserDownlink": true,
+        "statsUserOnline": true
+      },
+      "2": {
         "statsUserUplink": true,
         "statsUserDownlink": true,
         "statsUserOnline": true
