@@ -244,7 +244,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <span className="text-[11px] font-mono text-zinc-400">{xrayRunning ? 'Active & Routing' : 'Stopped'}</span>
               </div>
               <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
-                {panelVersion || 'v1.1.5'}
+                {panelVersion || 'v1.1.6'}
               </span>
             </div>
 

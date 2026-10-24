@@ -30,7 +30,7 @@ export function App() {
 
   // Updates
   const [updates, setUpdates] = useState<UpdateInfo>({
-    panel: { currentVersion: 'v1.1.5', latestVersion: 'v1.1.5', hasUpdate: false, releaseNotes: '', publishedAt: '' },
+    panel: { currentVersion: 'v1.1.6', latestVersion: 'v1.1.6', hasUpdate: false, releaseNotes: '', publishedAt: '' },
     xray: { currentVersion: 'v26.9.30', latestVersion: 'v26.9.30', hasUpdate: false, releaseNotes: '', publishedAt: '' },
   });
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
@@ -443,7 +443,7 @@ export function App() {
         xrayRunning={status.xrayRunning}
         onlineCount={onlineCount}
         inboundsCount={inbounds.length}
-        panelVersion={status.panelVersion || 'v1.1.5'}
+        panelVersion={status.panelVersion || 'v1.1.6'}
         publicIP={status.publicIP}
         onLogout={() => {
           localStorage.removeItem('nexus_token');

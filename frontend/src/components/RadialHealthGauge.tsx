@@ -11,31 +11,21 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
 
   const getHealthBadge = (s: number) => {
     const rounded = Math.round(Math.max(0, Math.min(100, s)));
-    if (rounded >= 85) {
+    if (rounded > 70) {
       return {
-        text: `Optimal Health (${rounded}%) · Higher is better`,
-        classes: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
-        dot: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]',
+        text: `Optimal Condition · ${rounded}% (Higher is better)`,
+        classes: 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.15)]',
       };
     }
-    if (rounded >= 70) {
+    if (rounded > 40) {
       return {
-        text: `Good Health (${rounded}%) · Higher is better`,
-        classes: 'bg-teal-500/10 border-teal-500/20 text-teal-300',
-        dot: 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.6)]',
-      };
-    }
-    if (rounded >= 40) {
-      return {
-        text: `Moderate Load (${rounded}%) · Higher is better`,
-        classes: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
-        dot: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]',
+        text: `Moderate Load · ${rounded}% (Higher is better)`,
+        classes: 'bg-amber-500/10 border-amber-500/30 text-amber-400 shadow-[0_0_12px_rgba(245,158,11,0.15)]',
       };
     }
     return {
-      text: `Degraded State (${rounded}%) · Higher is better`,
-      classes: 'bg-rose-500/10 border-rose-500/20 text-rose-300',
-      dot: 'bg-rose-400 shadow-[0_0_6px_rgba(248,113,113,0.6)]',
+      text: `Degraded Health · ${rounded}% (Higher is better)`,
+      classes: 'bg-rose-500/10 border-rose-500/30 text-rose-400 shadow-[0_0_12px_rgba(239,68,68,0.15)]',
     };
   };
 
@@ -109,9 +99,8 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
       </div>
 
       {/* Dynamic Health State Badge: Higher is Better */}
-      <div className={`mt-2.5 flex items-center justify-center gap-1.5 px-3 py-1 rounded-full border text-[10px] sm:text-[11px] font-sans shadow-sm text-center transition-all duration-300 ${badge.classes}`}>
-        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} animate-pulse`} />
-        <span className="font-medium">{badge.text}</span>
+      <div className={`mt-2.5 px-3 py-1 rounded-full border text-[11px] font-sans font-medium text-center transition-all duration-300 ${badge.classes}`}>
+        {badge.text}
       </div>
     </div>
   );
