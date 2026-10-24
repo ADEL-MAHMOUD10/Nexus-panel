@@ -1,5 +1,4 @@
 import React from 'react';
-import { Sparkles } from 'lucide-react';
 
 interface RadialHealthGaugeProps {
   score: number; // 0 - 100
@@ -9,6 +8,38 @@ interface RadialHealthGaugeProps {
 export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, title = 'System Health Index' }) => {
   const barsCount = 32;
   const activeCount = Math.round((Math.max(0, Math.min(100, score)) / 100) * barsCount);
+
+  const getHealthBadge = (s: number) => {
+    const rounded = Math.round(Math.max(0, Math.min(100, s)));
+    if (rounded >= 85) {
+      return {
+        text: `Optimal Health (${rounded}%) · Higher is better`,
+        classes: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-300',
+        dot: 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)]',
+      };
+    }
+    if (rounded >= 70) {
+      return {
+        text: `Good Health (${rounded}%) · Higher is better`,
+        classes: 'bg-teal-500/10 border-teal-500/20 text-teal-300',
+        dot: 'bg-teal-400 shadow-[0_0_6px_rgba(45,212,191,0.6)]',
+      };
+    }
+    if (rounded >= 40) {
+      return {
+        text: `Moderate Load (${rounded}%) · Higher is better`,
+        classes: 'bg-amber-500/10 border-amber-500/20 text-amber-300',
+        dot: 'bg-amber-400 shadow-[0_0_6px_rgba(251,191,36,0.6)]',
+      };
+    }
+    return {
+      text: `Degraded State (${rounded}%) · Higher is better`,
+      classes: 'bg-rose-500/10 border-rose-500/20 text-rose-300',
+      dot: 'bg-rose-400 shadow-[0_0_6px_rgba(248,113,113,0.6)]',
+    };
+  };
+
+  const badge = getHealthBadge(score);
 
   return (
     <div className="flex flex-col items-center justify-center relative py-2 select-none w-full">
@@ -77,10 +108,10 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
         </span>
       </div>
 
-      {/* Explicit User Clarification Badge: Higher is Better */}
-      <div className="mt-2.5 flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] sm:text-[11px] font-sans text-emerald-300 shadow-sm text-center">
-        <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-        <span className="font-medium">Higher is better · 100% is Optimal Health</span>
+      {/* Dynamic Health State Badge: Higher is Better */}
+      <div className={`mt-2.5 flex items-center justify-center gap-1.5 px-3 py-1 rounded-full border text-[10px] sm:text-[11px] font-sans shadow-sm text-center transition-all duration-300 ${badge.classes}`}>
+        <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} animate-pulse`} />
+        <span className="font-medium">{badge.text}</span>
       </div>
     </div>
   );

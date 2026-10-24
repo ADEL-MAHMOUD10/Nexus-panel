@@ -13,6 +13,7 @@ import { InboundModal } from './components/InboundModal';
 import { ClientModal } from './components/ClientModal';
 import { ShareModal } from './components/ShareModal';
 import { UpdatesModal } from './components/UpdatesModal';
+import { MobileBottomNav } from './components/MobileBottomNav';
 import { LoginPage } from './pages/LoginPage';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { useNotification } from './context/NotificationContext';
@@ -29,7 +30,7 @@ export function App() {
 
   // Updates
   const [updates, setUpdates] = useState<UpdateInfo>({
-    panel: { currentVersion: 'v1.1.4', latestVersion: 'v1.1.4', hasUpdate: false, releaseNotes: '', publishedAt: '' },
+    panel: { currentVersion: 'v1.1.5', latestVersion: 'v1.1.5', hasUpdate: false, releaseNotes: '', publishedAt: '' },
     xray: { currentVersion: 'v26.9.30', latestVersion: 'v26.9.30', hasUpdate: false, releaseNotes: '', publishedAt: '' },
   });
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
@@ -82,8 +83,25 @@ export function App() {
     });
   };
 
-  // Mobile sidebar drawer state
+  // Mobile sidebar drawer state & PC Hover/Pin state
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarPinned, setIsSidebarPinned] = useState(() => {
+    try {
+      return localStorage.getItem('nexus_sidebar_pinned') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleSidebarPin = () => {
+    setIsSidebarPinned((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('nexus_sidebar_pinned', String(next));
+      } catch {}
+      return next;
+    });
+  };
 
   // Handle unauthorized event
   useEffect(() => {
@@ -406,7 +424,7 @@ export function App() {
   });
 
   return (
-    <div className="flex h-screen bg-[#07080b] text-zinc-100 overflow-hidden font-sans select-none relative">
+    <div className="flex h-[100dvh] min-h-[100dvh] bg-[#07080b] text-zinc-100 overflow-hidden font-sans select-none relative">
       {/* Premium Black Background Canvas with Architectural Geometry & Nexus N */}
       <BackgroundCanvas />
 
@@ -418,14 +436,15 @@ export function App() {
         />
       )}
 
-      {/* Sleek Sidebar with Mobile Drawer support */}
+      {/* Sleek Sidebar with Mobile Drawer support & PC Hover/Pin behavior */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         xrayRunning={status.xrayRunning}
         onlineCount={onlineCount}
         inboundsCount={inbounds.length}
-        panelVersion={status.panelVersion || 'v1.1.3'}
+        panelVersion={status.panelVersion || 'v1.1.5'}
+        publicIP={status.publicIP}
         onLogout={() => {
           localStorage.removeItem('nexus_token');
           setToken(null);
@@ -434,10 +453,15 @@ export function App() {
         isRestartingXray={isRestartingXray}
         isOpenMobile={isMobileSidebarOpen}
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        isPinned={isSidebarPinned}
+        onTogglePin={handleToggleSidebarPin}
       />
 
+      {/* Desktop Spacer: w-[68px] when collapsed (hover to open), w-64 when pinned */}
+      <div className={`hidden md:block shrink-0 transition-all duration-300 ease-in-out ${isSidebarPinned ? 'w-64' : 'w-[68px]'}`} />
+
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden relative z-10 w-full min-w-0">
+      <div className="flex-1 flex flex-col h-[100dvh] overflow-hidden relative z-10 w-full min-w-0">
         {/* Header */}
         <Header
           title={
@@ -473,7 +497,7 @@ export function App() {
         />
 
         {/* Scrollable Viewport */}
-        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 bg-transparent">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-6 pb-20 md:pb-6 bg-transparent">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'overview' && (
               <DashboardPage
@@ -545,6 +569,15 @@ export function App() {
             {activeTab === 'logs' && <LogsPage />}
           </div>
         </main>
+
+        {/* Mobile Quick Bottom Navigation */}
+        <MobileBottomNav
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          onlineCount={onlineCount}
+          inboundsCount={inbounds.length}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+        />
       </div>
 
       {/* Modals */}

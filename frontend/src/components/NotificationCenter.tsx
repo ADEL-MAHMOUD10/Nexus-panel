@@ -88,7 +88,7 @@ export const NotificationCenter: React.FC = () => {
 
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#0c0d13]/95 backdrop-blur-2xl border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col">
+        <div className="fixed sm:absolute inset-x-2.5 sm:inset-x-auto sm:right-0 top-16 sm:top-auto sm:mt-2 sm:w-96 bg-[#0c0d13]/95 backdrop-blur-2xl border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-[32rem]">
           {/* Header */}
           <div className="p-3.5 border-b border-white/[0.07] flex items-center justify-between">
             <div className="flex items-center gap-2">
