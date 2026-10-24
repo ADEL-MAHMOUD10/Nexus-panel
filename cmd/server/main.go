@@ -151,8 +151,16 @@ func main() {
 			var activeThisTick []string
 
 			// 1. Query live traffic deltas from Xray core
-			inboundTraffics, clientTraffics, err := ctrl.GetTraffic()
-			if err == nil {
+			inboundTraffics, clientTraffics, onlineStatsUsers, err := ctrl.GetTraffic()
+			if err != nil {
+				logger.Debugf("[Traffic] Failed to query stats: %v", err)
+			} else {
+				for _, email := range onlineStatsUsers {
+					if email != "" {
+						activeEmailsMap[email] = true
+					}
+				}
+
 				// Record inbound traffic deltas
 				for _, inb := range inboundTraffics {
 					if inb.Up > 0 || inb.Down > 0 {
@@ -176,7 +184,9 @@ func main() {
 
 			// 2. Query currently connected users from Xray (StatsUserOnline)
 			onlineUsers, err := ctrl.GetOnlineUsers()
-			if err == nil {
+			if err != nil {
+				logger.Debugf("[OnlineUsers] Notice: %v", err)
+			} else {
 				for _, email := range onlineUsers {
 					if email != "" {
 						activeEmailsMap[email] = true

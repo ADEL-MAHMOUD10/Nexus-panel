@@ -65,6 +65,7 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 			ID    string `json:"id"`
 			Flow  string `json:"flow,omitempty"`
 			Email string `json:"email"`
+			Level int    `json:"level"`
 		}
 		var vlessClients []vlessClient
 		for _, c := range clients {
@@ -77,6 +78,7 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 				ID:    c.UUID,
 				Flow:  flow,
 				Email: c.Email,
+				Level: 0,
 			})
 		}
 		settMap := map[string]any{
@@ -97,6 +99,7 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 		type trojanClient struct {
 			Password string `json:"password"`
 			Email    string `json:"email"`
+			Level    int    `json:"level"`
 		}
 		var trojanClients []trojanClient
 		for _, c := range clients {
@@ -106,6 +109,7 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 			trojanClients = append(trojanClients, trojanClient{
 				Password: c.Password,
 				Email:    c.Email,
+				Level:    0,
 			})
 		}
 		settMap := map[string]any{
@@ -126,6 +130,7 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 			ID      string `json:"id"`
 			AlterId int    `json:"alterId"`
 			Email   string `json:"email"`
+			Level   int    `json:"level"`
 		}
 		var vmessClients []vmessClient
 		for _, c := range clients {
@@ -136,6 +141,7 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 				ID:      c.UUID,
 				AlterId: 0,
 				Email:   c.Email,
+				Level:   0,
 			})
 		}
 		settingsBytes, _ = json.Marshal(map[string]any{

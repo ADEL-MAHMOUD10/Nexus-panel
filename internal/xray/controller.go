@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 var (
 	trafficRegex       = regexp.MustCompile(`(inbound|outbound)>>>([^>]+)>>>traffic>>>(downlink|uplink)`)
 	clientTrafficRegex = regexp.MustCompile(`user>>>([^>]+)>>>traffic>>>(downlink|uplink)`)
+	clientOnlineRegex  = regexp.MustCompile(`user>>>([^>]+)>>>online`)
 )
 
 // InboundTraffic represents accrued upload and download bytes for an inbound
@@ -209,13 +211,13 @@ func (c *Controller) RemoveUser(inboundTag, email string) error {
 	return nil
 }
 
-// GetTraffic queries and returns incremental traffic usage for inbounds and clients since the last check
-func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, error) {
+// GetTraffic queries and returns incremental traffic usage for inbounds and clients, plus any online user emails
+func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, []string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if err := c.ensureConnected(); err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -224,16 +226,27 @@ func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, error) {
 	resp, err := c.statsClient.QueryStats(ctx, &statsService.QueryStatsRequest{Reset_: false})
 	if err != nil {
 		c.isConnected = false
-		return nil, nil, fmt.Errorf("failed to query stats: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to query stats: %w", err)
 	}
 
 	tagMap := make(map[string]*InboundTraffic)
 	clientMap := make(map[string]*ClientTraffic)
+	var onlineEmails []string
+	onlineSet := make(map[string]bool)
 	baselinePass := len(c.lastStats) == 0
 
 	for _, stat := range resp.GetStat() {
 		lastVal, exists := c.lastStats[stat.Name]
 		c.lastStats[stat.Name] = stat.Value
+
+		// Check for Xray statsUserOnline counter (user>>>email>>>online)
+		if matches := clientOnlineRegex.FindStringSubmatch(stat.Name); len(matches) == 2 {
+			email := strings.TrimSpace(matches[1])
+			if email != "" && stat.Value > 0 && !onlineSet[email] {
+				onlineSet[email] = true
+				onlineEmails = append(onlineEmails, email)
+			}
+		}
 
 		if baselinePass {
 			continue
@@ -266,7 +279,7 @@ func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, error) {
 				}
 			}
 		} else if matches := clientTrafficRegex.FindStringSubmatch(stat.Name); len(matches) == 3 {
-			email := matches[1]
+			email := strings.TrimSpace(matches[1])
 			dir := matches[2]
 
 			ct, ok := clientMap[email]
@@ -278,6 +291,10 @@ func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, error) {
 				ct.Up += delta
 			} else {
 				ct.Down += delta
+			}
+			if !onlineSet[email] {
+				onlineSet[email] = true
+				onlineEmails = append(onlineEmails, email)
 			}
 		}
 	}
@@ -292,7 +309,7 @@ func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, error) {
 		clientList = append(clientList, ct)
 	}
 
-	return inboundList, clientList, nil
+	return inboundList, clientList, onlineEmails, nil
 }
 
 // GetOnlineUsers queries Xray StatsService.GetUsersStats to return every user with an active connection
@@ -320,15 +337,19 @@ func (c *Controller) GetOnlineUsers() ([]string, error) {
 			continue
 		}
 
-		// A client is online if they have an active connection (seen within 90s grace period or zero-timestamp connection)
+		// A client is online if they have an active connection (seen within 90s grace period, zero-timestamp, or registered in GetUsersStats)
 		hasLiveConnection := false
-		for _, entry := range u.GetIps() {
-			if entry == nil || entry.GetIp() == "" {
-				continue
-			}
-			if entry.GetLastSeen() == 0 || (now-entry.GetLastSeen() <= 90) {
-				hasLiveConnection = true
-				break
+		if len(u.GetIps()) == 0 {
+			hasLiveConnection = true
+		} else {
+			for _, entry := range u.GetIps() {
+				if entry == nil {
+					continue
+				}
+				if entry.GetLastSeen() == 0 || (now-entry.GetLastSeen() <= 90) {
+					hasLiveConnection = true
+					break
+				}
 			}
 		}
 
@@ -374,11 +395,18 @@ func (c *Controller) IsClientOnline(email string) bool {
 	if c.lastSeenMap == nil {
 		return false
 	}
-	seen, ok := c.lastSeenMap[email]
-	if !ok {
-		return false
+	now := time.Now().Unix()
+	if seen, ok := c.lastSeenMap[email]; ok {
+		if now-seen <= 90 {
+			return true
+		}
 	}
-	return time.Now().Unix()-seen <= 90
+	if seen, ok := c.lastSeenMap[strings.ToLower(email)]; ok {
+		if now-seen <= 90 {
+			return true
+		}
+	}
+	return false
 }
 
 // GetOnlineEmails returns a snapshot of all currently active client emails
@@ -393,7 +421,7 @@ func (c *Controller) GetOnlineEmails() []string {
 
 // QueryTraffic provides backward compatibility for user traffic querying
 func (c *Controller) QueryTraffic() (map[string]*UserTraffic, error) {
-	_, clientTraffics, err := c.GetTraffic()
+	_, clientTraffics, _, err := c.GetTraffic()
 	if err != nil {
 		return nil, err
 	}
@@ -421,11 +449,13 @@ func (c *Controller) UpdateClientSpeed(email string, deltaUp, deltaDown int64, d
 	}
 	upSpd := float64(deltaUp) / dt
 	downSpd := float64(deltaDown) / dt
-	c.clientSpeeds[email] = &ClientSpeed{
+	entry := &ClientSpeed{
 		UpSpeed:   upSpd,
 		DownSpeed: downSpd,
 		LastSeen:  time.Now().Unix(),
 	}
+	c.clientSpeeds[email] = entry
+	c.clientSpeeds[strings.ToLower(email)] = entry
 }
 
 // GetClientSpeed returns the latest up and down transfer rates (bytes/sec) for an email
@@ -435,7 +465,11 @@ func (c *Controller) GetClientSpeed(email string) (float64, float64) {
 	if c.clientSpeeds == nil {
 		return 0, 0
 	}
-	if spd, ok := c.clientSpeeds[email]; ok {
+	spd, ok := c.clientSpeeds[email]
+	if !ok {
+		spd, ok = c.clientSpeeds[strings.ToLower(email)]
+	}
+	if ok && spd != nil {
 		// If last active was > 10s ago, speed drops to 0
 		if time.Now().Unix()-spd.LastSeen > 10 {
 			return 0, 0

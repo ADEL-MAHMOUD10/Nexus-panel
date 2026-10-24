@@ -120,6 +120,16 @@ func DefaultBaseConfig(apiPort int) *Config {
 					StatsUserDownlink: true,
 					StatsUserOnline:   true,
 				},
+				"1": {
+					StatsUserUplink:   true,
+					StatsUserDownlink: true,
+					StatsUserOnline:   true,
+				},
+				"2": {
+					StatsUserUplink:   true,
+					StatsUserDownlink: true,
+					StatsUserOnline:   true,
+				},
 			},
 			System: PolicySystem{
 				StatsInboundUplink:   true,
