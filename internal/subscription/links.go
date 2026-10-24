@@ -115,6 +115,46 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 				params["authority"] = authority
 			}
 		}
+	case "kcp", "mkcp":
+		params["type"] = "kcp"
+		if kcp, ok := stream["kcpSettings"].(map[string]any); ok {
+			if header, ok := kcp["header"].(map[string]any); ok {
+				if ht, ok := header["type"].(string); ok && ht != "" {
+					params["headerType"] = ht
+				}
+			}
+			if seed, ok := kcp["seed"].(string); ok && seed != "" {
+				params["seed"] = seed
+			}
+		}
+	case "splithttp", "xhttp":
+		params["type"] = "xhttp"
+		if xh, ok := stream["xhttpSettings"].(map[string]any); ok {
+			if p, ok := xh["path"].(string); ok {
+				params["path"] = p
+			}
+			if h, ok := xh["host"].(string); ok {
+				params["host"] = h
+			}
+			if m, ok := xh["mode"].(string); ok {
+				params["mode"] = m
+			}
+		}
+	case "quic":
+		params["type"] = "quic"
+		if quic, ok := stream["quicSettings"].(map[string]any); ok {
+			if sec, ok := quic["security"].(string); ok {
+				params["quicSecurity"] = sec
+			}
+			if key, ok := quic["key"].(string); ok {
+				params["key"] = key
+			}
+			if header, ok := quic["header"].(map[string]any); ok {
+				if ht, ok := header["type"].(string); ok {
+					params["headerType"] = ht
+				}
+			}
+		}
 	}
 
 	// Security parameters (TLS / REALITY)
@@ -191,17 +231,79 @@ func BuildInboundLink(inbound *database.Inbound, client *database.Client, server
 	}
 
 	// Build final protocol link
-	var baseURI string
-	if inbound.Protocol == "vless" {
+	proto := strings.ToLower(inbound.Protocol)
+	switch proto {
+	case "vless":
 		params["encryption"] = "none"
-		baseURI = fmt.Sprintf("vless://%s@%s", client.UUID, joinHostPort(serverAddress, inbound.Port))
-	} else if inbound.Protocol == "trojan" {
-		baseURI = fmt.Sprintf("trojan://%s@%s", encodeUserinfo(client.Password), joinHostPort(serverAddress, inbound.Port))
-	} else {
+		baseURI := fmt.Sprintf("vless://%s@%s", client.UUID, joinHostPort(serverAddress, inbound.Port))
+		return buildURLWithQuery(baseURI, params, remarkText)
+
+	case "trojan":
+		baseURI := fmt.Sprintf("trojan://%s@%s", encodeUserinfo(client.Password), joinHostPort(serverAddress, inbound.Port))
+		return buildURLWithQuery(baseURI, params, remarkText)
+
+	case "vmess":
+		// Standard vmess:// base64 JSON config
+		vmessConfig := map[string]any{
+			"v":    "2",
+			"ps":   remarkText,
+			"add":  serverAddress,
+			"port": inbound.Port,
+			"id":   client.UUID,
+			"aid":  0,
+			"scy":  "auto",
+			"net":  network,
+			"type": params["headerType"],
+			"host": params["host"],
+			"path": params["path"],
+			"tls":  security,
+			"sni":  params["sni"],
+			"alpn": params["alpn"],
+		}
+		if vmessConfig["type"] == "" {
+			vmessConfig["type"] = "none"
+		}
+		b, _ := json.Marshal(vmessConfig)
+		return "vmess://" + base64.StdEncoding.EncodeToString(b)
+
+	case "shadowsocks":
+		// Standard ss:// SIP002: ss://BASE64(method:password)@server:port#remark
+		method, _ := settings["method"].(string)
+		if method == "" {
+			method = "2022-blake3-aes-128-gcm"
+		}
+		pwd := client.Password
+		if pwd == "" {
+			pwd, _ = settings["password"].(string)
+		}
+		userInfo := base64.URLEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", method, pwd)))
+		return fmt.Sprintf("ss://%s@%s#%s", userInfo, joinHostPort(serverAddress, inbound.Port), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
+
+	case "wireguard":
+		pubKey := client.Password
+		if pubKey == "" {
+			pubKey = client.UUID
+		}
+		return fmt.Sprintf("wireguard://%s@%s?publickey=%s#%s", pubKey, joinHostPort(serverAddress, inbound.Port), url.QueryEscape(pubKey), strings.ReplaceAll(url.QueryEscape(remarkText), "+", "%20"))
+
+	case "hysteria", "hysteria2":
+		auth := client.Password
+		if auth == "" {
+			auth = client.UUID
+		}
+		baseURI := fmt.Sprintf("hy2://%s@%s", encodeUserinfo(auth), joinHostPort(serverAddress, inbound.Port))
+		hyParams := make(map[string]string)
+		if sni, ok := params["sni"]; ok && sni != "" {
+			hyParams["sni"] = sni
+		}
+		if insecure, ok := params["allowInsecure"]; ok && insecure == "1" {
+			hyParams["insecure"] = "1"
+		}
+		return buildURLWithQuery(baseURI, hyParams, remarkText)
+
+	default:
 		return ""
 	}
-
-	return buildURLWithQuery(baseURI, params, remarkText)
 }
 
 func buildURLWithQuery(baseURI string, params map[string]string, remark string) string {

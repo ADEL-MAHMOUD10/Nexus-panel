@@ -186,6 +186,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/server/config", s.authMiddleware(s.handleSaveConfig))
 
 	mux.HandleFunc("GET /api/crypto/reality-keys", s.authMiddleware(s.handleGenerateRealityKeys))
+	mux.HandleFunc("GET /api/crypto/wireguard-keys", s.authMiddleware(s.handleGenerateWireGuardKeys))
+	mux.HandleFunc("GET /api/crypto/shadowsocks-key", s.authMiddleware(s.handleGenerateShadowsocksKey))
 
 	// SSL Certificate Management
 	mux.HandleFunc("GET /api/server/certificates", s.authMiddleware(s.handleListCertificates))
@@ -1501,6 +1503,35 @@ func (s *Server) handleGenerateRealityKeys(w http.ResponseWriter, r *http.Reques
 		"privateKey": keys.PrivateKey,
 		"publicKey":  keys.PublicKey,
 		"shortId":    shortID,
+	})
+}
+
+func (s *Server) handleGenerateWireGuardKeys(w http.ResponseWriter, r *http.Request) {
+	keys, err := crypto.GenerateWireGuardKeyPair()
+	if err != nil {
+		http.Error(w, "failed to generate wireguard keys: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success":    true,
+		"privateKey": keys.PrivateKey,
+		"publicKey":  keys.PublicKey,
+	})
+}
+
+func (s *Server) handleGenerateShadowsocksKey(w http.ResponseWriter, r *http.Request) {
+	byteLen := 16
+	if r.URL.Query().Get("bytes") == "32" {
+		byteLen = 32
+	}
+	key, err := crypto.GenerateShadowsocksKey(byteLen)
+	if err != nil {
+		http.Error(w, "failed to generate shadowsocks key: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"key":     key,
 	})
 }
 

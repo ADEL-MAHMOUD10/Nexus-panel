@@ -149,11 +149,122 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 		})
 
 	case "shadowsocks":
-		if in.Settings != "" {
-			settingsBytes = []byte(in.Settings)
-		} else {
-			settingsBytes = []byte(`{"method":"2022-blake3-aes-128-gcm","password":"","network":"tcp,udp"}`)
+		settMap := map[string]any{
+			"method":  "2022-blake3-aes-128-gcm",
+			"network": "tcp,udp",
 		}
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &settMap)
+		}
+		// If password is not explicitly in settings but clients exist, use first client password
+		if p, ok := settMap["password"].(string); (!ok || p == "") && len(clients) > 0 {
+			for _, c := range clients {
+				if c.Enable && c.Password != "" {
+					settMap["password"] = c.Password
+					break
+				}
+			}
+		}
+		if _, ok := settMap["network"]; !ok {
+			settMap["network"] = "tcp,udp"
+		}
+		settingsBytes, _ = json.Marshal(settMap)
+
+	case "wireguard":
+		var wgSettings map[string]any
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &wgSettings)
+		}
+		if wgSettings == nil {
+			wgSettings = make(map[string]any)
+		}
+		if _, ok := wgSettings["mtu"]; !ok {
+			wgSettings["mtu"] = 1420
+		}
+		type wgPeer struct {
+			PublicKey    string   `json:"publicKey"`
+			PreSharedKey string   `json:"preSharedKey,omitempty"`
+			AllowedIPs   []string `json:"allowedIPs"`
+			Email        string   `json:"email"`
+			Level        int      `json:"level"`
+		}
+		var peers []wgPeer
+		for _, c := range clients {
+			if !c.Enable {
+				continue
+			}
+			pubKey := c.Password
+			if pubKey == "" {
+				pubKey = c.UUID
+			}
+			peers = append(peers, wgPeer{
+				PublicKey:  pubKey,
+				AllowedIPs: []string{"0.0.0.0/0", "::/0"},
+				Email:      c.Email,
+				Level:      0,
+			})
+		}
+		if len(peers) > 0 {
+			wgSettings["peers"] = peers
+		}
+		settingsBytes, _ = json.Marshal(wgSettings)
+
+	case "hysteria", "hysteria2":
+		type hyUser struct {
+			Auth  string `json:"auth"`
+			Level int    `json:"level"`
+			Email string `json:"email"`
+		}
+		var hyUsers []hyUser
+		for _, c := range clients {
+			if !c.Enable {
+				continue
+			}
+			authKey := c.Password
+			if authKey == "" {
+				authKey = c.UUID
+			}
+			hyUsers = append(hyUsers, hyUser{
+				Auth:  authKey,
+				Level: 0,
+				Email: c.Email,
+			})
+		}
+		settMap := map[string]any{
+			"version": 2,
+			"users":   hyUsers,
+		}
+		settingsBytes, _ = json.Marshal(settMap)
+
+	case "dokodemo-door":
+		dokoSettings := map[string]any{
+			"address":        "127.0.0.1",
+			"network":        "tcp,udp",
+			"followRedirect": false,
+		}
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &dokoSettings)
+		}
+		settingsBytes, _ = json.Marshal(dokoSettings)
+
+	case "socks":
+		settMap := map[string]any{
+			"auth": "noauth",
+			"udp":  true,
+		}
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &settMap)
+		}
+		settingsBytes, _ = json.Marshal(settMap)
+
+	case "http":
+		settMap := map[string]any{
+			"allowTransparent": false,
+		}
+		if in.Settings != "" {
+			_ = json.Unmarshal([]byte(in.Settings), &settMap)
+		}
+		settingsBytes, _ = json.Marshal(settMap)
 
 	default:
 		if in.Settings != "" {
@@ -163,28 +274,38 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 		}
 	}
 
-	// Clean streamSettings (strip client-only metadata from REALITY before passing to Xray server)
+	// Clean & sanitize streamSettings
 	var streamSettingsBytes []byte
 	if in.StreamSettings != "" {
 		var streamMap map[string]any
 		if err := json.Unmarshal([]byte(in.StreamSettings), &streamMap); err == nil {
+			// Normalize transport network & method
+			netName, _ := streamMap["network"].(string)
+			if netName == "" {
+				netName, _ = streamMap["method"].(string)
+			}
+			if netName == "mkcp" {
+				streamMap["network"] = "kcp"
+			} else if netName == "splithttp" {
+				streamMap["network"] = "xhttp"
+			}
+
+			// Clean REALITY metadata
 			if sec, ok := streamMap["security"].(string); ok && sec == "reality" {
 				if reality, ok := streamMap["realitySettings"].(map[string]any); ok {
-					// Delete client-only metadata "settings" block so Xray server does not reject config
 					delete(reality, "settings")
 					streamMap["realitySettings"] = reality
 				}
 			} else if sec, ok := streamMap["security"].(string); ok && sec == "tls" {
 				if tls, ok := streamMap["tlsSettings"].(map[string]any); ok {
-					// Delete client-only metadata "settings" block so Xray server does not complain
 					delete(tls, "settings")
-					// If serverName is empty, omit it so Xray does not fail strict validation
 					if sn, ok := tls["serverName"].(string); ok && strings.TrimSpace(sn) == "" {
 						delete(tls, "serverName")
 					}
 					streamMap["tlsSettings"] = tls
 				}
 			}
+
 			streamSettingsBytes, _ = json.Marshal(streamMap)
 		} else {
 			streamSettingsBytes = []byte(in.StreamSettings)

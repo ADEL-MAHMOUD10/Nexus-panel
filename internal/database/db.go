@@ -299,9 +299,13 @@ const (
 
 // GetInboundTransport detects whether an inbound listens on TCP, UDP or both based on protocol and stream settings.
 func GetInboundTransport(protocol, streamSettings string) TransportType {
-	switch strings.ToLower(protocol) {
+	proto := strings.ToLower(strings.TrimSpace(protocol))
+	switch proto {
 	case "hysteria", "hysteria2", "tuic", "wireguard", "amneziawg":
 		return TransportUDP
+	case "shadowsocks", "dokodemo-door", "socks":
+		// These protocols frequently bind both TCP and UDP
+		return TransportTCP | TransportUDP
 	}
 
 	network := "tcp"
@@ -315,7 +319,7 @@ func GetInboundTransport(protocol, streamSettings string) TransportType {
 	}
 
 	switch network {
-	case "kcp", "quic":
+	case "kcp", "mkcp", "quic":
 		return TransportUDP
 	default:
 		return TransportTCP

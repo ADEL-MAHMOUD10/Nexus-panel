@@ -86,8 +86,11 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
             <option value="trojan">TROJAN</option>
             <option value="vmess">VMESS</option>
             <option value="shadowsocks">SHADOWSOCKS</option>
-            <option value="hysteria">HYSTERIA</option>
-            <option value="tuic">TUIC</option>
+            <option value="wireguard">WIREGUARD</option>
+            <option value="hysteria">HYSTERIA 2</option>
+            <option value="dokodemo-door">DOKODEMO</option>
+            <option value="socks">SOCKS5</option>
+            <option value="http">HTTP</option>
           </select>
         </div>
 
