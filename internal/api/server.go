@@ -186,6 +186,20 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/server/logs", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("POST /panel/api/server/logs/{count}", s.authMiddleware(s.handleGetLogs))
 
+	// Xray Core Live Logs & Telemetry Metrics Matrix
+	mux.HandleFunc("GET /api/server/xraylogs", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("POST /api/server/xraylogs", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("GET /api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("POST /api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("GET /panel/api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("POST /panel/api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("POST /api/server/clear-xraylogs", s.authMiddleware(s.handleClearXrayLogs))
+	mux.HandleFunc("POST /panel/api/server/clear-xraylogs", s.authMiddleware(s.handleClearXrayLogs))
+
+	mux.HandleFunc("GET /api/server/xraymetrics", s.authMiddleware(s.handleGetXrayMetrics))
+	mux.HandleFunc("GET /panel/api/server/xraymetrics", s.authMiddleware(s.handleGetXrayMetrics))
+	mux.HandleFunc("GET /panel/api/server/xrayMetricsState", s.authMiddleware(s.handleGetXrayMetrics))
+
 	mux.HandleFunc("GET /api/server/config", s.authMiddleware(s.handleGetConfig))
 	mux.HandleFunc("POST /api/server/config", s.authMiddleware(s.handleSaveConfig))
 	mux.HandleFunc("GET /panel/api/server/config", s.authMiddleware(s.handleGetConfig))
@@ -327,20 +341,27 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 
 	type InboundWithClients struct {
 		database.Inbound
-		Clients []ClientWithLink `json:"clients"`
+		UpSpeed   float64          `json:"upSpeed"`
+		DownSpeed float64          `json:"downSpeed"`
+		Clients   []ClientWithLink `json:"clients"`
 	}
 
 	var result []InboundWithClients
 	for _, in := range inbounds {
 		clients, _ := s.db.GetClientsByInbound(in.ID)
 		var clientsWithLinks []ClientWithLink
+		var clientUpSum, clientDownSum float64
+
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
-			isOnline := s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)
 			var upSpd, downSpd float64
 			if s.xrayController != nil {
 				upSpd, downSpd = s.xrayController.GetClientSpeed(c.Email)
 			}
+			isOnline := (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
+			clientUpSum += upSpd
+			clientDownSum += downSpd
+
 			clientsWithLinks = append(clientsWithLinks, ClientWithLink{
 				Client:          c,
 				Link:            link,
@@ -353,9 +374,23 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 				DownSpeed:       downSpd,
 			})
 		}
+
+		var inbUpSpeed, inbDownSpeed float64
+		if s.xrayController != nil {
+			inbUpSpeed, inbDownSpeed = s.xrayController.GetInboundSpeed(in.Tag)
+		}
+		if clientUpSum > inbUpSpeed {
+			inbUpSpeed = clientUpSum
+		}
+		if clientDownSum > inbDownSpeed {
+			inbDownSpeed = clientDownSum
+		}
+
 		result = append(result, InboundWithClients{
-			Inbound: in,
-			Clients: clientsWithLinks,
+			Inbound:   in,
+			UpSpeed:   inbUpSpeed,
+			DownSpeed: inbDownSpeed,
+			Clients:   clientsWithLinks,
 		})
 	}
 
@@ -392,11 +427,11 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 		clients, _ := s.db.GetClientsByInbound(in.ID)
 		for _, c := range clients {
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
-			isOnline := s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)
 			var upSpd, downSpd float64
 			if s.xrayController != nil {
 				upSpd, downSpd = s.xrayController.GetClientSpeed(c.Email)
 			}
+			isOnline := (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
 			allClients = append(allClients, ClientItem{
 				Client:          c,
 				Link:            link,
@@ -695,6 +730,52 @@ func (s *Server) handleCreateInbound(w http.ResponseWriter, r *http.Request) {
 			"message": "Failed to save inbound: " + err.Error(),
 		})
 		return
+	}
+
+	// Auto-provision initial default client so active client count is at least 1,
+	// link sharing works immediately, and per-user stats telemetry is registered.
+	existingClients, _ := s.db.GetClientsByInbound(in.ID)
+	if len(existingClients) == 0 {
+		initialEmail := fmt.Sprintf("user_%d", in.Port)
+		clientUUID := uuid.NewString()
+		clientPassword := ""
+
+		proto := strings.ToLower(in.Protocol)
+		switch proto {
+		case "shadowsocks":
+			var sett map[string]any
+			if in.Settings != "" {
+				_ = json.Unmarshal([]byte(in.Settings), &sett)
+			}
+			if p, ok := sett["password"].(string); ok && p != "" {
+				clientPassword = p
+			} else {
+				clientPassword, _ = crypto.GenerateShadowsocksKey(16)
+			}
+		case "trojan":
+			clientPassword, _ = crypto.GenerateShortID(8)
+		case "wireguard":
+			clientPassword, _ = crypto.GenerateShortID(8)
+		default:
+			clientPassword = clientUUID
+		}
+
+		flow := ""
+		if proto == "vless" && strings.Contains(in.StreamSettings, "reality") {
+			flow = "xtls-rprx-vision"
+		}
+
+		initialClient := database.Client{
+			InboundID:  in.ID,
+			Email:      initialEmail,
+			UUID:       clientUUID,
+			Password:   clientPassword,
+			Flow:       flow,
+			Enable:     true,
+			ExpiryTime: 0,
+			Total:      0,
+		}
+		_ = s.db.SaveClient(&initialClient)
 	}
 
 	_ = s.applyXrayConfig()
@@ -1794,6 +1875,173 @@ func (s *Server) handleGetLogs(w http.ResponseWriter, r *http.Request) {
 		lines = s.processManager.GetLogs()
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"success": true, "logs": lines})
+}
+
+func (s *Server) handleGetXrayLogs(w http.ResponseWriter, r *http.Request) {
+	countStr := r.PathValue("count")
+	if countStr == "" {
+		countStr = r.URL.Query().Get("count")
+	}
+	filter := r.URL.Query().Get("filter")
+	level := r.URL.Query().Get("level")
+
+	if r.Method == http.MethodPost && r.Body != nil {
+		var req struct {
+			Count  any    `json:"count"`
+			Filter string `json:"filter"`
+			Level  string `json:"level"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err == nil {
+			if req.Count != nil && countStr == "" {
+				countStr = fmt.Sprintf("%v", req.Count)
+			}
+			if req.Filter != "" && filter == "" {
+				filter = req.Filter
+			}
+			if req.Level != "" && level == "" {
+				level = req.Level
+			}
+		}
+	}
+
+	count := 100
+	if countStr != "" {
+		if c, err := strconv.Atoi(countStr); err == nil && c > 0 {
+			count = c
+		}
+	}
+	if count > 2000 {
+		count = 2000
+	}
+
+	var items []xray.XrayLogItem
+	if s.processManager != nil {
+		items = s.processManager.GetFilteredLogs(count, filter, level)
+	}
+
+	var rawLines []string
+	for _, it := range items {
+		rawLines = append(rawLines, it.Raw)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"logs":    items,
+		"obj":     items,
+		"raw":     rawLines,
+		"count":   len(items),
+	})
+}
+
+func (s *Server) handleClearXrayLogs(w http.ResponseWriter, r *http.Request) {
+	if s.processManager != nil {
+		s.processManager.ClearLogs()
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"success": true, "message": "Xray logs cleared"})
+}
+
+func (s *Server) handleGetXrayMetrics(w http.ResponseWriter, r *http.Request) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+
+	uptime := int64(0)
+	pid := 0
+	running := false
+	ver := "Unknown"
+	if s.processManager != nil {
+		running = s.processManager.IsRunning()
+		pid = s.processManager.GetPid()
+		uptime = int64(s.processManager.GetUptime().Seconds())
+		ver = s.processManager.GetVersion()
+	}
+
+	inbounds, _ := s.db.GetAllInbounds()
+	type InboundMetricItem struct {
+		ID        int     `json:"id"`
+		Tag       string  `json:"tag"`
+		Port      int     `json:"port"`
+		Protocol  string  `json:"protocol"`
+		Up        int64   `json:"up"`
+		Down      int64   `json:"down"`
+		UpSpeed   float64 `json:"upSpeed"`
+		DownSpeed float64 `json:"downSpeed"`
+		Clients   int     `json:"clients"`
+		Online    int     `json:"online"`
+	}
+
+	var inboundMetrics []InboundMetricItem
+	totalUpSpeed := float64(0)
+	totalDownSpeed := float64(0)
+	totalOnlineClients := 0
+
+	for _, in := range inbounds {
+		clients, _ := s.db.GetClientsByInbound(in.ID)
+		onlineCount := 0
+		var inbUpSpeed, inbDownSpeed float64
+		if s.xrayController != nil {
+			inbUpSpeed, inbDownSpeed = s.xrayController.GetInboundSpeed(in.Tag)
+		}
+		var clientUpSum, clientDownSum float64
+		for _, c := range clients {
+			if s.xrayController != nil {
+				cUp, cDown := s.xrayController.GetClientSpeed(c.Email)
+				clientUpSum += cUp
+				clientDownSum += cDown
+				if s.xrayController.IsClientOnline(c.Email) || cUp > 0 || cDown > 0 {
+					onlineCount++
+				}
+			}
+		}
+		if clientUpSum > inbUpSpeed {
+			inbUpSpeed = clientUpSum
+		}
+		if clientDownSum > inbDownSpeed {
+			inbDownSpeed = clientDownSum
+		}
+		totalUpSpeed += inbUpSpeed
+		totalDownSpeed += inbDownSpeed
+		totalOnlineClients += onlineCount
+
+		inboundMetrics = append(inboundMetrics, InboundMetricItem{
+			ID:        in.ID,
+			Tag:       in.Tag,
+			Port:      in.Port,
+			Protocol:  in.Protocol,
+			Up:        in.Up,
+			Down:      in.Down,
+			UpSpeed:   inbUpSpeed,
+			DownSpeed: inbDownSpeed,
+			Clients:   len(clients),
+			Online:    onlineCount,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"success": true,
+		"kernel": map[string]any{
+			"running": running,
+			"pid":     pid,
+			"uptime":  uptime,
+			"version": ver,
+		},
+		"memory": map[string]any{
+			"alloc":        m.Alloc,
+			"totalAlloc":   m.TotalAlloc,
+			"sys":          m.Sys,
+			"numGC":        m.NumGC,
+			"pauseTotalNs": m.PauseTotalNs,
+			"heapAlloc":    m.HeapAlloc,
+			"heapSys":      m.HeapSys,
+			"heapObjects":  m.HeapObjects,
+			"goroutines":   runtime.NumGoroutine(),
+		},
+		"throughput": map[string]any{
+			"totalUpSpeed":       totalUpSpeed,
+			"totalDownSpeed":     totalDownSpeed,
+			"totalOnlineClients": totalOnlineClients,
+		},
+		"inbounds": inboundMetrics,
+	})
 }
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {

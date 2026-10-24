@@ -38,6 +38,30 @@ const TRANSPORTS = [
   { id: 'kcp', name: 'mKCP (UDP)', desc: 'High-speed UDP stream with protocol camouflage', icon: Radio },
 ];
 
+const getSuggestedRemark = (proto: string, sec: string, p: number) => {
+  const pStr = p || 2053;
+  switch ((proto || 'vless').toLowerCase()) {
+    case 'shadowsocks':
+      return `SS-2022-${pStr}`;
+    case 'trojan':
+      return sec === 'reality' ? `Trojan-REALITY-${pStr}` : `Trojan-${pStr}`;
+    case 'vmess':
+      return `VMess-${pStr}`;
+    case 'wireguard':
+      return `WG-${pStr}`;
+    case 'hysteria':
+    case 'hysteria2':
+      return `HY2-${pStr}`;
+    case 'socks':
+      return `Socks5-${pStr}`;
+    case 'http':
+      return `HTTP-${pStr}`;
+    case 'vless':
+    default:
+      return sec === 'reality' ? `VLESS-REALITY-${pStr}` : `VLESS-${pStr}`;
+  }
+};
+
 export const InboundModal: React.FC<InboundModalProps> = ({
   isOpen,
   onClose,
@@ -49,6 +73,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   
   // 1. Basics Form
   const [remark, setRemark] = useState('');
+  const [isRemarkCustom, setIsRemarkCustom] = useState(false);
   const [port, setPort] = useState<number>(443);
   const [listen, setListen] = useState('0.0.0.0');
   const [protocol, setProtocol] = useState('vless');
@@ -239,12 +264,13 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
     } else {
       // New Inbound defaults
-      setRemark('VLESS-REALITY-' + Math.floor(Math.random() * 900 + 100));
+      setIsRemarkCustom(false);
       setPort(2053);
       setListen('0.0.0.0');
       setProtocol('vless');
       setNetwork('tcp');
       setSecurity('reality');
+      setRemark(getSuggestedRemark('vless', 'reality', 2053));
       handleGenerateRealityKeys();
     }
   }, [inboundToEdit, isOpen]);
@@ -316,29 +342,45 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
   const handleSelectProtocol = (protoId: string) => {
     setProtocol(protoId);
+    let nextSec = security;
     if (protoId === 'shadowsocks') {
       setNetwork('tcp');
       setSecurity('none');
+      nextSec = 'none';
       if (!ssPassword) {
         handleGenerateShadowsocksKey();
       }
     } else if (protoId === 'wireguard') {
       setNetwork('tcp');
       setSecurity('none');
+      nextSec = 'none';
       if (!wgSecretKey) {
         handleGenerateWireGuardKeys();
       }
     } else if (protoId === 'trojan') {
       if (security === 'none') {
         setSecurity('reality');
+        nextSec = 'reality';
       }
     } else if (protoId === 'vmess') {
       if (security === 'reality') {
         setSecurity('tls');
+        nextSec = 'tls';
       }
     } else if (protoId === 'hysteria' || protoId === 'hysteria2') {
       setSecurity('tls');
+      nextSec = 'tls';
       setNetwork('tcp');
+    }
+    if (!isRemarkCustom) {
+      setRemark(getSuggestedRemark(protoId, nextSec, port));
+    }
+  };
+
+  const handleUpdatePort = (newPort: number) => {
+    setPort(newPort);
+    if (!isRemarkCustom) {
+      setRemark(getSuggestedRemark(protocol, security, newPort));
     }
   };
 
@@ -360,13 +402,13 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         });
         const res = await api.get(`/api/inbounds/check-port?${query.toString()}`);
         if (res.data && res.data.available) {
-          setPort(p);
+          handleUpdatePort(p);
           notify.success('Port Assigned', `Found available port ${p}`);
           return;
         }
       } catch (e) {}
     }
-    setPort(candidate);
+    handleUpdatePort(candidate);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -648,7 +690,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     type="text"
                     required
                     value={remark}
-                    onChange={(e) => setRemark(e.target.value)}
+                    onChange={(e) => {
+                      setRemark(e.target.value);
+                      setIsRemarkCustom(true);
+                    }}
                     placeholder="e.g. VLESS-REALITY-Port443"
                     className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/20 font-mono transition"
                   />
@@ -737,7 +782,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       min={1}
                       max={65535}
                       value={port}
-                      onChange={(e) => setPort(Number(e.target.value))}
+                      onChange={(e) => handleUpdatePort(Number(e.target.value))}
                       className={`w-full px-4 py-2.5 bg-[#07080e] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
                         portConflict 
                           ? 'border-rose-500/80 bg-rose-500/10 text-rose-200 ring-2 ring-rose-500/20' 
@@ -752,7 +797,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       <button
                         key={p}
                         type="button"
-                        onClick={() => setPort(p)}
+                        onClick={() => handleUpdatePort(p)}
                         className={`text-[10px] px-2 py-1 rounded-lg font-mono transition border ${
                           port === p
                             ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'

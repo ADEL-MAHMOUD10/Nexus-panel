@@ -13,7 +13,8 @@ import {
   Shield,
   Layers,
   Search,
-  Filter
+  Filter,
+  Activity
 } from 'lucide-react';
 import { Inbound } from '../types';
 
@@ -27,6 +28,7 @@ interface InboundsPageProps {
   onDeleteInbound: (id: number) => void;
   onShareInbound: (inbound: Inbound) => void;
   formatBytes: (bytes: number) => string;
+  formatSpeed?: (bytesPerSec: number) => string;
 }
 
 export const InboundsPage: React.FC<InboundsPageProps> = ({
@@ -39,6 +41,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
   onDeleteInbound,
   onShareInbound,
   formatBytes,
+  formatSpeed = (b) => `${Math.round(b)} B/s`,
 }) => {
   const [filterProtocol, setFilterProtocol] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
@@ -152,6 +155,13 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {((inb.upSpeed || 0) > 0 || (inb.downSpeed || 0) > 0) && (
+                        <span className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/25 px-2 py-0.5 rounded-lg animate-pulse">
+                          <Activity className="w-2.5 h-2.5" />
+                          <span>↑{formatSpeed(inb.upSpeed || 0)}</span>
+                          <span>↓{formatSpeed(inb.downSpeed || 0)}</span>
+                        </span>
+                      )}
                       <span className="font-mono text-base font-bold text-white bg-white/[0.04] px-2.5 py-1 rounded-lg border border-white/[0.06]">
                         :{inb.port}
                       </span>
@@ -180,7 +190,7 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
                   </div>
 
                   {/* Traffic Stats Bar */}
-                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-1.5 text-xs font-mono">
+                  <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.04] space-y-2 text-xs font-mono">
                     <div className="flex items-center justify-between text-zinc-400">
                       <span className="text-zinc-500">Up / Down:</span>
                       <span className="text-zinc-200">
@@ -188,13 +198,30 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-zinc-400">
-                      <span className="text-zinc-500">Active Clients:</span>
-                      <span className="flex items-center gap-1">
-                        <span className="text-zinc-300">{clientCount}</span>
-                        {onlineCount > 0 && (
-                          <span className="text-emerald-400 font-semibold text-[11px]">
-                            ({onlineCount} live)
+                      <span className="text-zinc-500">Live Speed:</span>
+                      <span>
+                        {(inb.upSpeed || 0) > 0 || (inb.downSpeed || 0) > 0 ? (
+                          <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                            <span>↑{formatSpeed(inb.upSpeed || 0)}</span>
+                            <span>•</span>
+                            <span>↓{formatSpeed(inb.downSpeed || 0)}</span>
                           </span>
+                        ) : (
+                          <span className="text-zinc-600">0 B/s (Idle)</span>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-zinc-400">
+                      <span className="text-zinc-500">Active Clients:</span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-zinc-300 font-semibold">{clientCount}</span>
+                        {onlineCount > 0 ? (
+                          <span className="text-emerald-400 font-semibold text-[11px] bg-emerald-500/15 border border-emerald-500/30 px-1.5 py-0.2 rounded-md flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-ping" />
+                            {onlineCount} online
+                          </span>
+                        ) : (
+                          <span className="text-zinc-500 text-[11px]">(0 live)</span>
                         )}
                       </span>
                     </div>

@@ -66,18 +66,20 @@ type Controller struct {
 	lastSeenMap  map[string]int64
 	onlineEmails []string
 
-	speedMu      sync.RWMutex
-	clientSpeeds map[string]*ClientSpeed
+	speedMu       sync.RWMutex
+	clientSpeeds  map[string]*ClientSpeed
+	inboundSpeeds map[string]*ClientSpeed
 }
 
 // NewController creates a new gRPC controller for Xray core and attempts initial connection
 func NewController(apiAddress string) (*Controller, error) {
 	c := &Controller{
-		apiAddress:   apiAddress,
-		lastStats:    make(map[string]int64),
-		lastSeenMap:  make(map[string]int64),
-		onlineEmails: make([]string, 0),
-		clientSpeeds: make(map[string]*ClientSpeed),
+		apiAddress:    apiAddress,
+		lastStats:     make(map[string]int64),
+		lastSeenMap:   make(map[string]int64),
+		onlineEmails:  make([]string, 0),
+		clientSpeeds:  make(map[string]*ClientSpeed),
+		inboundSpeeds: make(map[string]*ClientSpeed),
 	}
 
 	_ = c.ensureConnected()
@@ -373,6 +375,7 @@ func (c *Controller) RefreshOnline(activeEmails []string, now int64, gracePeriod
 	for _, email := range activeEmails {
 		if email != "" {
 			c.lastSeenMap[email] = now
+			c.lastSeenMap[strings.ToLower(email)] = now
 		}
 	}
 
@@ -387,8 +390,31 @@ func (c *Controller) RefreshOnline(activeEmails []string, now int64, gracePeriod
 	c.onlineEmails = activeList
 }
 
-// IsClientOnline returns whether the given email has been active or connected within grace period
+// IsClientOnline returns whether the given email has been active, connected, or had transfer rate
 func (c *Controller) IsClientOnline(email string) bool {
+	if email == "" {
+		return false
+	}
+
+	// 1. If client currently has positive speed, they are actively online right now
+	c.speedMu.RLock()
+	if c.clientSpeeds != nil {
+		if spd, ok := c.clientSpeeds[email]; ok && spd != nil {
+			if time.Now().Unix()-spd.LastSeen <= 15 && (spd.UpSpeed > 0 || spd.DownSpeed > 0) {
+				c.speedMu.RUnlock()
+				return true
+			}
+		}
+		if spd, ok := c.clientSpeeds[strings.ToLower(email)]; ok && spd != nil {
+			if time.Now().Unix()-spd.LastSeen <= 15 && (spd.UpSpeed > 0 || spd.DownSpeed > 0) {
+				c.speedMu.RUnlock()
+				return true
+			}
+		}
+	}
+	c.speedMu.RUnlock()
+
+	// 2. Check if client was seen within grace period
 	c.onlineMu.RLock()
 	defer c.onlineMu.RUnlock()
 
@@ -507,6 +533,74 @@ func (c *Controller) DecayClientSpeeds(activeThisTick []string) {
 			// If not seen for over 60s, prune
 			if now-spd.LastSeen > 60 {
 				delete(c.clientSpeeds, email)
+			}
+		}
+	}
+}
+
+// UpdateInboundSpeed registers a delta transfer for an inbound tag over dt seconds
+func (c *Controller) UpdateInboundSpeed(tag string, deltaUp, deltaDown int64, dt float64) {
+	c.speedMu.Lock()
+	defer c.speedMu.Unlock()
+	if c.inboundSpeeds == nil {
+		c.inboundSpeeds = make(map[string]*ClientSpeed)
+	}
+	if dt <= 0 {
+		dt = 1.0
+	}
+	upSpd := float64(deltaUp) / dt
+	downSpd := float64(deltaDown) / dt
+	entry := &ClientSpeed{
+		UpSpeed:   upSpd,
+		DownSpeed: downSpd,
+		LastSeen:  time.Now().Unix(),
+	}
+	c.inboundSpeeds[tag] = entry
+}
+
+// GetInboundSpeed returns the latest up and down transfer rates (bytes/sec) for an inbound tag
+func (c *Controller) GetInboundSpeed(tag string) (float64, float64) {
+	c.speedMu.RLock()
+	defer c.speedMu.RUnlock()
+	if c.inboundSpeeds == nil {
+		return 0, 0
+	}
+	spd, ok := c.inboundSpeeds[tag]
+	if ok && spd != nil {
+		if time.Now().Unix()-spd.LastSeen > 10 {
+			return 0, 0
+		}
+		return spd.UpSpeed, spd.DownSpeed
+	}
+	return 0, 0
+}
+
+// DecayInboundSpeeds decays speeds gracefully for inbounds not present in active list
+func (c *Controller) DecayInboundSpeeds(activeThisTick []string) {
+	c.speedMu.Lock()
+	defer c.speedMu.Unlock()
+	if c.inboundSpeeds == nil {
+		return
+	}
+	activeMap := make(map[string]bool)
+	for _, t := range activeThisTick {
+		activeMap[t] = true
+	}
+	now := time.Now().Unix()
+	for tag, spd := range c.inboundSpeeds {
+		if !activeMap[tag] {
+			if now-spd.LastSeen > 5 {
+				spd.UpSpeed *= 0.4
+				spd.DownSpeed *= 0.4
+				if spd.UpSpeed < 20 {
+					spd.UpSpeed = 0
+				}
+				if spd.DownSpeed < 20 {
+					spd.DownSpeed = 0
+				}
+			}
+			if now-spd.LastSeen > 60 {
+				delete(c.inboundSpeeds, tag)
 			}
 		}
 	}

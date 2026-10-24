@@ -152,22 +152,48 @@ func buildInboundConfig(db *database.DB, in *database.Inbound) (*InboundConfig, 
 		settMap := map[string]any{
 			"method":  "2022-blake3-aes-128-gcm",
 			"network": "tcp,udp",
+			"level":   0,
 		}
 		if in.Settings != "" {
 			_ = json.Unmarshal([]byte(in.Settings), &settMap)
 		}
-		// If password is not explicitly in settings but clients exist, use first client password
-		if p, ok := settMap["password"].(string); (!ok || p == "") && len(clients) > 0 {
-			for _, c := range clients {
-				if c.Enable && c.Password != "" {
-					settMap["password"] = c.Password
-					break
-				}
+
+		type ssUser struct {
+			Password string `json:"password"`
+			Email    string `json:"email"`
+			Level    int    `json:"level"`
+		}
+		var ssUsers []ssUser
+		for _, c := range clients {
+			if !c.Enable {
+				continue
+			}
+			pwd := c.Password
+			if pwd == "" {
+				pwd = c.UUID
+			}
+			ssUsers = append(ssUsers, ssUser{
+				Password: pwd,
+				Email:    c.Email,
+				Level:    0,
+			})
+		}
+
+		if len(ssUsers) > 0 {
+			if p, ok := settMap["password"].(string); !ok || p == "" {
+				settMap["password"] = ssUsers[0].Password
+			}
+			settMap["email"] = ssUsers[0].Email
+			settMap["level"] = 0
+			if len(ssUsers) > 1 {
+				settMap["users"] = ssUsers
 			}
 		}
+
 		if _, ok := settMap["network"]; !ok {
 			settMap["network"] = "tcp,udp"
 		}
+		settMap["level"] = 0
 		settingsBytes, _ = json.Marshal(settMap)
 
 	case "wireguard":

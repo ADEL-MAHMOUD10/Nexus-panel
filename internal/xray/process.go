@@ -19,6 +19,15 @@ import (
 var xrayLogRegex = regexp.MustCompile(`^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?) \[([^\]]+)\] (.+)$`)
 
 
+// XrayLogItem represents a structured log entry captured from Xray-core
+type XrayLogItem struct {
+	ID        int64  `json:"id"`
+	Timestamp string `json:"timestamp"`
+	Level     string `json:"level"` // "debug", "info", "warning", "error", "access"
+	Message   string `json:"message"`
+	Raw       string `json:"raw"`
+}
+
 // ProcessManager manages the lifecycle of the Xray-core operating system process
 type ProcessManager struct {
 	mu         sync.RWMutex
@@ -29,6 +38,8 @@ type ProcessManager struct {
 	running    bool
 	startTime  time.Time
 	logs       []string
+	logItems   []XrayLogItem
+	logSeq     int64
 	doneChan   chan struct{}
 	logWriter  io.Writer
 }
@@ -42,7 +53,8 @@ func NewProcessManager(binPath, configPath string, logWriter io.Writer) *Process
 		binPath:    binPath,
 		configPath: configPath,
 		logWriter:  logWriter,
-		logs:       make([]string, 0, 200),
+		logs:       make([]string, 0, 500),
+		logItems:   make([]XrayLogItem, 0, 1000),
 	}
 }
 
@@ -154,6 +166,62 @@ func (m *ProcessManager) GetLogs() []string {
 	return result
 }
 
+// GetFilteredLogs returns the most recent structured log items matching the filter, level, and count
+func (m *ProcessManager) GetFilteredLogs(count int, filter string, level string) []XrayLogItem {
+	m.logMu.Lock()
+	defer m.logMu.Unlock()
+
+	if count <= 0 {
+		count = 100
+	}
+	if count > 2000 {
+		count = 2000
+	}
+
+	filter = strings.ToLower(strings.TrimSpace(filter))
+	level = strings.ToLower(strings.TrimSpace(level))
+
+	var filtered []XrayLogItem
+	for i := len(m.logItems) - 1; i >= 0; i-- {
+		item := m.logItems[i]
+
+		// Level check
+		if level != "" && level != "all" {
+			if strings.ToLower(item.Level) != level {
+				continue
+			}
+		}
+
+		// Filter substring check
+		if filter != "" {
+			combined := strings.ToLower(item.Raw + " " + item.Message + " " + item.Level)
+			if !strings.Contains(combined, filter) {
+				continue
+			}
+		}
+
+		filtered = append(filtered, item)
+		if len(filtered) >= count {
+			break
+		}
+	}
+
+	// Reverse to chronological order (oldest to newest)
+	for i, j := 0, len(filtered)-1; i < j; i, j = i+1, j-1 {
+		filtered[i], filtered[j] = filtered[j], filtered[i]
+	}
+
+	return filtered
+}
+
+// ClearLogs clears the in-memory log buffer
+func (m *ProcessManager) ClearLogs() {
+	m.logMu.Lock()
+	defer m.logMu.Unlock()
+	m.logs = make([]string, 0, 500)
+	m.logItems = make([]XrayLogItem, 0, 1000)
+}
+
 func (m *ProcessManager) appendLog(s string) {
 	m.logMu.Lock()
 	defer m.logMu.Unlock()
@@ -164,44 +232,78 @@ func (m *ProcessManager) appendLog(s string) {
 			continue
 		}
 
+		itemLevel := "info"
+		itemMsg := trimmed
+		nowStr := time.Now().Format("2006/01/02 15:04:05")
+
 		// Parse structured Xray log lines: "2026/10/11 00:32:03 [Warning] msg..."
 		matches := xrayLogRegex.FindStringSubmatch(trimmed)
 		if len(matches) > 4 {
-			lvl := matches[3]
+			lvl := strings.ToLower(matches[3])
 			body := matches[4]
 			bodyLower := strings.ToLower(body)
+			itemMsg = body
+			if matches[1] != "" {
+				nowStr = matches[1]
+			}
+
 			if strings.Contains(bodyLower, "tls handshake error") || strings.Contains(bodyLower, "connection ends") {
 				logger.Debug("XRAY: " + body)
+				itemLevel = "debug"
 			} else if strings.Contains(bodyLower, "failed") {
 				logger.Error("XRAY: " + body)
+				itemLevel = "error"
 			} else {
-				switch strings.ToLower(lvl) {
+				switch lvl {
 				case "debug":
 					logger.Debug("XRAY: " + body)
+					itemLevel = "debug"
 				case "info":
 					logger.Info("XRAY: " + body)
+					itemLevel = "info"
 				case "warning", "warn":
 					logger.Warning("XRAY: " + body)
+					itemLevel = "warning"
 				case "error", "err":
 					logger.Error("XRAY: " + body)
+					itemLevel = "error"
+				case "access":
+					itemLevel = "access"
 				default:
-					logger.Info("XRAY: " + body)
+					itemLevel = "info"
 				}
 			}
 		} else {
 			trimmedLower := strings.ToLower(trimmed)
 			if strings.Contains(trimmedLower, "panic") || strings.Contains(trimmedLower, "fatal") || strings.Contains(trimmedLower, "failed to") {
 				logger.Error("XRAY: " + trimmed)
-			} else if strings.Contains(trimmedLower, "warning") {
+				itemLevel = "error"
+			} else if strings.Contains(trimmedLower, "warning") || strings.Contains(trimmedLower, "warn") {
 				logger.Warning("XRAY: " + trimmed)
+				itemLevel = "warning"
+			} else if strings.Contains(trimmedLower, "accepted") || strings.Contains(trimmedLower, "proxy") {
+				itemLevel = "access"
 			} else {
 				logger.Info("XRAY: " + trimmed)
+				itemLevel = "info"
 			}
 		}
 
+		m.logSeq++
+		m.logItems = append(m.logItems, XrayLogItem{
+			ID:        m.logSeq,
+			Timestamp: nowStr,
+			Level:     itemLevel,
+			Message:   itemMsg,
+			Raw:       trimmed,
+		})
+		if len(m.logItems) > 3000 {
+			m.logItems = m.logItems[len(m.logItems)-3000:]
+		}
+
 		m.logs = append(m.logs, fmt.Sprintf("[%s] %s", time.Now().Format("15:04:05"), trimmed))
-		if len(m.logs) > 500 {
-			m.logs = m.logs[len(m.logs)-500:]
+		if len(m.logs) > 3000 {
+			m.logs = m.logs[len(m.logs)-3000:]
 		}
 	}
 }

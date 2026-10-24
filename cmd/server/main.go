@@ -161,12 +161,16 @@ func main() {
 					}
 				}
 
-				// Record inbound traffic deltas
+				// Record inbound traffic deltas & compute real-time throughput
+				var activeInboundsThisTick []string
 				for _, inb := range inboundTraffics {
 					if inb.Up > 0 || inb.Down > 0 {
 						_ = db.AddInboundTraffic(inb.Tag, inb.Up, inb.Down)
+						ctrl.UpdateInboundSpeed(inb.Tag, inb.Up, inb.Down, dt)
+						activeInboundsThisTick = append(activeInboundsThisTick, inb.Tag)
 					}
 				}
+				ctrl.DecayInboundSpeeds(activeInboundsThisTick)
 
 				// Record client traffic deltas & compute real-time transfer rates
 				for _, ct := range clientTraffics {

@@ -8,7 +8,9 @@ import {
   Eye,
   EyeOff,
   Menu,
-  X
+  X,
+  Terminal,
+  Activity
 } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 
@@ -25,6 +27,8 @@ interface HeaderProps {
   setSearchQuery: (q: string) => void;
   onOpenUpdates?: () => void;
   hasUpdates?: boolean;
+  onOpenXrayLogs?: () => void;
+  onOpenXrayMetrics?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -40,6 +44,8 @@ export const Header: React.FC<HeaderProps> = ({
   setSearchQuery,
   onOpenUpdates,
   hasUpdates,
+  onOpenXrayLogs,
+  onOpenXrayMetrics,
 }) => {
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
 
@@ -142,6 +148,32 @@ export const Header: React.FC<HeaderProps> = ({
                 ) : (
                   <Eye className="w-3.5 h-3.5 text-zinc-500 hover:text-zinc-300 ml-0.5" />
                 )}
+              </button>
+            )}
+
+            {/* Xray Live Kernel Logs */}
+            {onOpenXrayLogs && (
+              <button
+                type="button"
+                onClick={onOpenXrayLogs}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Xray Core Live Kernel Logs"
+              >
+                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="hidden md:inline">Logs</span>
+              </button>
+            )}
+
+            {/* Xray Telemetry Matrix */}
+            {onOpenXrayMetrics && (
+              <button
+                type="button"
+                onClick={onOpenXrayMetrics}
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Xray Real-Time Telemetry Matrix"
+              >
+                <Activity className="w-3.5 h-3.5 text-purple-400" />
+                <span className="hidden md:inline">Matrix</span>
               </button>
             )}
 

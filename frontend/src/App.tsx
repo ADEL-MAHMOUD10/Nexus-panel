@@ -13,6 +13,8 @@ import { InboundModal } from './components/InboundModal';
 import { ClientModal } from './components/ClientModal';
 import { ShareModal } from './components/ShareModal';
 import { UpdatesModal } from './components/UpdatesModal';
+import { XrayLogModal } from './components/XrayLogModal';
+import { XrayMetricsModal } from './components/XrayMetricsModal';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { LoginPage } from './pages/LoginPage';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
@@ -35,6 +37,8 @@ export function App() {
   });
   const [isCheckingUpdates, setIsCheckingUpdates] = useState(false);
   const [isUpdatesModalOpen, setIsUpdatesModalOpen] = useState(false);
+  const [isXrayLogModalOpen, setIsXrayLogModalOpen] = useState(false);
+  const [isXrayMetricsModalOpen, setIsXrayMetricsModalOpen] = useState(false);
   const updateNotifiedRef = useRef<string | null>(null);
 
   // Core Data
@@ -590,6 +594,8 @@ export function App() {
           setSearchQuery={setSearchQuery}
           onOpenUpdates={() => setIsUpdatesModalOpen(true)}
           hasUpdates={updates.panel.hasUpdate || updates.xray.hasUpdate}
+          onOpenXrayLogs={() => setIsXrayLogModalOpen(true)}
+          onOpenXrayMetrics={() => setIsXrayMetricsModalOpen(true)}
         />
 
         {/* Scrollable Viewport */}
@@ -628,6 +634,7 @@ export function App() {
                 onDeleteInbound={handleDeleteInbound}
                 onShareInbound={handleShareInbound}
                 formatBytes={formatBytes}
+                formatSpeed={formatSpeed}
               />
             )}
 
@@ -705,6 +712,18 @@ export function App() {
         updates={updates}
         onRefresh={fetchUpdates}
         isChecking={isCheckingUpdates}
+      />
+
+      <XrayLogModal
+        isOpen={isXrayLogModalOpen}
+        onClose={() => setIsXrayLogModalOpen(false)}
+      />
+
+      <XrayMetricsModal
+        isOpen={isXrayMetricsModalOpen}
+        onClose={() => setIsXrayMetricsModalOpen(false)}
+        formatBytes={formatBytes}
+        formatSpeed={formatSpeed}
       />
     </div>
   );

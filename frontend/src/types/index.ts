@@ -105,7 +105,56 @@ export interface Inbound {
   down: number;
   total: number;
   expiryTime: number;
+  upSpeed?: number;
+  downSpeed?: number;
   clients?: Client[];
+}
+
+export interface XrayLogEntry {
+  id: number;
+  timestamp: string;
+  level: string;
+  message: string;
+  raw: string;
+}
+
+export interface InboundMetric {
+  id: number;
+  tag: string;
+  port: number;
+  protocol: string;
+  up: number;
+  down: number;
+  upSpeed: number;
+  downSpeed: number;
+  clients: number;
+  online: number;
+}
+
+export interface XrayMetricsData {
+  kernel: {
+    running: boolean;
+    pid: number;
+    uptime: number;
+    version: string;
+  };
+  memory: {
+    alloc: number;
+    totalAlloc: number;
+    sys: number;
+    numGC: number;
+    pauseTotalNs: number;
+    heapAlloc: number;
+    heapSys: number;
+    heapObjects: number;
+    goroutines: number;
+  };
+  throughput: {
+    totalUpSpeed: number;
+    totalDownSpeed: number;
+    totalOnlineClients: number;
+  };
+  inbounds: InboundMetric[];
 }
 
 export interface SSLCertificate {
