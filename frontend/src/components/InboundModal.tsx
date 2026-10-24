@@ -7,6 +7,7 @@ import {
 import api from '../services/api';
 import { Inbound } from '../types';
 import { useNotification } from '../context/NotificationContext';
+import { copyToClipboard } from '../utils/clipboard';
 
 interface InboundModalProps {
   isOpen: boolean;
@@ -162,8 +163,16 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   // Fallbacks raw JSON
   const [fallbacksJson, setFallbacksJson] = useState('[]');
 
-  // Real-time Port Collision Detection state
+  // Real-time Port Collision & Firewall Detection state
   const [portConflict, setPortConflict] = useState<string | null>(null);
+  const [portOccupiedBy, setPortOccupiedBy] = useState<string | null>(null);
+  const [firewallInfo, setFirewallInfo] = useState<{
+    engine: string;
+    status: string;
+    isOpen: boolean;
+    details: string;
+    command?: string;
+  } | null>(null);
   const [isCheckingPort, setIsCheckingPort] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -292,10 +301,17 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           ignoreId: inboundToEdit ? inboundToEdit.id.toString() : '0',
         });
         const res = await api.get(`/api/inbounds/check-port?${query.toString()}`);
-        if (res.data && !res.data.available) {
-          setPortConflict(res.data.message || `Port ${port} is not available.`);
-        } else {
-          setPortConflict(null);
+        if (res.data) {
+          if (!res.data.available) {
+            setPortConflict(res.data.message || `Port ${port} is not available.`);
+            setPortOccupiedBy(res.data.occupiedBy || null);
+          } else {
+            setPortConflict(null);
+            setPortOccupiedBy(null);
+          }
+          if (res.data.firewall) {
+            setFirewallInfo(res.data.firewall);
+          }
         }
       } catch (e) {
         // ignore
@@ -828,16 +844,72 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     <div className="mt-2 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-[11px] text-rose-200 flex flex-col gap-2">
                       <div className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                        <span>{portConflict}</span>
+                        <div className="space-y-1">
+                          <span>{portConflict}</span>
+                          {portOccupiedBy && (
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[10px] text-zinc-400 font-mono">Service Detected:</span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold">
+                                {portOccupiedBy}
+                              </span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <button
                         type="button"
                         onClick={handlePickNextAvailablePort}
-                        className="self-start px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/35 border border-rose-500/40 text-[10px] font-semibold text-white flex items-center gap-1 transition"
+                        className="self-start px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/35 border border-rose-500/40 text-[10px] font-semibold text-white flex items-center gap-1 transition cursor-pointer"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>Assign Next Free Port Automatically</span>
                       </button>
+                    </div>
+                  )}
+
+                  {/* Server Firewall Rule Status Card */}
+                  {firewallInfo && (
+                    <div className={`mt-2 p-3 rounded-xl border text-[11px] flex flex-col gap-1.5 transition ${
+                      firewallInfo.isOpen
+                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-200'
+                        : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Shield className={`w-3.5 h-3.5 ${firewallInfo.isOpen ? 'text-emerald-400' : 'text-amber-400'}`} />
+                          <span className="font-bold font-mono tracking-wide text-[10px] uppercase">
+                            {firewallInfo.status}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase border ${
+                          firewallInfo.isOpen
+                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                        }`}>
+                          {firewallInfo.isOpen ? 'RULE ALLOWED' : 'RULE BLOCKED'}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-zinc-300 leading-relaxed">
+                        {firewallInfo.details}
+                      </p>
+                      {!firewallInfo.isOpen && firewallInfo.command && (
+                        <div className="flex items-center justify-between gap-2 pt-1.5 mt-0.5 border-t border-amber-500/20">
+                          <code className="text-[10px] font-mono bg-black/50 px-2 py-0.5 rounded text-amber-300 select-all border border-amber-500/20">
+                            {firewallInfo.command}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const ok = await copyToClipboard(firewallInfo.command!);
+                              if (ok) notify.success('Copied Command', 'Firewall unblock command copied to clipboard.');
+                            }}
+                            className="px-2 py-0.5 rounded bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 text-[10px] font-mono flex items-center gap-1 transition cursor-pointer shrink-0"
+                          >
+                            <Copy className="w-3 h-3" />
+                            <span>Copy Command</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

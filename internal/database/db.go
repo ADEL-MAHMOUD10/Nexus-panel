@@ -262,7 +262,6 @@ func (db *DB) CheckInboundPortConflict(target *Inbound, ignoreID int) (*Inbound,
 		return nil, err
 	}
 
-	targetTransport := GetInboundTransport(target.Protocol, target.StreamSettings)
 	targetListen := normalizeListen(target.Listen)
 
 	for _, existing := range inbounds {
@@ -273,13 +272,7 @@ func (db *DB) CheckInboundPortConflict(target *Inbound, ignoreID int) (*Inbound,
 			continue
 		}
 
-		existingTransport := GetInboundTransport(existing.Protocol, existing.StreamSettings)
-		// Check if L4 transport overlaps (TCP vs TCP or UDP vs UDP)
-		if (targetTransport & existingTransport) == 0 {
-			continue
-		}
-
-		// Check if listening IP interfaces overlap (0.0.0.0 overlaps everything, or identical specific IP)
+		// Any two inbounds with the same port number on overlapping interfaces is a conflict
 		existingListen := normalizeListen(existing.Listen)
 		if listenOverlaps(targetListen, existingListen) {
 			return &existing, nil
