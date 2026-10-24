@@ -1,0 +1,620 @@
+# FinalMask
+
+FinalMask performs the last stage of traffic camouflage after the core has already processed transport-layer encryption, including TLS and REALITY.
+
+It can be used for multiple kinds of TCP and UDP camouflage, as well as QUIC-related parameter tuning.
+
+## FinalMaskObject
+
+`FinalMaskObject` corresponds to the `finalmask` item in [`StreamSettingsObject`](../transport.md#streamsettingsobject).
+
+```json
+{
+  // outbound example; also applies to inbound
+  "outbounds": [
+    {
+      // ...
+      "streamSettings": {
+        // [!field focus]
+        "finalmask": {
+          "tcp": [
+            {
+              "type": "",
+              "settings": {}
+            }
+          ],
+          "udp": [
+            {
+              "type": "",
+              "settings": {}
+            }
+          ],
+          "quicParams": {}
+        }
+      }
+    }
+  ]
+}
+```
+
+## TCPMask
+
+An array used to camouflage TCP traffic emitted by the core. The first item in the array is the innermost camouflage layer.
+
+```json
+{
+  "finalmask": {
+    // [!field focus]
+    "tcp": [
+      {
+        "type": "",
+        "settings": {}
+      }
+    ]
+  }
+}
+```
+
+> `type`: string
+
+The type of this camouflage layer.
+
+> `settings`: object
+
+The concrete settings for this camouflage type.
+
+See the fields for each type below.
+
+### header-custom
+
+```json
+{
+  "type": "header-custom",
+  // [!field focus]
+  "settings": {
+    "clients": [
+      [
+        {
+          "delay": 0,
+          "rand": 0,
+          "randRange": "0-255",
+          "type": "",
+          "packet": []
+        }
+      ]
+    ],
+    "servers": [
+      [
+        {
+          "delay": 0,
+          "rand": 0,
+          "randRange": "0-255",
+          "type": "",
+          "packet": []
+        }
+      ]
+    ],
+    "errors": [
+      [
+        {
+          "delay": 0,
+          "rand": 0,
+          "randRange": "0-255",
+          "type": "",
+          "packet": []
+        }
+      ]
+    ]
+  }
+}
+```
+
+`clients[n][m].delay`: delay in milliseconds. When it is `0`, the data is sent together with the previous packet.
+
+`clients[n][m].rand`: adds a specified number of random bytes. Conflicts with `packet`.
+
+`clients[n][m].randRange`: range of random-byte values. The default is `0-255`.
+
+`clients[n][m].type`: the type of `packet`. Supported values are `array`, `str`, `hex`, and `base64`. The default is `array`.
+
+`clients[n][m].packet`: adds fixed data. Conflicts with `rand`.
+
+### fragment
+
+```json
+{
+  "type": "fragment",
+  // [!field focus]
+  "settings": {
+    "packets": "tlshello",
+    "lengths": ["3-5", "6-8", "10-20"],
+    "delays": ["10-20"],
+    "maxSplit": "3-6"
+  }
+}
+```
+
+Controls outgoing TCP fragmentation. In some cases it can deceive censorship systems, for example by bypassing SNI blacklists.
+
+`"length"`, `"delay"`, and `"maxSplit"` are all [Int32Range](../../development/intro/guide.md#int32range) values.
+
+`"packets"`: supports two fragmentation modes. `"1-3"` slices the TCP stream and applies to the client's 1st through 3rd write operations. `"tlshello"` fragments the TLS handshake packet.
+
+`"lengths"`: fragment size in bytes.
+
+The n-th element of the array specifies the expected length of the n-th fragment split from the current packet being processed; the last element keeps applying to all subsequent fragments split from that packet. Entries other than the last may be `0` (otherwise it causes infinite idling); for TCP stream slicing, it behaves as sending no data, while for tlshello, it behaves as sending an RFC-violating empty TLS record (tolerated by some implementations, but not Golang).
+
+`"delays"`: interval between fragments in milliseconds.
+
+The n-th element of the array specifies how long to wait after sending the n-th fragment split from the current packet being processed; the last element keeps applying to all subsequent fragments split from that packet.
+
+When it is `0` and `"packets": "tlshello"` is set, the fragmented Client Hello will be sent in a single TCP packet, as long as its original size does not exceed the MSS or MTU and the system does not fragment it automatically.
+
+`"maxSplit"`: maximum number of splits. This limits how many pieces a single packet can be broken into. `0` means unlimited.
+
+### sudoku
+
+```json
+{
+  "type": "sudoku",
+  // [!field focus]
+  "settings": {
+    "password": "",
+    "ascii": "",
+
+    "customTable": "", // field name is custom_table in the upstream documentation
+    "customTables": [""], // field name is custom_tables in the upstream documentation
+
+    "paddingMin": 0, // field name is padding_min in the upstream documentation
+    "paddingMax": 0 // field name is padding_max in the upstream documentation
+  }
+}
+```
+
+For the meaning of these fields, see the [upstream documentation](https://github.com/SUDOKU-ASCII/sudoku/blob/main/configs/README.md).
+
+### filter
+
+```json
+{
+  "type": "filter",
+  // [!field focus]
+  "settings": {
+    "allowedSourceIPs": ["geoip:cn", "10.0.0.0/8", "fd00::/8"],
+    "blockedSourceIPs": ["10.20.0.0/16", "fd00:20::/48"]
+  }
+}
+```
+
+A traffic filter for access control. Currently, only filtering [inbound](../inbound.md) traffic by source IP is supported (no effect on outbounds). Filtering takes place after the TCP three-way handshake completes successfully.
+
+Unless there is a specific reason otherwise, place `filter` at the outermost layer, as the last item in the array.
+
+`allowedSourceIPs`: source IP allowlist. When non-empty, the source IP must be available and match at least one entry to be allowed.
+
+`blockedSourceIPs`: source IP blocklist. Source IPs matching any entry are rejected.
+
+Both fields support GeoIP entries (such as `geoip:cn`) and IPv4 and IPv6 CIDR ranges, with usage similar to [IP matching in routing rules](../routing.md#ruleobject).
+
+When both lists are configured, the source IP is allowed only if it matches the allowlist and does not match the blocklist.
+
+## UDPMask
+
+An array used to camouflage UDP traffic emitted by the core. The first item in the array is the innermost camouflage layer.
+
+```json
+{
+  "finalmask": {
+    // [!field focus]
+    "udp": [
+      {
+        "type": "",
+        "settings": {}
+      }
+    ]
+  }
+}
+```
+
+> `type`: string
+
+The type of this camouflage layer.
+
+> `settings`: object
+
+The concrete settings for this camouflage type.
+
+See the fields for each type below.
+
+### header-custom
+
+Always merged into the packet header.
+
+```json
+{
+  "type": "header-custom",
+  // [!field focus]
+  "settings": {
+    "client": [
+      {
+        "rand": 0,
+        "randRange": "0-255",
+        "type": "",
+        "packet": []
+      }
+    ],
+    "server": [
+      {
+        "rand": 0,
+        "randRange": "0-255",
+        "type": "",
+        "packet": []
+      }
+    ]
+  }
+}
+```
+
+`client[n].rand`: adds a specified number of random bytes. Conflicts with `packet`.
+
+`client[n].randRange`: range of random-byte values. The default is `0-255`.
+
+`client[n].type`: the type of `packet`. Supported values are `array`, `str`, `hex`, and `base64`. The default is `array`.
+
+`client[n].packet`: adds fixed data. Conflicts with `rand`.
+
+### mkcp-legacy
+
+```json
+{
+  "type": "mkcp-legacy",
+  // [!field focus]
+  "settings": {
+    "header": "", // dns dtls srtp utp wechat wireguard
+    "value": "" // password domain
+  }
+}
+```
+
+Legacy mKCP packet-header camouflage/obfuscation. The meaning of `value` depends on `header`. Note that the forgery is only a simple packet-header forgery and does not mean the full protocol is implemented.
+
+> When empty: applies AES-128-GCM encryption with `value` as the password. If `value` is empty, it falls back to the default simple XOR obfuscation.
+
+> `dns`: forged as a DNS query. `value` is the specified domain; defaults to `www.baidu.com` when empty.
+
+> `dtls`: forged as DTLS 1.2 application data. `value` has no effect.
+
+> `srtp`: forged as SRTP. `value` has no effect.
+
+> `utp`: forged as uTP (BitTorrent). `value` has no effect.
+
+> `wechat`: forged as a WeChat video call. `value` has no effect.
+
+> `wireguard`: forged as WireGuard. `value` has no effect.
+
+### noise
+
+Noise sent before the actual data.
+
+```json
+{
+  "type": "noise",
+  // [!field focus]
+  "settings": {
+    "reset": "30-60",
+    "noise": [
+      {
+        "rand": "1-8192",
+        "randRange": "0-255",
+        "type": "",
+        "packet": [],
+        "delay": "10-20"
+      }
+    ]
+  }
+}
+```
+
+`reset`: an [Int32Range](../../development/intro/guide.md#int32range) value in seconds. After noise is sent, it resets after this duration so noise can be sent again to the same address. `0` means no reset, so it is sent only once.
+
+`rand`: adds random bytes, or random bytes of a specified length. Conflicts with `packet`.
+
+`randRange`: range of random-byte values. The default is `0-255`.
+
+`type`: the type of `packet`. Supported values are `array`, `str`, `hex`, `base64`, and `exp`. The default is `array`.
+
+`packet`: adds fixed data. Conflicts with `rand`.
+
+With `"type": "exp"`, `packet` is an expression string that builds one noise packet, generated again on every send, so it can carry changing content such as a timestamp. The parts of the expression are joined in order into a single packet:
+
+- `<b hex>`: fixed bytes written as hex, an optional `0x` prefix is ignored
+- `<r N>` or `<r A-B>`: `N` random bytes, or a random count between `A` and `B`
+- `<rc N>` or `<rc A-B>`: the same with random letters (`a-zA-Z`)
+- `<rd N>` or `<rd A-B>`: the same with random digits (`0-9`)
+- `<t>`: the current Unix time in seconds, 4 bytes big endian
+- `<c>`: a counter, 4 bytes big endian, increased by one each time
+- `<n>`: 8 random bytes
+
+For example `{"type": "exp", "packet": "<b 0d0a0d0a><t><r 24>"}` sends `\r\n\r\n`, the timestamp and 24 random bytes as one packet.
+
+`delay`: delay in milliseconds. After one noise item is sent, wait for the specified time before sending the next one.
+
+### salamander
+
+Salamander obfuscation. From Hysteria2.
+
+```json
+{
+  "type": "salamander",
+  // [!field focus]
+  "settings": {
+    "password": "your-password",
+    "packetSize": "512-1200"
+  }
+}
+```
+
+`password`: the obfuscation password.
+
+#### gecko
+
+`packetSize`: [Int32Range](../../development/intro/guide.md#int32range)
+
+When non-empty, enables Gecko obfuscation, which applies additional fragmentation-and-padding obfuscation to QUIC long-header packets (short-header packets use Salamander directly). `packetSize` specifies the fragment size, and its upper bound must not exceed 2048.
+
+### sudoku
+
+```json
+{
+  "type": "sudoku",
+  // [!field focus]
+  "settings": {
+    "password": "",
+    "ascii": "",
+
+    "customTable": "",
+    "customTables": [""],
+
+    "paddingMin": 0,
+    "paddingMax": 0
+  }
+}
+```
+
+Same as the TCP version.
+
+### xdns
+
+Uses DNS queries to transmit data, similar to DNSTT. It performs standard DNS queries to carry payloads and supports TXT, A, and AAAA query types.
+
+Because of technical limitations, the effective MTU is very small, QUIC cannot be used, and pairing it with mKCP is recommended. Recommended MTU values are 130 on the client side; on the server side, use 900 for TXT, which carries almost raw byte data, reduce appropriately to below 1/2 for AAAA, and below 1/8 for A. The theoretical encoding efficiency differs, while actual results depend on how many AAAA or A records intermediate forwarders tolerate in responses.
+
+Since the queries are standard, they can be forwarded through any UDP DNS server, although the efficiency may be quite poor.
+
+To use this feature, the server needs to listen on port 53, then the proxy protocol should point to a DNS server such as `8.8.8.8:53`, and you must own one of the domains in `domains`, then point its NS record to the server.
+
+For example, if you own `example.com`, set an A record like `a.example.com` to the server IP, set an NS record like `t.example.com` to `a.example.com`, and then use `t.example.com`. The host used for the A record must not be a subdomain of the host used for the NS record.
+
+```json
+{
+  "type": "xdns",
+  // [!field focus]
+  "settings": {
+    "domains": [
+      {
+        "names": ["t.example.com"],
+        "lenLimit": 255, // 0-255; default: 255
+        "labelLimit": 63, // 0-63; default: 63
+        "types": [1, 5, 16, 28], // 1:A 5:CNAME 16:TXT 28:AAAA; client default: 16, server default: all
+        "edns0": 1232 // 0,512-4096; default: 0
+      }
+    ],
+    "resolvers": [
+      {
+        "addrs": ["udp://127.0.0.1:53"] // [protocol://]host[:port], no defaults
+      }
+    ]
+  }
+}
+```
+
+Compatible only with kcp; a TTI of 200 is recommended. MTU configuration is required only on the server side (refer to MTU settings). CNAME calculation is relatively complex; values ​​generally fall between those for AAAA and TXT records:
+
+- When edns0 is 512: A 39, TXT 215, AAAA 117
+- When edns0 is 1232: A 174, TXT 932, AAAA 492
+
+### xicmp
+
+```json
+{
+  "type": "xicmp",
+  // [!field focus]
+  "settings": {
+    "dgram": false, // optional
+    "ips": [] // optional
+  }
+}
+```
+
+`dgram`: Lower permissions, client-side only (Linux, Mac, iOS)
+
+`ips`: CIDR is not currently supported
+
+### realm
+
+Self-built https://github.com/apernet/hysteria-realm-server
+
+```json
+{
+  "type": "realm",
+  // [!field focus]
+  "settings": {
+    "url": "realm://public@xxx/your-realm-name",
+    "stunServers": [
+      "stun.nextcloud.com:3478",
+      "global.stun.twilio.com:3478"
+    ],
+    "tlsConfig": {}, // optional
+    "ipMode": "dual",
+    "portMapping": {
+      "enabled": false,
+      "timeout": 10,
+      "lifetime": 600
+    }
+  }
+}
+```
+
+`url`: realm[+http]\://token@host[:port]/id
+
+`stunServers`: Multiple IPv4/IPv6 addresses are used for NAT port prediction
+
+`tlsConfig`: Same as tlsSettings
+
+`ipMode`: Control STUN domain name resolution and realm peer filtering
+
+`portMapping.enabled`: Enable fixed port mapping for enhanced inbound accessibility
+
+`portMapping.timeout`: seconds
+
+`portMapping.lifetime`: seconds
+
+Connection failures require debug-level logging. Possible contributing factors include the STUN provider, the Realm provider
+
+### udphop
+
+```json
+{
+  "type": "udphop",
+  // [!field focus]
+  "settings": {
+    "mode": "intervallocal,intervalremote", // intervallocal intervalremote perconnremote
+    "interval": "5-10",
+    "remoteIPs": [""],
+    "remotePorts": "20000-50000,443"
+  }
+}
+```
+
+`intervallocal`: Supports only WireGuard, Hysteria, and xhttp-h3
+
+`intervalremote`: Requires pairing with iptables or nftables
+
+`perconnremote`: Requires pairing with iptables or nftables
+
+`mode`: Comma-separated; typically `intervallocal,intervalremote`, or just `intervallocal`, or just `perconnremote`
+
+`interval`: seconds
+
+`remoteIPs`: Required only when `mode` includes `intervalremote` or `perconnremote`; if left blank, it inherits the address from the parent level. CIDR notation is supported
+
+`remotePorts`: Required only when `mode` includes `intervalremote` or `perconnremote`; if left blank, it inherits the address from the parent level
+
+### filter
+
+A traffic filter for access control. Currently, only filtering [inbound](../inbound.md) traffic by source IP is supported (no effect on outbounds). UDP traffic is filtered packet by packet. All other configuration and behavior are the same as the [TCP version](#filter).
+
+Unless there is a specific reason otherwise, place `filter` at the outermost layer, as the last item in the array.
+
+## quicParams
+
+```json
+{
+  "finalmask": {
+    // [!field focus]
+    "quicParams": {
+      "congestion": "force-brutal",
+      "bbrProfile": "standard",
+      "debug": false,
+      "brutalUp": "60 mbps",
+      "brutalDown": 0,
+      "udpHop": {
+        "ports": "20000-50000",
+        "interval": "5-10"
+      },
+      "initStreamReceiveWindow": 8388608,
+      "maxStreamReceiveWindow": 8388608,
+      "initConnectionReceiveWindow": 20971520,
+      "maxConnectionReceiveWindow": 20971520,
+      "maxIdleTimeout": 30,
+      "keepAlivePeriod": 0,
+      "disablePathMTUDiscovery": false,
+      "maxIncomingStreams": 1024
+    }
+  }
+}
+```
+
+Used for QUIC parameter tuning in XHTTP H3, Hysteria, and MASQUE H3.
+
+> `congestion`: reno | bbr | brutal | force-brutal
+
+Congestion-control algorithm. Hysteria defaults to `brutal`, while XHTTP H3 and MASQUE default to `bbr`; for MASQUE, `brutal` also runs as `bbr`.
+
+`reno` and `bbr` are well-known algorithms.
+
+`brutal`: negotiates a fixed packet-sending rate with the peer, or falls back to BBR.
+
+`force-brutal`: same as `brutal`, but it forces upstream traffic to use the fixed packet-sending rate from `brutalUp`, ignoring peer negotiation.
+
+Note that XHTTP H3 cannot use `brutal` because it has no negotiation mechanism, but it does support `force-brutal`, which does not require negotiation.
+
+> `bbrProfile`: conservative | standard | aggressive
+
+When QUIC congestion control is set to BBR, this controls the BBR preset. The default is `standard`. `conservative` is slightly more cautious, while `aggressive` is slightly more aggressive.
+
+> `debug`: false | true
+
+Enables logs for `bbr` and `brutal` congestion control.
+
+> `brutalUp`: string
+
+> `brutalDown`: string
+
+Upload and download rate limits. The default value is `0`.
+
+The format is user-friendly and supports many common bits-per-second notations, including `1000000`, `100kb`, `20 mb`, `100 mbps`, `1g`, and `1 tbps`. It is case-insensitive, spaces between units are optional, and if no unit is specified, the default is `bps`. The value must not be lower than 65535 bps.
+
+The negotiation behavior is the same as Hysteria Brutal:
+
+The server-side value limits the highest Brutal-mode rate the client may choose. A value of `0` means the server does not limit the client.
+
+If the client-side value is `0`, BBR mode is used. If it is non-zero, Brutal mode is used and is still constrained by the server-side limit.
+
+Remember that direction is relative: the server's upload is the client's download, and the server's download is the client's upload.
+
+> `udpHop`: {"ports": string, "interval": number}
+
+UDP port-hopping configuration.
+
+`ports` is the hopping port range. It can be a numeric string such as `"1234"`, or a numeric range such as `"1145-1919"` for ports 1145 through 1919. Commas can be used to separate segments, for example `11,13,15-17`.
+
+`interval` is the port-hopping interval in seconds. It must be at least 5, and the default is 30 seconds.
+
+> `initStreamReceiveWindow`: number
+
+> `maxStreamReceiveWindow`: number
+
+> `initConnectionReceiveWindow`: number
+
+> `maxConnectionReceiveWindow`: number
+
+These four are the concrete QUIC window parameters. **Do not change them unless you fully understand what you are doing.** If you do need to change them, it is recommended to keep the ratio between the stream receive window and the connection receive window at 2:5.
+
+> `maxIdleTimeout`: number
+
+Maximum idle timeout in seconds. This is how long the server waits without receiving any client data before closing the connection. The supported range is 4 to 120 seconds. The default is 30 seconds.
+
+> `keepAlivePeriod`: number
+
+QUIC KeepAlive interval in seconds. The supported range is 2 to 60 seconds. Disabled by default.
+
+> `disablePathMTUDiscovery`: bool
+
+Whether to disable Path MTU Discovery.
+
+Other implementations forcibly disable this on operating systems other than Linux, Windows, and Darwin, while Xray does not force-disable it. If your OS is not one of `linux`, `windows`, or `darwin`, you may need to disable it manually.
+
+> `maxIncomingStreams`: number
+
+Server-side parameter. If set, it must not be smaller than `8`.
