@@ -189,6 +189,8 @@ html.light, html.light body, html.light #root {
 html.light .bg-\[\#161617\],
 html.light [class*="bg-\[\#161617\]"],
 html.light .bg-\[\#0c0d10\],
+html.light .bg-\[\#0c0d10\]\/95,
+html.light [class*="bg-\[\#0c0d10\]"],
 html.light .bg-\[\#0a0a0c\],
 html.light .bg-\[\#090a0f\],
 html.light .bg-\[\#0c0d14\],
@@ -663,4 +665,19 @@ html.dark .fixed.bottom-6 {
   background-color: #161617 !important;
   border: none !important;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Mobile Bottom Navigation Bar */
+html.light .mobile-bottom-nav,
+html.light .fixed.bottom-0.inset-x-0 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06) !important;
+}
+
+html.dark .mobile-bottom-nav,
+html.dark .fixed.bottom-0.inset-x-0 {
+  background-color: rgba(22, 22, 23, 0.95) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6) !important;
 }
