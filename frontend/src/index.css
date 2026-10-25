@@ -304,37 +304,147 @@ html.light .border-white\/5 {
   border-color: transparent !important;
 }
 
+/* =========================================================================
+   UNIVERSAL MODERN LABEL UI ARCHITECTURE
+   Transforms all form labels into distinctive, tactile, structured UI badges
+   ========================================================================= */
+
+.ui-label,
+label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui]) {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.45rem !important;
+  font-size: 0.7rem !important; /* ~11px */
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  padding: 0.22rem 0.6rem !important;
+  border-radius: 0.45rem !important;
+  margin-bottom: 0.45rem !important;
+  width: fit-content !important;
+  line-height: 1.25 !important;
+  user-select: none !important;
+  transition: all 0.15s ease !important;
+}
+
+/* Accent Indicator Dot for UI Labels */
+.ui-label::before,
+label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui])::before {
+  content: '' !important;
+  display: inline-block !important;
+  width: 5.5px !important;
+  height: 5.5px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  transition: transform 0.2s ease !important;
+}
+
+/* Light Mode Label UI - Warm Linen Luxury with Sapphire Indicator */
+html.light .ui-label,
+html.light label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui]) {
+  background-color: #ebe5df !important;
+  color: #09090b !important;
+  border: 1px solid #dcd4cc !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+}
+
+html.light .ui-label::before,
+html.light label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui])::before {
+  background-color: #2563eb !important; /* Sapphire Blue Indicator */
+  box-shadow: 0 0 6px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* Dark Mode Label UI - Apple Pro Matte with Cyber Cyan Indicator */
+html.dark .ui-label,
+html.dark label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui]) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  color: #f4f4f5 !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3) !important;
+}
+
+html.dark .ui-label::before,
+html.dark label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui])::before {
+  background-color: #60a5fa !important; /* Cyber Blue Indicator */
+  box-shadow: 0 0 6px rgba(96, 165, 250, 0.5) !important;
+}
+
+/* Hover Micro-interaction on UI Labels */
+.ui-label:hover::before,
+label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not([data-no-ui]):hover::before {
+  transform: scale(1.4) !important;
+}
+
+/* =========================================================================
+   LIGHT MODE HIGH-CONTRAST TYPOGRAPHY SYSTEM
+   Ensures ALL texts across the entire application are rich, deep, and clearly legible
+   ========================================================================= */
+
+html.light p,
+html.light span:not(.badge-color-override):not([class*="bg-emerald"]):not([class*="bg-rose"]):not([class*="bg-blue"]):not([class*="bg-amber"]):not([class*="text-emerald"]):not([class*="text-rose"]):not([class*="text-blue"]):not([class*="text-amber"]):not(.btn-primary *),
+html.light h1,
+html.light h2,
+html.light h3,
+html.light h4,
+html.light h5,
+html.light h6,
+html.light td,
+html.light th,
+html.light dt,
+html.light dd,
+html.light b,
+html.light strong {
+  color: #09090b;
+}
+
 /* Typography Hierarchy in Light Mode */
 html.light .text-white,
+html.light .text-zinc-50,
 html.light .text-zinc-100,
 html.light .text-zinc-200,
+html.light .text-neutral-50,
 html.light .text-neutral-100,
-html.light .text-neutral-200 {
+html.light .text-neutral-200,
+html.light .text-gray-100,
+html.light .text-gray-200 {
   color: #09090b !important;
   font-weight: 700;
 }
 
 html.light .text-zinc-300,
-html.light .text-neutral-300 {
+html.light .text-neutral-300,
+html.light .text-gray-300 {
   color: #18181b !important;
   font-weight: 600;
 }
 
 html.light .text-zinc-400,
-html.light .text-neutral-400 {
+html.light .text-neutral-400,
+html.light .text-gray-400 {
   color: #27272a !important;
   font-weight: 600;
 }
 
 html.light .text-zinc-500,
-html.light .text-neutral-500 {
-  color: #52525b !important;
+html.light .text-neutral-500,
+html.light .text-gray-500 {
+  color: #3f3f46 !important;
   font-weight: 500;
 }
 
 html.light .text-zinc-600,
-html.light .text-neutral-600 {
-  color: #71717a !important;
+html.light .text-neutral-600,
+html.light .text-gray-600 {
+  color: #52525b !important;
+}
+
+/* Monospace Values, IPs, Ports, Commands, Keys in Light Mode */
+html.light .font-mono,
+html.light code,
+html.light kbd,
+html.light pre {
+  color: #09090b !important;
+  font-weight: 600;
 }
 
 /* Status colors in Light Mode */
@@ -485,8 +595,8 @@ html.dark .protocol-count-unselected {
 }
 
 /* Primary Action Buttons (Inverted in Light Mode to Obsidian Luxury #18181b) */
-html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]),
-html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]) {
+html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn),
+html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) {
   background-color: #18181b !important;
   color: #ffffff !important;
   border: none !important;
@@ -494,31 +604,76 @@ html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]) {
   font-weight: 700 !important;
 }
 
-html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]) *,
-html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]) * {
+html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn) *,
+html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) * {
   color: #ffffff !important;
 }
 
-html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):hover,
-html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):hover {
+html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn):hover,
+html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):hover {
   background-color: #27272a !important;
 }
 
+/* Modal Tab Navigation & Segmented Controls */
+html.light .modal-tab-btn,
+html.light [role="tab"] {
+  background-color: transparent !important;
+  color: #3f3f46 !important;
+  border-color: transparent !important;
+  font-weight: 600 !important;
+}
+
+html.light .modal-tab-btn *,
+html.light [role="tab"] * {
+  color: #3f3f46 !important;
+}
+
+html.light .modal-tab-btn.modal-tab-active,
+html.light .modal-tab-active,
+html.light [role="tab"][aria-selected="true"] {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+  border: 1px solid #d4cdc5 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  font-weight: 800 !important;
+}
+
+html.light .modal-tab-btn.modal-tab-active *,
+html.light .modal-tab-active * {
+  color: #09090b !important;
+}
+
+html.dark .modal-tab-btn,
+html.dark [role="tab"] {
+  background-color: transparent !important;
+  color: #a1a1aa !important;
+  border-color: transparent !important;
+}
+
+html.dark .modal-tab-btn.modal-tab-active,
+html.dark .modal-tab-active,
+html.dark [role="tab"][aria-selected="true"] {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  font-weight: 700 !important;
+}
+
 /* Dark Mode Primary Button - Bold Pure White */
-html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]),
-html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]) {
+html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]),
+html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) {
   background-color: #ffffff !important;
   color: #000000 !important;
   font-weight: 700 !important;
 }
 
-html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]) *,
-html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]) * {
+html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) *,
+html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) * {
   color: #000000 !important;
 }
 
-html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):hover,
-html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):hover {
+html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):hover,
+html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):hover {
   background-color: #e5e5ea !important;
 }
 
@@ -536,14 +691,26 @@ html.light a.bg-neutral-900:not(.theme-toggle-btn):hover {
   color: #18181b !important;
 }
 
-/* Form Controls */
+/* Form Controls, Selects & Options */
 html.light input:not([type="checkbox"]):not([type="radio"]),
 html.light select,
-html.light textarea {
+html.light textarea,
+html.light option {
   background-color: #ffffff !important;
-  color: #18181b !important;
+  color: #09090b !important;
+  color-scheme: light !important;
   border: 1px solid #dcd6d0 !important;
   border-radius: 0.75rem;
+}
+
+html.light select option {
+  background-color: #ffffff !important;
+  color: #09090b !important;
+}
+
+html.light select option:checked {
+  background-color: #e5e5ea !important;
+  color: #09090b !important;
 }
 
 html.light input::placeholder,
@@ -560,11 +727,18 @@ html.light textarea:focus {
 
 html.dark input:not([type="checkbox"]):not([type="radio"]),
 html.dark select,
-html.dark textarea {
+html.dark textarea,
+html.dark option {
   background-color: #0d0d0e !important;
   color: #ffffff !important;
+  color-scheme: dark !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
   border-radius: 0.75rem;
+}
+
+html.dark select option {
+  background-color: #161617 !important;
+  color: #ffffff !important;
 }
 
 html.dark input:focus,
