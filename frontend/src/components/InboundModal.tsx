@@ -14,6 +14,7 @@ interface InboundModalProps {
   onClose: () => void;
   onSaved: () => void;
   inboundToEdit?: Inbound | null;
+  existingInbounds?: Inbound[];
 }
 
 export interface ProtocolDef {
@@ -250,6 +251,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   onClose,
   onSaved,
   inboundToEdit,
+  existingInbounds,
 }) => {
   const { notify } = useNotification();
   const [activeTab, setActiveTab] = useState<'basics' | 'transport' | 'security' | 'advanced'>('basics');
@@ -468,14 +470,24 @@ export const InboundModal: React.FC<InboundModalProps> = ({
     } else {
       // New Inbound defaults
       setIsRemarkCustom(false);
-      setPort(2053);
+
+      // Auto-assign the next genuinely free port based on existing inbounds
+      const occupiedPorts = new Set((existingInbounds || []).map((i) => i.port));
+      let initialPort = 2053;
+      while (occupiedPorts.has(initialPort) && initialPort < 65535) {
+        initialPort++;
+      }
+
+      setPort(initialPort);
       setListen('0.0.0.0');
       setProtocol('vless');
       setNetwork('tcp');
       setSecurity('none');
-      setRemark(getSuggestedRemark('vless', 'none', 2053));
+      setRemark(getSuggestedRemark('vless', 'none', initialPort));
+      setPortConflict(null);
+      setPortOccupiedBy(null);
     }
-  }, [inboundToEdit, isOpen]);
+  }, [inboundToEdit, isOpen, existingInbounds]);
 
   // Debounced Live Port Collision Check
   useEffect(() => {
@@ -610,12 +622,14 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
   // Find next free port
   const handlePickNextAvailablePort = async () => {
-    const commonPorts = [2053, 2083, 2087, 2096, 8443, 8080, 443, 10443, 20443];
+    const occupiedPorts = new Set((existingInbounds || []).map((i) => i.port));
+    const commonPorts = [2053, 2054, 2055, 2056, 2083, 2087, 2096, 8443, 8080, 443, 10443, 20443];
     let candidate = port + 1;
     if (candidate > 65000) candidate = 2053;
     
     // Check candidates
     for (let p of [candidate, ...commonPorts]) {
+      if (occupiedPorts.has(p)) continue;
       try {
         const query = new URLSearchParams({
           port: p.toString(),
@@ -627,12 +641,20 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         const res = await api.get(`/api/inbounds/check-port?${query.toString()}`);
         if (res.data && res.data.available) {
           handleUpdatePort(p);
+          setPortConflict(null);
+          setPortOccupiedBy(null);
           notify.success('Port Assigned', `Found available port ${p}`);
           return;
         }
       } catch (e) {}
     }
+
+    while (occupiedPorts.has(candidate) && candidate < 65535) {
+      candidate++;
+    }
     handleUpdatePort(candidate);
+    setPortConflict(null);
+    setPortOccupiedBy(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1089,10 +1111,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     {isCheckingPort ? (
                       <span className="text-[10px] text-blue-400 font-mono animate-pulse">Scanning...</span>
                     ) : (
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono ${
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono font-bold ${
                         portConflict 
-                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' 
-                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          ? 'bg-rose-500/15 text-rose-500 border border-rose-500/30' 
+                          : 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20'
                       }`}>
                         {portConflict ? 'Conflict' : 'Port Free'}
                       </span>
@@ -1109,7 +1131,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       onChange={(e) => handleUpdatePort(Number(e.target.value))}
                       className={`w-full px-3.5 py-2 bg-[#0e0e12] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
                         portConflict 
-                          ? 'border-rose-500/80 bg-rose-500/10 text-rose-200 ring-1 ring-rose-500/30' 
+                          ? 'border-rose-500/80 bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/30' 
                           : 'border-neutral-800 focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600'
                       }`}
                     />
@@ -1122,7 +1144,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={p}
                         type="button"
                         onClick={() => handleUpdatePort(p)}
-                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
+                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border cursor-pointer active:scale-95 ${
                           port === p
                             ? 'bg-white text-black font-semibold border-white'
                             : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
@@ -1134,7 +1156,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     <button
                       type="button"
                       onClick={handlePickNextAvailablePort}
-                      className="text-[10px] px-2 py-0.5 rounded-lg font-mono bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 flex items-center gap-1 transition"
+                      className="text-[10px] px-2 py-0.5 rounded-lg font-mono bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 flex items-center gap-1 transition cursor-pointer active:scale-95"
                     >
                       <RefreshCw className="w-2.5 h-2.5" />
                       <span>Suggest Free</span>
@@ -1143,15 +1165,15 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
                   {/* Port Conflict Alert UI */}
                   {portConflict && (
-                    <div className="mt-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] text-rose-200 flex flex-col gap-2">
+                    <div className="mt-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] text-rose-600 dark:text-rose-200 flex flex-col gap-2">
                       <div className="flex items-start gap-2">
-                        <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                        <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
                         <div className="space-y-1">
-                          <span>{portConflict}</span>
+                          <span className="font-medium">{portConflict}</span>
                           {portOccupiedBy && (
                             <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-[10px] text-neutral-400 font-mono">Service Detected:</span>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold">
+                              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-mono">Service Detected:</span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-600 dark:text-rose-300 font-bold">
                                 {portOccupiedBy}
                               </span>
                             </div>
@@ -1161,7 +1183,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       <button
                         type="button"
                         onClick={handlePickNextAvailablePort}
-                        className="self-start px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-[10px] font-medium text-white flex items-center gap-1 transition cursor-pointer"
+                        className="self-start px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-[10px] font-medium text-rose-700 dark:text-white flex items-center gap-1 transition cursor-pointer active:scale-95"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>Assign Next Free Port Automatically</span>
@@ -2419,10 +2441,20 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           {/* Modal Footer with Status Indicator & Submit Action */}
           <div className="sticky bottom-0 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 p-4 sm:px-6 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between z-20 bg-white/95 dark:bg-[#161617]/95 backdrop-blur-md rounded-b-3xl">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${portConflict ? 'bg-rose-500' : 'bg-emerald-500'}`} />
-              <span className={`text-xs font-mono font-bold ${portConflict ? 'text-rose-500 dark:text-rose-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
+              <div className={`w-2.5 h-2.5 rounded-full ${portConflict ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+              <span className={`text-xs font-mono font-bold ${portConflict ? 'text-rose-500' : 'text-emerald-500'}`}>
                 {portConflict ? 'Port Conflict' : 'Port Ready'}
               </span>
+              {portConflict && (
+                <button
+                  type="button"
+                  onClick={handlePickNextAvailablePort}
+                  className="ml-1.5 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 hover:border-rose-500/50 transition-all cursor-pointer active:scale-95"
+                  title="Automatically suggest and assign a free port"
+                >
+                  Auto-Resolve
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-2.5">
@@ -2436,10 +2468,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
               <button
                 type="submit"
                 disabled={Boolean(portConflict) || isSubmitting}
-                className={`px-5 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2 cursor-pointer ${
+                className={`px-5 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 ${
                   portConflict
-                    ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-300 dark:border-neutral-800 cursor-not-allowed'
-                    : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 active:scale-98'
+                    ? 'opacity-40 cursor-not-allowed bg-neutral-300/80 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-500 border border-neutral-300 dark:border-neutral-800 pointer-events-none'
+                    : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 active:scale-98 cursor-pointer'
                 }`}
               >
                 {isSubmitting ? (

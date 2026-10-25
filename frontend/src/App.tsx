@@ -753,6 +753,7 @@ export function App() {
         onClose={() => setIsInboundModalOpen(false)}
         onSaved={fetchInbounds}
         inboundToEdit={inboundToEdit}
+        existingInbounds={inbounds}
       />
 
       <ClientModal

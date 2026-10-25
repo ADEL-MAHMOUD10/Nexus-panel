@@ -439,7 +439,7 @@ html.light .text-gray-600 {
 }
 
 /* Monospace Values, IPs, Ports, Commands, Keys in Light Mode */
-html.light .font-mono,
+html.light .font-mono:not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-amber"]):not([class*="text-purple"]):not([class*="text-indigo"]),
 html.light code,
 html.light kbd,
 html.light pre {
@@ -448,14 +448,20 @@ html.light pre {
 }
 
 /* Status colors in Light Mode */
+html.light .text-emerald-500,
+html.light .text-emerald-600,
 html.light .text-emerald-400,
 html.light .text-emerald-300,
 html.light .text-emerald-200,
+html.light .text-green-500,
+html.light .text-green-600,
 html.light .text-green-400 {
   color: #047857 !important;
   font-weight: 700;
 }
 
+html.light .text-blue-500,
+html.light .text-blue-600,
 html.light .text-blue-400,
 html.light .text-blue-300,
 html.light .text-cyan-400,
@@ -464,6 +470,8 @@ html.light .text-sky-400 {
   font-weight: 700;
 }
 
+html.light .text-amber-500,
+html.light .text-amber-600,
 html.light .text-amber-400,
 html.light .text-amber-300,
 html.light .text-amber-200,
@@ -472,11 +480,14 @@ html.light .text-yellow-400 {
   font-weight: 700;
 }
 
+html.light .text-rose-500,
+html.light .text-rose-600,
 html.light .text-rose-400,
 html.light .text-rose-300,
-html.light .text-red-400,
-html.light .text-red-500 {
-  color: #be123c !important;
+html.light .text-red-500,
+html.light .text-red-600,
+html.light .text-red-400 {
+  color: #e11d48 !important;
   font-weight: 700;
 }
 
