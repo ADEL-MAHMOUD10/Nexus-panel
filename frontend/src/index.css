@@ -903,88 +903,20 @@ html.dark .sidebar-nav-item:not(.active):hover {
   border-color: rgba(255, 255, 255, 0.05) !important;
 }
 
-/* =========================================================================
-   LOGIN PAGE - ORIGINAL EXECUTIVE DARK LUXURY ISOLATION (#07080b)
-   Preserves pristine dark aesthetics regardless of system or user theme
-   ========================================================================= */
-
-.login-page-wrapper,
-html.light .login-page-wrapper,
-html.dark .login-page-wrapper {
-  background-color: #07080b !important;
-  color: #f5f5f7 !important;
-}
-
-.login-page-wrapper .login-card,
-html.light .login-page-wrapper .login-card,
-html.dark .login-page-wrapper .login-card {
-  background-color: rgba(12, 13, 19, 0.85) !important;
-  border: 1px solid rgba(255, 255, 255, 0.09) !important;
-  color: #f5f5f7 !important;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
-}
-
-.login-page-wrapper input,
-html.light .login-page-wrapper input,
-html.dark .login-page-wrapper input {
-  background-color: #14161f !important;
-  color: #ffffff !important;
-  border: 1px solid #292d3e !important;
-  border-radius: 0.5rem !important;
-  color-scheme: dark !important;
-}
-
-.login-page-wrapper input:focus,
-html.light .login-page-wrapper input:focus,
-html.dark .login-page-wrapper input:focus {
-  border-color: #3d445c !important;
-}
-
-.login-page-wrapper input::placeholder,
-html.light .login-page-wrapper input::placeholder,
-html.dark .login-page-wrapper input::placeholder {
-  color: #71717a !important;
-}
-
-.login-page-wrapper label,
-html.light .login-page-wrapper label,
-html.dark .login-page-wrapper label {
-  background-color: transparent !important;
+/* Plain Non-Badge Labels (e.g. Login Page, standard inline hints) */
+label[data-no-ui] {
+  background: transparent !important;
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
   margin-bottom: 0.375rem !important;
-  color: #d4d4d8 !important;
+  display: block !important;
   text-transform: none !important;
   letter-spacing: normal !important;
   font-size: 0.75rem !important;
-  font-weight: 500 !important;
-  display: block !important;
 }
 
-.login-page-wrapper label::before,
-html.light .login-page-wrapper label::before,
-html.dark .login-page-wrapper label::before {
+label[data-no-ui]::before {
   display: none !important;
   content: none !important;
-}
-
-.login-page-wrapper button[type="submit"],
-html.light .login-page-wrapper button[type="submit"],
-html.dark .login-page-wrapper button[type="submit"] {
-  background-color: #f4f4f5 !important;
-  color: #09090b !important;
-  font-weight: 500 !important;
-}
-
-.login-page-wrapper button[type="submit"]:hover,
-html.light .login-page-wrapper button[type="submit"]:hover,
-html.dark .login-page-wrapper button[type="submit"]:hover {
-  background-color: #e4e4e7 !important;
-}
-
-.login-page-wrapper button[type="submit"] *,
-html.light .login-page-wrapper button[type="submit"] *,
-html.dark .login-page-wrapper button[type="submit"] * {
-  color: #09090b !important;
 }
