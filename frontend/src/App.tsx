@@ -609,6 +609,7 @@ export function App() {
         onlineCount={onlineCount}
         inboundsCount={inbounds.length}
         panelVersion={status.panelVersion || 'v1.3.1'}
+        xrayVersion={status.xrayVersion || 'v26.10.x'}
         publicIP={status.publicIP}
         onLogout={() => {
           localStorage.removeItem('nexus_token');

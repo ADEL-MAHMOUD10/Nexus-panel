@@ -13,7 +13,9 @@ import {
   X,
   Pin,
   PinOff,
-  ArrowUpCircle
+  ArrowUpCircle,
+  Copy,
+  Check
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -24,6 +26,7 @@ interface SidebarProps {
   onlineCount: number;
   inboundsCount: number;
   panelVersion: string;
+  xrayVersion?: string;
   publicIP?: string;
   onLogout: () => void;
   onRestartXray: () => void;
@@ -43,6 +46,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onlineCount,
   inboundsCount,
   panelVersion,
+  xrayVersion,
   publicIP,
   onLogout,
   onRestartXray,
@@ -55,6 +59,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hasUpdates = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [copiedIP, setCopiedIP] = useState(false);
+
+  const handleCopyIP = () => {
+    if (publicIP) {
+      navigator.clipboard.writeText(publicIP);
+      setCopiedIP(true);
+      setTimeout(() => setCopiedIP(false), 2000);
+    }
+  };
 
   // Prevent background scrolling when mobile sidebar is open
   useEffect(() => {
@@ -103,8 +116,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5">
                   <span className="font-bold text-sm text-zinc-100 tracking-tight">Nexus</span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-medium">
-                    v1.1
+                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-bold">
+                    {panelVersion || 'v1.3.1'}
                   </span>
                 </div>
                 <span className="text-[11px] text-zinc-400 font-sans block leading-tight truncate">Proxy Engine</span>
@@ -189,33 +202,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
               <button
                 key={item.id}
+                type="button"
                 onClick={() => {
                   setActiveTab(item.id);
                   if (onCloseMobile) onCloseMobile();
                 }}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-colors ${
+                className={`sidebar-nav-item w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer select-none active:scale-[0.98] group ${
                   isActive
-                    ? 'bg-zinc-800/90 text-white border border-zinc-700/60 shadow-xs'
-                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 border border-transparent'
+                    ? 'active font-bold shadow-xs'
+                    : 'hover:translate-x-1'
                 }`}
-                title={item.label}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Icon
-                    className={`w-4 h-4 transition-colors shrink-0 ${
-                      isActive ? 'text-zinc-100' : 'text-zinc-400'
+                    className={`w-4 h-4 shrink-0 transition-transform duration-150 group-hover:scale-110 ${
+                      isActive ? 'scale-105' : ''
                     }`}
                   />
                   <span className="truncate">{item.label}</span>
                 </div>
 
                 {item.badge && (
-                  <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shrink-0">
                     {item.badge}
                   </span>
                 )}
                 {item.count !== undefined && !item.badge && (
-                  <span className="text-[11px] font-mono text-zinc-500 shrink-0">
+                  <span className="text-[11px] font-mono text-neutral-500 dark:text-zinc-500 shrink-0 font-medium">
                     {item.count}
                   </span>
                 )}
@@ -259,30 +272,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </button>
             )}
 
-            {/* Public IP Badge */}
+            {/* Public IP Badge - Interactive Click to Copy */}
             {publicIP && (
-              <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs font-mono text-zinc-400">
-                <div className="flex items-center gap-1.5">
-                  <Server className="w-3 h-3 text-zinc-500 shrink-0" />
-                  <span className="text-[11px]">Server IP</span>
+              <button
+                type="button"
+                onClick={handleCopyIP}
+                className="w-full p-2.5 rounded-xl border border-neutral-200/80 dark:border-white/[0.07] bg-neutral-100/70 dark:bg-white/[0.03] hover:bg-neutral-200/80 dark:hover:bg-white/[0.07] flex items-center justify-between text-xs font-mono text-neutral-700 dark:text-zinc-400 transition-all cursor-pointer active:scale-[0.98] group select-none shadow-xs"
+                title="Click to copy Server Public IP"
+              >
+                <div className="flex items-center gap-2">
+                  <Server className="w-3.5 h-3.5 text-neutral-500 dark:text-zinc-500 group-hover:scale-110 transition-transform" />
+                  <span className="text-[11px] font-sans font-medium text-neutral-600 dark:text-zinc-400">Server IP</span>
                 </div>
-                <span className="text-[11px] text-zinc-300 font-medium truncate ml-1">{publicIP}</span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[11px] text-neutral-900 dark:text-zinc-200 font-medium truncate max-w-[105px]">
+                    {publicIP}
+                  </span>
+                  {copiedIP ? (
+                    <span className="text-[10px] font-sans font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 animate-in zoom-in-75">
+                      <Check className="w-3 h-3 stroke-[3]" /> Copied!
+                    </span>
+                  ) : (
+                    <Copy className="w-3 h-3 text-neutral-400 dark:text-zinc-500 group-hover:text-neutral-700 dark:group-hover:text-zinc-300 transition-colors" />
+                  )}
+                </div>
+              </button>
             )}
 
-            {/* Core Quick Summary Pill */}
-            <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/[0.07] flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-1.5">
-                  <Power className={`w-3 h-3 ${xrayRunning ? 'text-emerald-500' : 'text-rose-500'}`} />
-                  <span className="text-xs font-medium text-zinc-300">Xray Core</span>
+            {/* Core Quick Summary Pill - Interactive Click to Restart Core */}
+            <button
+              type="button"
+              onClick={onRestartXray}
+              disabled={isRestartingXray}
+              className="w-full p-2.5 rounded-xl border border-neutral-200/80 dark:border-white/[0.07] bg-neutral-100/70 dark:bg-white/[0.03] hover:border-emerald-500/40 hover:bg-emerald-500/5 dark:hover:bg-white/[0.07] flex items-center justify-between transition-all cursor-pointer active:scale-[0.98] group select-none shadow-xs"
+              title="Click to restart Xray Core Engine"
+            >
+              <div className="flex items-center gap-2">
+                <div className={`p-1.5 rounded-lg transition-colors ${
+                  xrayRunning 
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 group-hover:bg-emerald-500/25' 
+                    : 'bg-rose-500/15 text-rose-500'
+                }`}>
+                  <Power className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
                 </div>
-                <span className="text-[11px] font-mono text-zinc-400">{xrayRunning ? 'Active & Routing' : 'Stopped'}</span>
+                <div className="text-left">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-neutral-900 dark:text-zinc-200">Xray Core</span>
+                    <span className={`w-1.5 h-1.5 rounded-full ${xrayRunning ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  </div>
+                  <span className="text-[10px] font-mono text-neutral-500 dark:text-zinc-400 block leading-tight">
+                    {xrayRunning ? 'Active & Routing' : 'Stopped'}
+                  </span>
+                </div>
               </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
-                {panelVersion || 'v1.1.7'}
+              <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-md bg-neutral-200/80 dark:bg-white/[0.06] text-neutral-800 dark:text-zinc-300 border border-neutral-300/60 dark:border-white/[0.08]">
+                {xrayVersion || 'v26.10.x'}
               </span>
-            </div>
+            </button>
 
             {/* Theme Toggle Button */}
             <div className="pt-1">
@@ -291,17 +337,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             {/* User logout button */}
             <button
+              type="button"
               onClick={() => {
                 if (onCloseMobile) onCloseMobile();
                 onLogout();
               }}
-              className="w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] transition"
+              className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-neutral-600 dark:text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20 transition-all cursor-pointer active:scale-[0.98] select-none group"
             >
               <div className="flex items-center gap-2">
-                <LogOut className="w-3.5 h-3.5 text-zinc-400" />
+                <LogOut className="w-3.5 h-3.5 group-hover:scale-110 group-hover:-translate-x-0.5 transition-transform" />
                 <span>Sign Out</span>
               </div>
-              <span className="text-[10px] font-mono text-zinc-500">Admin</span>
+              <span className="text-[10px] font-mono text-neutral-400 dark:text-zinc-500">Admin</span>
             </button>
           </>
         ) : (

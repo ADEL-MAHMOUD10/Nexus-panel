@@ -681,3 +681,50 @@ html.dark .fixed.bottom-0.inset-x-0 {
   border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6) !important;
 }
+
+/* Sidebar Navigation Items - Tactile Apple Pro & Linen Styling */
+html.light .sidebar-nav-item.active {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid #09090b !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+html.light .sidebar-nav-item.active * {
+  color: #ffffff !important;
+}
+
+html.light .sidebar-nav-item:not(.active) {
+  background-color: transparent !important;
+  color: #3f3f46 !important;
+  border: 1px solid transparent !important;
+}
+
+html.light .sidebar-nav-item:not(.active):hover {
+  background-color: #e5dfd8 !important;
+  color: #09090b !important;
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+html.dark .sidebar-nav-item.active {
+  background-color: #242426 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .sidebar-nav-item.active * {
+  color: #ffffff !important;
+}
+
+html.dark .sidebar-nav-item:not(.active) {
+  background-color: transparent !important;
+  color: #a1a1aa !important;
+  border: 1px solid transparent !important;
+}
+
+html.dark .sidebar-nav-item:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+}
