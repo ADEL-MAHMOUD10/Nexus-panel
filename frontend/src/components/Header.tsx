@@ -11,15 +11,18 @@ import {
   X,
   Terminal,
   Activity,
-  Database
+  Database,
+  Check
 } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
+import { ThemeToggle } from './ThemeToggle';
 
 interface HeaderProps {
   title: string;
   subtitle?: string;
   onRefresh: () => void;
   isRefreshing: boolean;
+  justRefreshed?: boolean;
   publicIP: string;
   showPublicIP?: boolean;
   onToggleShowPublicIP?: () => void;
@@ -38,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({
   subtitle,
   onRefresh,
   isRefreshing,
+  justRefreshed = false,
   publicIP,
   showPublicIP = false,
   onToggleShowPublicIP,
@@ -159,10 +163,10 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenXrayLogs}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-mono text-neutral-300 hover:text-white transition cursor-pointer"
                 title="Xray Core Live Kernel Logs"
               >
-                <Terminal className="w-3.5 h-3.5 text-cyan-400" />
+                <Terminal className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="hidden md:inline">Logs</span>
               </button>
             )}
@@ -172,10 +176,10 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenXrayMetrics}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-mono text-neutral-300 hover:text-white transition cursor-pointer"
                 title="Xray Real-Time Telemetry Matrix"
               >
-                <Activity className="w-3.5 h-3.5 text-purple-400" />
+                <Activity className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="hidden md:inline">Matrix</span>
               </button>
             )}
@@ -185,10 +189,10 @@ export const Header: React.FC<HeaderProps> = ({
               <button
                 type="button"
                 onClick={onOpenBackup}
-                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-xs font-mono text-zinc-300 hover:text-white transition cursor-pointer"
+                className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-xs font-mono text-neutral-300 hover:text-white transition cursor-pointer"
                 title="Database Backup & Disaster Recovery"
               >
-                <Database className="w-3.5 h-3.5 text-emerald-400" />
+                <Database className="w-3.5 h-3.5 text-neutral-400" />
                 <span className="hidden md:inline">Backup</span>
               </button>
             )}
@@ -210,14 +214,32 @@ export const Header: React.FC<HeaderProps> = ({
               </button>
             )}
 
-            {/* Refresh Button */}
+            {/* Professional Light / Dark Mode Toggle */}
+            <ThemeToggle />
+
+            {/* Quick Refresh Button with Tactile Micro-interaction */}
             <button
+              type="button"
               onClick={onRefresh}
               disabled={isRefreshing}
-              className="p-2 rounded-lg border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition"
-              title="Refresh Data"
+              className={`group/refresh p-2 rounded-xl border transition-all duration-200 cursor-pointer active:scale-90 flex items-center justify-center relative shadow-xs ${
+                justRefreshed
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-emerald-500/10'
+                  : isRefreshing
+                  ? 'bg-neutral-800 text-neutral-200 border-neutral-700'
+                  : 'bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-neutral-100 border-neutral-800 hover:border-neutral-700'
+              }`}
+              title="Refresh Telemetry & Data (R)"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-zinc-200' : ''}`} />
+              {justRefreshed ? (
+                <Check className="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-75 duration-200 stroke-[2.5]" />
+              ) : (
+                <RefreshCw
+                  className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                    isRefreshing ? 'animate-spin text-neutral-100' : 'group-hover/refresh:rotate-90 group-hover/refresh:scale-110'
+                  }`}
+                />
+              )}
             </button>
 
             {/* Next-gen Notification Center */}

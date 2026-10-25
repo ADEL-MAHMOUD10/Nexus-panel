@@ -14,6 +14,7 @@ import {
   Pin,
   PinOff
 } from 'lucide-react';
+import { ThemeToggle } from './ThemeToggle';
 
 interface SidebarProps {
   activeTab: string;
@@ -174,7 +175,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 >
                   <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-zinc-100' : 'text-zinc-400'}`} />
                   {item.badge && (
-                    <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
+                    <span className="absolute top-1.5 right-2 w-2 h-2 rounded-full bg-emerald-500" />
                   )}
                 </button>
               );
@@ -248,6 +249,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </span>
             </div>
 
+            {/* Theme Toggle Button */}
+            <div className="pt-1">
+              <ThemeToggle className="w-full justify-between" showLabel={true} />
+            </div>
+
             {/* User logout button */}
             <button
               onClick={() => {
@@ -264,16 +270,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </>
         ) : (
-          <button
-            onClick={() => {
-              if (onCloseMobile) onCloseMobile();
-              onLogout();
-            }}
-            className="w-full flex items-center justify-center p-2 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] transition"
-            title="Sign Out (Admin)"
-          >
-            <LogOut className="w-4 h-4 text-zinc-400" />
-          </button>
+          <div className="space-y-1.5 flex flex-col items-center">
+            <ThemeToggle className="w-10 h-10 p-0 justify-center" showLabel={false} />
+            <button
+              onClick={() => {
+                if (onCloseMobile) onCloseMobile();
+                onLogout();
+              }}
+              className="w-full flex items-center justify-center p-2 rounded-xl text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] transition"
+              title="Sign Out (Admin)"
+            >
+              <LogOut className="w-4 h-4 text-zinc-400" />
+            </button>
+          </div>
         )}
       </div>
     </aside>

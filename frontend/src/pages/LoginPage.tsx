@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Lock, User, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { BackgroundCanvas } from '../components/BackgroundCanvas';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;
@@ -38,9 +39,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative select-none bg-[#07080b]">
+    <div className="min-h-screen flex items-center justify-center p-4 relative select-none">
       {/* Background with geometry & Nexus monogram */}
       <BackgroundCanvas />
+
+      {/* Top right theme toggle */}
+      <div className="absolute top-4 right-4 z-20">
+        <ThemeToggle />
+      </div>
 
       {/* Login Card */}
       <div className="w-full max-w-sm bg-[#0c0d13]/85 backdrop-blur-2xl border border-white/[0.09] rounded-2xl p-7 shadow-2xl relative z-10">

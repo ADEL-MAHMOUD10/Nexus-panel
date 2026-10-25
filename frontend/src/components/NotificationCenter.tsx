@@ -64,7 +64,7 @@ export const NotificationCenter: React.FC = () => {
         return <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />;
       case 'info':
       default:
-        return <Info className="w-3.5 h-3.5 text-cyan-400" />;
+        return <Info className="w-3.5 h-3.5 text-blue-400" />;
     }
   };
 

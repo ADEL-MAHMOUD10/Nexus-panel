@@ -16,17 +16,197 @@ interface InboundModalProps {
   inboundToEdit?: Inbound | null;
 }
 
-// Protocol Meta Info
-const PROTOCOLS = [
-  { id: 'vless', name: 'VLESS', desc: 'Zero-overhead, lightweight & stealthy', color: 'cyan', badge: 'Recommended' },
-  { id: 'trojan', name: 'Trojan', desc: 'HTTPS mimicry with TLS/REALITY', color: 'amber', badge: 'Stealth' },
-  { id: 'vmess', name: 'VMess', desc: 'Encrypted AEAD signature protocol', color: 'purple', badge: 'Legacy' },
-  { id: 'shadowsocks', name: 'Shadowsocks', desc: '2022 Blake3 ciphers & Full UDP', color: 'emerald', badge: 'Fast UDP' },
-  { id: 'wireguard', name: 'WireGuard', desc: 'Kernel / Go-tun native UDP tunnel', color: 'blue', badge: 'Native UDP' },
-  { id: 'hysteria', name: 'Hysteria 2', desc: 'QUIC UDP for high packet-loss links', color: 'rose', badge: 'High Speed' },
-  { id: 'dokodemo-door', name: 'Dokodemo', desc: 'Port forward & transparent TProxy', color: 'indigo', badge: 'Tunnel' },
-  { id: 'socks', name: 'SOCKS5', desc: 'Standard SOCKS5 with UDP relay', color: 'zinc', badge: 'Proxy' },
-  { id: 'http', name: 'HTTP', desc: 'Standard HTTP/HTTPS proxy tunnel', color: 'zinc', badge: 'Proxy' },
+export interface ProtocolDef {
+  id: string;
+  name: string;
+  desc: string;
+  color: string;
+  badge: string;
+  supportedSecurities: ('none' | 'tls' | 'reality')[];
+  unsupportedSecuritiesText: string;
+  defaultSecurity: 'none' | 'tls' | 'reality';
+  supportedTransports: ('tcp' | 'ws' | 'grpc' | 'httpupgrade' | 'splithttp' | 'kcp')[];
+  unsupportedTransportsText: string;
+  defaultTransport: 'tcp' | 'ws' | 'grpc' | 'httpupgrade' | 'splithttp' | 'kcp';
+  isFixedTransport?: boolean;
+  fixedTransportName?: string;
+  fixedTransportDesc?: string;
+  isFixedSecurity?: boolean;
+  fixedSecurityName?: string;
+  fixedSecurityDesc?: string;
+  securitySummary: string;
+  transportSummary: string;
+}
+
+// Protocol Meta Info with Strict Architecture & Capabilities Matrix
+const PROTOCOLS: ProtocolDef[] = [
+  {
+    id: 'vless',
+    name: 'VLESS',
+    desc: 'Zero-overhead, lightweight & stealthy',
+    color: 'blue',
+    badge: 'Recommended',
+    supportedSecurities: ['reality', 'tls', 'none'],
+    unsupportedSecuritiesText: 'All major stream security layers supported.',
+    defaultSecurity: 'none',
+    supportedTransports: ['tcp', 'ws', 'grpc', 'httpupgrade', 'splithttp', 'kcp'],
+    unsupportedTransportsText: 'Note: XTLS-Vision flow is strictly restricted to TCP + TLS/REALITY.',
+    defaultTransport: 'tcp',
+    securitySummary: 'REALITY • TLS • None',
+    transportSummary: 'TCP • WS • gRPC • XHTTP',
+  },
+  {
+    id: 'trojan',
+    name: 'Trojan',
+    desc: 'HTTPS mimicry with TLS/REALITY',
+    color: 'amber',
+    badge: 'Stealth',
+    supportedSecurities: ['tls', 'reality', 'none'],
+    unsupportedSecuritiesText: 'Does NOT support XTLS-Vision (Vision flow is exclusive to VLESS).',
+    defaultSecurity: 'none',
+    supportedTransports: ['tcp', 'ws', 'grpc', 'httpupgrade', 'splithttp'],
+    unsupportedTransportsText: 'mKCP is unsupported with Trojan TLS/REALITY handshakes.',
+    defaultTransport: 'tcp',
+    securitySummary: 'TLS • REALITY • None',
+    transportSummary: 'TCP • WS • gRPC • XHTTP',
+  },
+  {
+    id: 'vmess',
+    name: 'VMess',
+    desc: 'Encrypted AEAD signature protocol',
+    color: 'purple',
+    badge: 'Legacy',
+    supportedSecurities: ['none', 'tls'],
+    unsupportedSecuritiesText: 'Does NOT support REALITY (VMess AEAD signature interferes with TLS 1.3 REALITY spoofing).',
+    defaultSecurity: 'none',
+    supportedTransports: ['ws', 'tcp', 'grpc', 'httpupgrade', 'splithttp', 'kcp'],
+    unsupportedTransportsText: 'All standard stream transports supported.',
+    defaultTransport: 'ws',
+    securitySummary: 'None (AEAD) • TLS',
+    transportSummary: 'WS • TCP • gRPC • mKCP',
+  },
+  {
+    id: 'shadowsocks',
+    name: 'Shadowsocks',
+    desc: '2022 Blake3 ciphers & Full UDP',
+    color: 'emerald',
+    badge: 'Fast UDP',
+    supportedSecurities: ['none'],
+    unsupportedSecuritiesText: 'Outer TLS and REALITY stream wrapping are NOT supported for Shadowsocks in Xray.',
+    defaultSecurity: 'none',
+    isFixedSecurity: true,
+    fixedSecurityName: 'Shadowsocks 2022 AEAD Cryptography',
+    fixedSecurityDesc: 'Shadowsocks encrypts all packets end-to-end using BLAKE3 or AEAD ciphers (2022-blake3-aes-128-gcm / chacha20-poly1305). External TLS/REALITY stream wrapping is not supported for standard Shadowsocks.',
+    supportedTransports: ['tcp'],
+    unsupportedTransportsText: 'Web transports (WebSocket, gRPC, SplitHTTP) are not supported by standard Shadowsocks clients.',
+    defaultTransport: 'tcp',
+    isFixedTransport: true,
+    fixedTransportName: 'Layer 4 TCP & FullCone UDP Sockets',
+    fixedTransportDesc: 'Shadowsocks communicates directly over raw Layer 4 sockets with Full-Cone NAT traversal. Web-layer stream transports are not supported by standard Shadowsocks inbounds.',
+    securitySummary: 'Built-in 2022 AEAD',
+    transportSummary: 'L4 TCP / UDP Only',
+  },
+  {
+    id: 'wireguard',
+    name: 'WireGuard',
+    desc: 'Kernel / Go-tun native UDP tunnel',
+    color: 'blue',
+    badge: 'Native UDP',
+    supportedSecurities: ['none'],
+    unsupportedSecuritiesText: 'Web stream security (TLS / REALITY) is NOT applicable to WireGuard.',
+    defaultSecurity: 'none',
+    isFixedSecurity: true,
+    fixedSecurityName: 'WireGuard Noise_IK Protocol (Curve25519)',
+    fixedSecurityDesc: 'WireGuard utilizes internal asymmetric Curve25519 keys with the Noise_IK handshake. External TLS and REALITY layers are not applicable.',
+    supportedTransports: ['tcp'],
+    unsupportedTransportsText: 'WireGuard strictly rejects TCP, WebSocket, gRPC, and HTTP. Only raw UDP is permitted.',
+    defaultTransport: 'tcp',
+    isFixedTransport: true,
+    fixedTransportName: 'Native WireGuard UDP Tunnel (Go-Tun)',
+    fixedTransportDesc: 'WireGuard operates exclusively over UDP datagram packets. Stream transports (TCP, WebSocket, gRPC) are not supported.',
+    securitySummary: 'Noise Protocol (Curve25519)',
+    transportSummary: 'UDP Datagrams Only',
+  },
+  {
+    id: 'hysteria',
+    name: 'Hysteria 2',
+    desc: 'QUIC UDP for high packet-loss links',
+    color: 'rose',
+    badge: 'High Speed',
+    supportedSecurities: ['tls'],
+    unsupportedSecuritiesText: 'Plaintext (None) and REALITY are strictly NOT supported. The QUIC protocol standard mandates TLS encryption.',
+    defaultSecurity: 'tls',
+    isFixedSecurity: false,
+    supportedTransports: ['tcp'],
+    unsupportedTransportsText: 'Operates exclusively over custom QUIC (UDP). Stream transports (TCP, WebSocket, gRPC) are not supported.',
+    defaultTransport: 'tcp',
+    isFixedTransport: true,
+    fixedTransportName: 'Custom QUIC UDP with Brutal CC',
+    fixedTransportDesc: 'Hysteria 2 operates exclusively over QUIC UDP packets with Brutal congestion control and Salamander packet padding to bypass throttling. Stream transports (TCP, WS, gRPC) are not supported.',
+    securitySummary: 'TLS (Mandatory by QUIC)',
+    transportSummary: 'QUIC UDP Only',
+  },
+  {
+    id: 'dokodemo-door',
+    name: 'Dokodemo',
+    desc: 'Port forward & transparent TProxy',
+    color: 'indigo',
+    badge: 'Tunnel',
+    supportedSecurities: ['none'],
+    unsupportedSecuritiesText: 'Dokodemo-door passes raw network packets through without terminating TLS or REALITY.',
+    defaultSecurity: 'none',
+    isFixedSecurity: true,
+    fixedSecurityName: 'Raw Passthrough (No Stream Security)',
+    fixedSecurityDesc: 'Dokodemo-door is a transparent port-forwarding and TProxy redirector. It forwards raw network packets to the destination without terminating TLS or REALITY.',
+    supportedTransports: ['tcp'],
+    unsupportedTransportsText: 'Web stream transports (WS, gRPC, SplitHTTP) are not applicable to raw port forwarders.',
+    defaultTransport: 'tcp',
+    isFixedTransport: true,
+    fixedTransportName: 'Direct Layer 4 Port Forwarder',
+    fixedTransportDesc: 'Dokodemo-door operates directly over Layer 4 TCP or UDP sockets. Stream transports (WS, gRPC, SplitHTTP) are not applicable.',
+    securitySummary: 'Raw Passthrough',
+    transportSummary: 'TCP / UDP Forwarder',
+  },
+  {
+    id: 'socks',
+    name: 'SOCKS5',
+    desc: 'Standard SOCKS5 with UDP relay',
+    color: 'zinc',
+    badge: 'Proxy',
+    supportedSecurities: ['none'],
+    unsupportedSecuritiesText: 'Standard SOCKS5 clients do not support REALITY or TLS stream wrapping.',
+    defaultSecurity: 'none',
+    isFixedSecurity: true,
+    fixedSecurityName: 'RFC 1928 SOCKS5 Protocol',
+    fixedSecurityDesc: 'Standard SOCKS5 with optional username/password authentication. Standard SOCKS clients (browsers, Telegram, cURL) connect directly without outer TLS / REALITY.',
+    supportedTransports: ['tcp'],
+    unsupportedTransportsText: 'Web stream transports (WS, gRPC, SplitHTTP) are not supported by standard SOCKS clients.',
+    defaultTransport: 'tcp',
+    isFixedTransport: true,
+    fixedTransportName: 'Standard TCP & UDP Associate Relay',
+    fixedTransportDesc: 'Standard SOCKS5 operates over raw TCP with UDP ASSOCIATE relay. Web-based stream transports (WS, gRPC, SplitHTTP) are not supported by standard SOCKS clients.',
+    securitySummary: 'RFC 1928 Plain / Auth',
+    transportSummary: 'TCP / UDP Associate',
+  },
+  {
+    id: 'http',
+    name: 'HTTP',
+    desc: 'Standard HTTP/HTTPS proxy tunnel',
+    color: 'zinc',
+    badge: 'Proxy',
+    supportedSecurities: ['none', 'tls'],
+    unsupportedSecuritiesText: 'Does NOT support REALITY (Standard HTTP proxy uses plaintext or HTTPS TLS tunnel).',
+    defaultSecurity: 'none',
+    isFixedSecurity: false,
+    supportedTransports: ['tcp'],
+    unsupportedTransportsText: 'Standard HTTP proxy clients operate exclusively over TCP streams.',
+    defaultTransport: 'tcp',
+    isFixedTransport: true,
+    fixedTransportName: 'Standard RFC 7230 HTTP / HTTPS Tunnel',
+    fixedTransportDesc: 'Standard HTTP proxy operates over TCP streams. Web-based transports like WebSocket, gRPC, or mKCP are not supported by standard HTTP proxy clients.',
+    securitySummary: 'None (Plain) • TLS (HTTPS)',
+    transportSummary: 'TCP Stream Only',
+  },
 ];
 
 // Transport Meta Info
@@ -53,6 +233,8 @@ const getSuggestedRemark = (proto: string, sec: string, p: number) => {
     case 'hysteria':
     case 'hysteria2':
       return `HY2-${pStr}`;
+    case 'dokodemo-door':
+      return `Doko-${pStr}`;
     case 'socks':
       return `Socks5-${pStr}`;
     case 'http':
@@ -71,6 +253,18 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 }) => {
   const { notify } = useNotification();
   const [activeTab, setActiveTab] = useState<'basics' | 'transport' | 'security' | 'advanced'>('basics');
+  
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
   
   // 1. Basics Form
   const [remark, setRemark] = useState('');
@@ -356,37 +550,51 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   };
 
   const handleSelectProtocol = (protoId: string) => {
+    const protoDef = PROTOCOLS.find((p) => p.id === protoId) || PROTOCOLS[0];
     setProtocol(protoId);
-    let nextSec = security;
+
+    // 1. Auto-heal Security
+    let nextSec = security as 'none' | 'tls' | 'reality';
+    if (!protoDef.supportedSecurities.includes(nextSec)) {
+      nextSec = protoDef.defaultSecurity;
+      setSecurity(nextSec);
+    }
+
+    // 2. Auto-heal Transport
+    let nextNet = network;
+    if (protoDef.isFixedTransport) {
+      nextNet = protoDef.defaultTransport;
+      setNetwork(nextNet);
+    } else {
+      const validTransports = protoDef.supportedTransports.filter((t) => {
+        if (nextSec === 'reality') {
+          return t === 'tcp' || t === 'splithttp' || t === 'grpc';
+        }
+        return true;
+      });
+      if (!validTransports.includes(network as any)) {
+        nextNet = validTransports[0] || protoDef.defaultTransport;
+        setNetwork(nextNet);
+      }
+    }
+
+    // Protocol-specific key generation
     if (protoId === 'shadowsocks') {
-      setNetwork('tcp');
-      setSecurity('none');
-      nextSec = 'none';
       if (!ssPassword) {
         handleGenerateShadowsocksKey();
       }
     } else if (protoId === 'wireguard') {
-      setNetwork('tcp');
-      setSecurity('none');
-      nextSec = 'none';
       if (!wgSecretKey) {
         handleGenerateWireGuardKeys();
       }
-    } else if (protoId === 'trojan') {
-      // Trojan supports 'none', 'tls', or 'reality' - keep user's current security choice
-    } else if (protoId === 'vmess') {
-      if (security === 'reality') {
-        setSecurity('tls');
-        nextSec = 'tls';
+    } else if (protoId === 'vless' || protoId === 'trojan') {
+      if (nextSec === 'reality' && !realityPrivKey) {
+        handleGenerateRealityKeys();
       }
-    } else if (protoId === 'hysteria' || protoId === 'hysteria2') {
-      setSecurity('tls');
-      nextSec = 'tls';
-      setNetwork('tcp');
     }
 
     const isAutoRemark = !isRemarkCustom || !remark || 
-      /^(VLESS|Trojan|SS-2022|VMess|WG|HY2|Socks5|HTTP)/i.test(remark);
+      /^(VLESS|Trojan|SS-2022|VMess|WG|HY2|Doko|Socks5|HTTP)/i.test(remark);
     if (isAutoRemark) {
       setRemark(getSuggestedRemark(protoId, nextSec, port));
       setIsRemarkCustom(false);
@@ -611,56 +819,67 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl flex items-center justify-center p-3 sm:p-5 overflow-y-auto">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
+    >
       {/* Modal Dialog Window */}
-      <div className="bg-[#0b0c14] border border-white/[0.12] rounded-3xl w-full max-w-3xl shadow-[0_0_60px_rgba(0,0,0,0.85)] overflow-hidden flex flex-col my-auto max-h-[94vh] relative">
-        
-        {/* Subtle Ambient Radial Glow */}
-        <div className="absolute top-0 right-1/4 w-96 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-96 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#161617] border border-neutral-200/80 dark:border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] relative animate-in zoom-in-95 duration-200 cursor-default"
+      >
 
         {/* Modal Top Header Bar */}
-        <div className="px-6 py-4.5 border-b border-white/[0.08] flex items-center justify-between bg-[#080910]/80 relative z-10">
+        <div className="px-6 py-4 border-b border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between bg-white dark:bg-[#161617] relative z-10">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
-              <Server className="w-5 h-5" />
+            <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-800 dark:text-neutral-300">
+              <Server className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white tracking-wide">
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 tracking-tight">
                   {inboundToEdit ? 'Edit Inbound Listener' : 'Create Inbound Listener'}
                 </h3>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold uppercase bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-700">
                   {protocol}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-xs text-zinc-400 font-mono mt-0.5">
-                <span className="text-zinc-500">Port {port}</span>
+              <div className="flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400 font-mono mt-0.5 font-medium">
+                <span className="text-neutral-600 dark:text-neutral-400">Port {port}</span>
                 <span>•</span>
-                <span className="text-zinc-400 uppercase">{network}</span>
+                <span className="text-neutral-600 dark:text-neutral-400 uppercase">{network}</span>
                 <span>•</span>
-                <span className={security === 'reality' ? 'text-emerald-400 font-semibold' : security === 'tls' ? 'text-cyan-400' : 'text-zinc-500'}>
+                <span className={security === 'reality' ? 'text-emerald-600 dark:text-emerald-400 font-bold' : security === 'tls' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-neutral-500'}>
                   {security.toUpperCase()}
                 </span>
               </div>
             </div>
           </div>
+          
+          {/* Tactile Rotating Close Button */}
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.08] transition border border-transparent hover:border-white/10"
+            title="Close modal (Esc)"
+            className="group/close p-2 rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900/60 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800/80 hover:border-neutral-300 dark:hover:border-neutral-700 transition-all duration-200 active:scale-90 flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <X className="w-5 h-5" />
+            <span className="hidden sm:inline text-[10px] font-mono font-semibold text-neutral-500 group-hover/close:text-neutral-700 dark:group-hover/close:text-neutral-300">Esc</span>
+            <X className="w-4 h-4 transition-transform duration-200 group-hover/close:rotate-90 group-hover/close:scale-110" />
           </button>
         </div>
 
         {/* Segmented Pill Tabs Navigation */}
-        <div className="p-2 bg-[#080910] border-b border-white/[0.06] relative z-10">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 p-1 bg-black/40 rounded-2xl border border-white/[0.04]">
+        <div className="p-2 bg-neutral-50/80 dark:bg-[#161617] border-b border-neutral-200/80 dark:border-neutral-800 relative z-10">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-neutral-200/60 dark:bg-neutral-950 rounded-xl border border-neutral-300/50 dark:border-neutral-850">
             {[
-              { id: 'basics', label: '1. Basics & Port', icon: Server, color: 'cyan' },
-              { id: 'transport', label: '2. Transport & UDP', icon: Radio, color: 'blue' },
-              { id: 'security', label: '3. Security & TLS', icon: Shield, color: 'emerald' },
-              { id: 'advanced', label: '4. Advanced Tuning', icon: Sliders, color: 'purple' },
+              { id: 'basics', label: '1. Basics & Port', icon: Server },
+              { id: 'transport', label: '2. Transport & UDP', icon: Radio },
+              { id: 'security', label: '3. Security & TLS', icon: Shield },
+              { id: 'advanced', label: '4. Advanced Tuning', icon: Sliders },
             ].map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -669,13 +888,13 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-2 px-3 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 border ${
+                  className={`py-2 px-3 rounded-lg text-xs transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 border cursor-pointer ${
                     isActive
-                      ? 'bg-gradient-to-r from-white/[0.12] to-white/[0.06] text-white border-white/[0.2] shadow-lg shadow-black/40 font-semibold'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border-transparent'
+                      ? 'bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white font-bold border-neutral-200 dark:border-neutral-700 shadow-sm'
+                      : 'text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-200 hover:bg-white/50 dark:hover:bg-neutral-900/80 border-transparent font-medium'
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-cyan-400' : 'text-zinc-500'}`} />
+                  <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-blue-400' : 'text-neutral-500'}`} />
                   <span className="truncate">{tab.label}</span>
                 </button>
               );
@@ -697,23 +916,23 @@ export const InboundModal: React.FC<InboundModalProps> = ({
             <div className="space-y-5">
               
               {/* Protocol Visual Selector (First Priority) */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
+              <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                    <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                       <Layers className="w-3 h-3" />
                     </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                       Proxy Protocol Architecture
                     </label>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/25">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase bg-neutral-850 text-neutral-300 border border-neutral-750">
                     {protocol.toUpperCase()}
                   </span>
                 </div>
                 
                 {/* Protocol Grid Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                   {PROTOCOLS.map((p) => {
                     const isSelected = protocol === p.id;
                     return (
@@ -721,41 +940,119 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={p.id}
                         type="button"
                         onClick={() => handleSelectProtocol(p.id)}
-                        className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+                        className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
                           isSelected
-                            ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/40'
-                            : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
+                            ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10 text-white'
+                            : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-300'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className={`text-xs font-bold font-mono ${isSelected ? 'text-cyan-300' : 'text-zinc-200'}`}>
-                            {p.name}
-                          </span>
-                          {isSelected && (
-                            <div className="w-4 h-4 rounded-full bg-cyan-400 flex items-center justify-center text-black">
-                              <Check className="w-2.5 h-2.5 stroke-[3]" />
-                            </div>
-                          )}
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
+                              {p.name}
+                            </span>
+                            {isSelected && (
+                              <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-black">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              </div>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-neutral-400 leading-tight mb-2 line-clamp-1">{p.desc}</p>
                         </div>
-                        <p className="text-[10px] text-zinc-500 leading-tight line-clamp-1">{p.desc}</p>
+
+                        {/* Visual Security & Transport capability indicators */}
+                        <div className="space-y-1 pt-1.5 border-t border-neutral-800/60">
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono text-neutral-400">
+                            <Shield className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                            <span className="truncate">{p.securitySummary}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono text-neutral-500">
+                            <Radio className="w-2.5 h-2.5 text-blue-400 shrink-0" />
+                            <span className="truncate">{p.transportSummary}</span>
+                          </div>
+                        </div>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Active Protocol Architecture Compatibility Matrix */}
+                {(() => {
+                  const currentProto = PROTOCOLS.find((p) => p.id === protocol) || PROTOCOLS[0];
+                  return (
+                    <div className="mt-3 p-3.5 rounded-xl bg-neutral-900/40 border border-neutral-800 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-3.5 h-3.5 text-blue-400" />
+                          <span className="text-xs font-semibold text-neutral-200 font-mono uppercase tracking-wider">
+                            {currentProto.name} Architecture Matrix
+                          </span>
+                        </div>
+                        <span className="text-[10px] font-mono text-neutral-400 bg-neutral-850 px-2 py-0.5 rounded border border-neutral-750">
+                          Xray Specification
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 pt-0.5">
+                        {/* Security Capability */}
+                        <div className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 font-mono">
+                            <Shield className="w-3 h-3" />
+                            <span>Supported Security</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {currentProto.supportedSecurities.map((s) => (
+                              <span key={s} className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                ✓ {s.toUpperCase()}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-neutral-400 leading-snug">
+                            {currentProto.unsupportedSecuritiesText}
+                          </p>
+                        </div>
+
+                        {/* Transport Capability */}
+                        <div className="p-2.5 rounded-lg bg-neutral-900/60 border border-neutral-800 space-y-1.5">
+                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-400 font-mono">
+                            <Radio className="w-3 h-3" />
+                            <span>Supported Transports</span>
+                          </div>
+                          <div className="flex flex-wrap items-center gap-1">
+                            {currentProto.isFixedTransport ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                ⚡ {currentProto.fixedTransportName}
+                              </span>
+                            ) : (
+                              currentProto.supportedTransports.map((t) => (
+                                <span key={t} className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                                  ✓ {t.toUpperCase()}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                          <p className="text-[10px] text-neutral-400 leading-snug">
+                            {currentProto.unsupportedTransportsText}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Field 2: Inbound Remark with Dynamic Placeholder */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+              <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+                    <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                       <Tag className="w-3 h-3" />
                     </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                       Inbound Remark & Label
                     </label>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-zinc-400">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-neutral-900 border border-neutral-800 text-neutral-400">
                     Friendly Identifier
                   </span>
                 </div>
@@ -769,32 +1066,32 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       setIsRemarkCustom(true);
                     }}
                     placeholder={`e.g. ${getSuggestedRemark(protocol, security, port)}`}
-                    className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/20 font-mono transition"
+                    className="w-full px-3.5 py-2.5 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600 font-mono transition"
                   />
                 </div>
               </div>
 
               {/* Field 2 & 3: Port with Guard & Listen IP */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 
                 {/* Port Section with Intelligent Collision Guard UI */}
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                      <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                         <Hash className="w-3 h-3" />
                       </div>
-                      <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                         Listening Port
                       </label>
                     </div>
                     {isCheckingPort ? (
-                      <span className="text-[10px] text-cyan-400 font-mono animate-pulse">Scanning...</span>
+                      <span className="text-[10px] text-blue-400 font-mono animate-pulse">Scanning...</span>
                     ) : (
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono ${
                         portConflict 
-                          ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40' 
-                          : 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                          ? 'bg-rose-500/15 text-rose-300 border border-rose-500/30' 
+                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       }`}>
                         {portConflict ? 'Conflict' : 'Port Free'}
                       </span>
@@ -809,10 +1106,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       max={65535}
                       value={port}
                       onChange={(e) => handleUpdatePort(Number(e.target.value))}
-                      className={`w-full px-4 py-2.5 bg-[#07080e] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
+                      className={`w-full px-3.5 py-2 bg-[#0e0e12] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
                         portConflict 
-                          ? 'border-rose-500/80 bg-rose-500/10 text-rose-200 ring-2 ring-rose-500/20' 
-                          : 'border-white/[0.1] focus:border-cyan-400/60 focus:ring-2 focus:ring-cyan-500/20'
+                          ? 'border-rose-500/80 bg-rose-500/10 text-rose-200 ring-1 ring-rose-500/30' 
+                          : 'border-neutral-800 focus:border-neutral-600 focus:ring-1 focus:ring-neutral-600'
                       }`}
                     />
                   </div>
@@ -824,10 +1121,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={p}
                         type="button"
                         onClick={() => handleUpdatePort(p)}
-                        className={`text-[10px] px-2 py-1 rounded-lg font-mono transition border ${
+                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
                           port === p
-                            ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300'
-                            : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/10'
+                            ? 'bg-white text-black font-semibold border-white'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                         }`}
                       >
                         {p}
@@ -836,7 +1133,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     <button
                       type="button"
                       onClick={handlePickNextAvailablePort}
-                      className="text-[10px] px-2 py-1 rounded-lg font-mono bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 flex items-center gap-1 transition"
+                      className="text-[10px] px-2 py-0.5 rounded-lg font-mono bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 flex items-center gap-1 transition"
                     >
                       <RefreshCw className="w-2.5 h-2.5" />
                       <span>Suggest Free</span>
@@ -845,14 +1142,14 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
                   {/* Port Conflict Alert UI */}
                   {portConflict && (
-                    <div className="mt-2 p-3 rounded-xl bg-rose-500/15 border border-rose-500/30 text-[11px] text-rose-200 flex flex-col gap-2">
+                    <div className="mt-2 p-3 rounded-xl bg-rose-500/10 border border-rose-500/25 text-[11px] text-rose-200 flex flex-col gap-2">
                       <div className="flex items-start gap-2">
                         <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                         <div className="space-y-1">
                           <span>{portConflict}</span>
                           {portOccupiedBy && (
                             <div className="flex items-center gap-1.5 mt-1">
-                              <span className="text-[10px] text-zinc-400 font-mono">Service Detected:</span>
+                              <span className="text-[10px] text-neutral-400 font-mono">Service Detected:</span>
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-rose-950/80 border border-rose-500/40 text-rose-300 font-bold">
                                 {portOccupiedBy}
                               </span>
@@ -863,7 +1160,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       <button
                         type="button"
                         onClick={handlePickNextAvailablePort}
-                        className="self-start px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/35 border border-rose-500/40 text-[10px] font-semibold text-white flex items-center gap-1 transition cursor-pointer"
+                        className="self-start px-2.5 py-1 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 border border-rose-500/40 text-[10px] font-medium text-white flex items-center gap-1 transition cursor-pointer"
                       >
                         <RefreshCw className="w-3 h-3" />
                         <span>Assign Next Free Port Automatically</span>
@@ -875,30 +1172,30 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                   {firewallInfo && (
                     <div className={`mt-2 p-3 rounded-xl border text-[11px] flex flex-col gap-1.5 transition ${
                       firewallInfo.isOpen
-                        ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-200'
-                        : 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                        ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-200'
+                        : 'bg-amber-500/10 border-amber-500/25 text-amber-200'
                     }`}>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Shield className={`w-3.5 h-3.5 ${firewallInfo.isOpen ? 'text-emerald-400' : 'text-amber-400'}`} />
-                          <span className="font-bold font-mono tracking-wide text-[10px] uppercase">
+                          <span className="font-semibold font-mono tracking-wide text-[10px] uppercase">
                             {firewallInfo.status}
                           </span>
                         </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold tracking-wider uppercase border ${
+                        <span className={`px-2 py-0.5 rounded-md text-[9px] font-mono font-medium tracking-wider uppercase border ${
                           firewallInfo.isOpen
-                            ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                            : 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse'
+                            ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/25'
+                            : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
                         }`}>
                           {firewallInfo.isOpen ? 'RULE ALLOWED' : 'RULE BLOCKED'}
                         </span>
                       </div>
-                      <p className="text-[10px] text-zinc-300 leading-relaxed">
+                      <p className="text-[10px] text-neutral-300 leading-relaxed">
                         {firewallInfo.details}
                       </p>
                       {!firewallInfo.isOpen && firewallInfo.command && (
                         <div className="flex items-center justify-between gap-2 pt-1.5 mt-0.5 border-t border-amber-500/20">
-                          <code className="text-[10px] font-mono bg-black/50 px-2 py-0.5 rounded text-amber-300 select-all border border-amber-500/20">
+                          <code className="text-[10px] font-mono bg-neutral-900 px-2 py-0.5 rounded text-amber-300 select-all border border-amber-500/20">
                             {firewallInfo.command}
                           </code>
                           <button
@@ -919,17 +1216,17 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                 </div>
 
                 {/* Listen IP with styled UI Label */}
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
+                      <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                         <Globe className="w-3 h-3" />
                       </div>
-                      <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                         Listening Interface IP
                       </label>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-zinc-400">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-neutral-900 border border-neutral-800 text-neutral-400">
                       Bind Socket
                     </span>
                   </div>
@@ -938,7 +1235,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     value={listen}
                     onChange={(e) => setListen(e.target.value)}
                     placeholder="0.0.0.0"
-                    className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-400/60 transition"
+                    className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 transition"
                   />
                   <div className="flex gap-1.5 pt-1">
                     {['0.0.0.0', '127.0.0.1', '::'].map((ip) => (
@@ -946,10 +1243,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={ip}
                         type="button"
                         onClick={() => setListen(ip)}
-                        className={`text-[10px] px-2 py-1 rounded-lg font-mono transition border ${
+                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
                           listen === ip
-                            ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
-                            : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white'
+                            ? 'bg-white text-black font-semibold border-white'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                         }`}
                       >
                         {ip === '0.0.0.0' ? 'All (0.0.0.0)' : ip === '127.0.0.1' ? 'Local Only' : 'IPv6 (::)'}
@@ -960,20 +1257,20 @@ export const InboundModal: React.FC<InboundModalProps> = ({
               </div>
 
               {/* Traffic Quota & Expiry Limits */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 
                 {/* Traffic Quota */}
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400">
+                      <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                         <Database className="w-3 h-3" />
                       </div>
-                      <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                         Total Inbound Quota (GB)
                       </label>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-zinc-400">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-neutral-900 border border-neutral-800 text-neutral-400">
                       {totalGB === 0 ? 'Unlimited' : `${totalGB} GB`}
                     </span>
                   </div>
@@ -983,7 +1280,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     value={totalGB}
                     onChange={(e) => setTotalGB(Number(e.target.value))}
                     placeholder="0 = Unlimited"
-                    className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-400/60 transition"
+                    className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 transition"
                   />
                   <div className="flex gap-1.5 pt-1">
                     {[0, 50, 100, 500, 1000].map((q) => (
@@ -991,10 +1288,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={q}
                         type="button"
                         onClick={() => setTotalGB(q)}
-                        className={`text-[10px] px-2 py-1 rounded-lg font-mono transition border ${
+                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
                           totalGB === q
-                            ? 'bg-amber-500/20 border-amber-500/40 text-amber-300'
-                            : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white'
+                            ? 'bg-white text-black font-semibold border-white'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                         }`}
                       >
                         {q === 0 ? 'Unlimited' : `${q}GB`}
@@ -1004,17 +1301,17 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                 </div>
 
                 {/* Expiry Time */}
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 rounded-lg bg-rose-500/15 border border-rose-500/30 flex items-center justify-center text-rose-400">
+                      <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                         <Calendar className="w-3 h-3" />
                       </div>
-                      <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                         Lifespan Duration (Days)
                       </label>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-white/5 border border-white/10 text-zinc-400">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-neutral-900 border border-neutral-800 text-neutral-400">
                       {expiryDays === 0 ? 'No Expiry' : `${expiryDays} Days`}
                     </span>
                   </div>
@@ -1024,7 +1321,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     value={expiryDays}
                     onChange={(e) => setExpiryDays(Number(e.target.value))}
                     placeholder="0 = Never expires"
-                    className="w-full px-4 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-cyan-400/60 transition"
+                    className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 transition"
                   />
                   <div className="flex gap-1.5 pt-1">
                     {[0, 30, 90, 180, 365].map((d) => (
@@ -1032,10 +1329,10 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={d}
                         type="button"
                         onClick={() => setExpiryDays(d)}
-                        className={`text-[10px] px-2 py-1 rounded-lg font-mono transition border ${
+                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
                           expiryDays === d
-                            ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
-                            : 'bg-white/[0.03] border-white/[0.06] text-zinc-400 hover:text-white'
+                            ? 'bg-white text-black font-semibold border-white'
+                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                         }`}
                       >
                         {d === 0 ? 'Forever' : `${d}d`}
@@ -1047,30 +1344,30 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* Protocol-Specific Primary Credentials (Shadowsocks / WireGuard) */}
               {protocol === 'shadowsocks' && (
-                <div className="p-4 rounded-2xl bg-amber-500/[0.04] border border-amber-500/20 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-amber-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <Lock className="w-4 h-4 text-neutral-300" />
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">
                         Shadowsocks 2022 / AEAD Primary Key
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={handleGenerateShadowsocksKey}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 text-[10px] font-mono flex items-center gap-1.5 transition"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Generate Key</span>
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Encryption Method</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Encryption Method</label>
                       <select
                         value={ssMethod}
                         onChange={(e) => setSsMethod(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-amber-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       >
                         <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm (16-byte key)</option>
                         <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm (32-byte key)</option>
@@ -1081,11 +1378,11 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Network Relay</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Network Relay</label>
                       <select
                         value={ssNetwork}
                         onChange={(e) => setSsNetwork(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-amber-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       >
                         <option value="tcp,udp">TCP + UDP (Standard)</option>
                         <option value="tcp">TCP Only</option>
@@ -1093,56 +1390,56 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">Shared Secret Password / Base64 Key</label>
+                    <label className="block text-xs font-medium text-neutral-300 mb-1.5">Shared Secret Password / Base64 Key</label>
                     <input
                       type="text"
                       value={ssPassword}
                       onChange={(e) => setSsPassword(e.target.value)}
                       placeholder="Click 'Generate Key' for 2022 key or enter password"
-                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-amber-300 font-mono focus:border-amber-400/60 focus:outline-none"
+                      className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-neutral-200 font-mono focus:border-neutral-600 focus:outline-none"
                     />
                   </div>
                 </div>
               )}
 
               {protocol === 'wireguard' && (
-                <div className="p-4 rounded-2xl bg-blue-500/[0.04] border border-blue-500/20 space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">
                         WireGuard Inbound Tunnel Parameters
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={handleGenerateWireGuardKeys}
-                      className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 text-[10px] font-mono flex items-center gap-1.5 transition"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Generate Keypair</span>
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Server Private Key (Base64)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Server Private Key (Base64)</label>
                       <input
                         type="text"
                         value={wgSecretKey}
                         onChange={(e) => setWgSecretKey(e.target.value)}
                         placeholder="Click Generate Keypair"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-blue-300 font-mono focus:border-blue-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-neutral-200 font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Tunnel MTU</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Tunnel MTU</label>
                       <input
                         type="number"
                         min={1280}
                         max={1500}
                         value={wgMtu}
                         onChange={(e) => setWgMtu(Number(e.target.value))}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1153,111 +1450,132 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
           {/* TAB 2: TRANSPORT & UDP STREAM */}
           {activeTab === 'transport' && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               
-              {protocol === 'shadowsocks' || protocol === 'wireguard' ? (
-                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center space-y-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 flex items-center justify-center mx-auto">
-                    <Radio className="w-5 h-5" />
-                  </div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {protocol === 'shadowsocks' ? 'Native L4 TCP + FullCone UDP Socket' : 'Native WireGuard UDP Tunnel'}
-                  </h4>
-                  <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
-                    {protocol === 'shadowsocks'
-                      ? 'Shadowsocks operates directly over Layer 4 raw sockets. Stream encapsulation (WebSocket, gRPC, SplitHTTP) is not supported by standard Xray Shadowsocks inbounds.'
-                      : 'WireGuard operates exclusively over UDP packets with internal kernel-style encryption.'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Transport Network Selector Grid */}
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                          <Radio className="w-3 h-3" />
-                        </div>
-                        <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                          Network Stream Transport Layer
-                        </label>
+              {(() => {
+                const currentProto = PROTOCOLS.find((p) => p.id === protocol) || PROTOCOLS[0];
+                if (currentProto.isFixedTransport) {
+                  return (
+                    <div className="p-6 rounded-xl bg-neutral-950 border border-neutral-850 text-center space-y-3">
+                      <div className="w-10 h-10 rounded-xl bg-neutral-900 border border-neutral-800 text-neutral-300 flex items-center justify-center mx-auto">
+                        <Radio className="w-5 h-5 text-blue-400" />
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
-                        {network.toUpperCase()}
-                      </span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-neutral-900 text-neutral-200 border border-neutral-800">
+                        <span>{currentProto.fixedTransportName}</span>
+                      </div>
+                      <h4 className="text-sm font-semibold text-white uppercase tracking-wider">
+                        Dedicated Protocol Transport Layer
+                      </h4>
+                      <p className="text-xs text-neutral-400 max-w-lg mx-auto leading-relaxed">
+                        {currentProto.fixedTransportDesc}
+                      </p>
                     </div>
+                  );
+                }
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                      {TRANSPORTS.filter((t) => {
-                        if (security === 'reality') {
-                          // Official Xray docs: "REALITY only supports RAW (TCP), XHTTP, and gRPC transports."
-                          return t.id === 'tcp' || t.id === 'splithttp' || t.id === 'grpc';
-                        }
-                        return true;
-                      }).map((t) => {
-                        const isSelected = network === t.id;
-                        const Icon = t.icon;
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => setNetwork(t.id)}
-                            className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                              isSelected
-                                ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-cyan-400/60 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500/40'
-                                : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1.5">
-                              <div className="flex items-center gap-2">
-                                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-cyan-400' : 'text-zinc-500'}`} />
-                                <span className={`text-xs font-bold font-mono ${isSelected ? 'text-cyan-300' : 'text-zinc-200'}`}>
-                                  {t.name}
-                                </span>
-                              </div>
-                              {isSelected && (
-                                <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 flex items-center justify-center text-black">
-                                  <Check className="w-2.5 h-2.5 stroke-[3]" />
+                // Filter transports based on protocol and active security
+                const availableTransports = TRANSPORTS.filter((t) => {
+                  if (!currentProto.supportedTransports.includes(t.id as any)) {
+                    return false;
+                  }
+                  if (security === 'reality') {
+                    // Official Xray docs: "REALITY only supports RAW (TCP), XHTTP, and gRPC transports."
+                    return t.id === 'tcp' || t.id === 'splithttp' || t.id === 'grpc';
+                  }
+                  return true;
+                });
+
+                return (
+                  <>
+                    {/* Transport Network Selector Grid */}
+                    <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                            <Radio className="w-3 h-3 text-blue-400" />
+                          </div>
+                          <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
+                            Network Stream Transport Layer
+                          </label>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase bg-neutral-900 text-neutral-300 border border-neutral-800">
+                          {network.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {security === 'reality' && (
+                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-amber-400" />
+                          <span>XTLS REALITY operates exclusively over <strong>TCP</strong>, <strong>SplitHTTP (XHTTP)</strong>, and <strong>gRPC</strong>.</span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {availableTransports.map((t) => {
+                          const isSelected = network === t.id;
+                          const Icon = t.icon;
+                          return (
+                            <button
+                              key={t.id}
+                              type="button"
+                              onClick={() => setNetwork(t.id)}
+                              className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                                isSelected
+                                  ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10 text-white'
+                                  : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center gap-2">
+                                  <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-400' : 'text-neutral-500'}`} />
+                                  <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
+                                    {t.name}
+                                  </span>
                                 </div>
-                              )}
-                            </div>
-                            <p className="text-[10px] text-zinc-500 leading-tight">{t.desc}</p>
-                          </button>
-                        );
-                      })}
+                                {isSelected && (
+                                  <div className="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-black">
+                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  </div>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-neutral-400 leading-tight">{t.desc}</p>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                );
+              })()}
 
-              {/* Dynamic Transport Sub-Panels with Rich Label UI */}
+              {/* Dynamic Transport Sub-Panels with Clean UI */}
 
               {/* WebSocket Config */}
               {network === 'ws' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/[0.04]">
-                    <Globe className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">WebSocket Inbound Options</span>
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <Globe className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-semibold text-white uppercase tracking-wider">WebSocket Inbound Options</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">WS Path</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">WS Path</label>
                       <input
                         type="text"
                         value={wsPath}
                         onChange={(e) => setWsPath(e.target.value)}
                         placeholder="/vless-ws"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">WS Host Header</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">WS Host Header</label>
                       <input
                         type="text"
                         value={wsHost}
                         onChange={(e) => setWsHost(e.target.value)}
                         placeholder="e.g. cdn.domain.com"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1266,27 +1584,27 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* gRPC Config */}
               {network === 'grpc' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/[0.04]">
-                    <Layers className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">gRPC Tunneling Options</span>
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <Layers className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-semibold text-white uppercase tracking-wider">gRPC Tunneling Options</span>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">gRPC Service Name</label>
+                    <label className="block text-xs font-medium text-neutral-300 mb-1.5">gRPC Service Name</label>
                     <input
                       type="text"
                       value={grpcServiceName}
                       onChange={(e) => setGrpcServiceName(e.target.value)}
                       placeholder="vless-grpc"
-                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                      className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                     />
                   </div>
-                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer pt-1">
+                  <label className="flex items-center gap-2.5 text-xs text-neutral-300 cursor-pointer pt-1">
                     <input
                       type="checkbox"
                       checked={grpcMultiMode}
                       onChange={(e) => setGrpcMultiMode(e.target.checked)}
-                      className="rounded bg-black/40 border-white/20 text-cyan-500 focus:ring-0"
+                      className="rounded bg-neutral-900 border-neutral-700 text-blue-500 focus:ring-0"
                     />
                     <span>Enable MultiMode (Gun architecture multiplexing)</span>
                   </label>
@@ -1295,30 +1613,30 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* HTTPUpgrade Config */}
               {network === 'httpupgrade' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/[0.04]">
-                    <ArrowDownUp className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">HTTPUpgrade Options</span>
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <ArrowDownUp className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-semibold text-white uppercase tracking-wider">HTTPUpgrade Options</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Path</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Path</label>
                       <input
                         type="text"
                         value={httpUpgradePath}
                         onChange={(e) => setHttpUpgradePath(e.target.value)}
                         placeholder="/httpupgrade"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Host Header</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Host Header</label>
                       <input
                         type="text"
                         value={httpUpgradeHost}
                         onChange={(e) => setHttpUpgradeHost(e.target.value)}
                         placeholder="e.g. cdn.domain.com"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1327,44 +1645,44 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* SplitHTTP / XHTTP Config */}
               {(network === 'splithttp' || network === 'xhttp') && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
-                      <Zap className="w-4 h-4 text-cyan-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">SplitHTTP / XHTTP Next-Gen Stream</span>
+                      <Zap className="w-4 h-4 text-blue-400" />
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">SplitHTTP / XHTTP Next-Gen Stream</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-neutral-900 text-neutral-300 border border-neutral-800">
                       Modern CDN
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">XHTTP Path</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">XHTTP Path</label>
                       <input
                         type="text"
                         value={splitHttpPath}
                         onChange={(e) => setSplitHttpPath(e.target.value)}
                         placeholder="/xhttp"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Host Header</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Host Header</label>
                       <input
                         type="text"
                         value={splitHttpHost}
                         onChange={(e) => setSplitHttpHost(e.target.value)}
                         placeholder="e.g. cdn.domain.com"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">Transmission Mode</label>
+                    <label className="block text-xs font-medium text-neutral-300 mb-1.5">Transmission Mode</label>
                     <select
                       value={splitHttpMode}
                       onChange={(e) => setSplitHttpMode(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                      className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                     >
                       <option value="stream-up">stream-up (Continuous upload streaming - Recommended)</option>
                       <option value="stream-one">stream-one (Bidirectional single stream)</option>
@@ -1376,24 +1694,24 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* mKCP UDP Config */}
               {network === 'kcp' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
                       <Radio className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">mKCP High-Speed UDP Configuration</span>
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">mKCP High-Speed UDP Configuration</span>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                       BBR Accelerated
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Header Masquerade Camouflage</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Header Masquerade Camouflage</label>
                       <select
                         value={kcpHeaderType}
                         onChange={(e) => setKcpHeaderType(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       >
                         <option value="none">None (Raw KCP)</option>
                         <option value="srtp">SRTP (Video Call Camouflage)</option>
@@ -1404,68 +1722,68 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Obfuscation Seed</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Obfuscation Seed</label>
                       <input
                         type="text"
                         value={kcpSeed}
                         onChange={(e) => setKcpSeed(e.target.value)}
                         placeholder="Optional traffic scrambling seed"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                     <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">MTU (Bytes)</label>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">MTU (Bytes)</label>
                       <input
                         type="number"
                         min={576}
                         max={1460}
                         value={kcpMtu}
                         onChange={(e) => setKcpMtu(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#07080e] border border-white/[0.1] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#0e0e12] border border-neutral-800 rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">TTI (ms)</label>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">TTI (ms)</label>
                       <input
                         type="number"
                         min={10}
                         max={100}
                         value={kcpTti}
                         onChange={(e) => setKcpTti(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#07080e] border border-white/[0.1] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#0e0e12] border border-neutral-800 rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Uplink Cap (MB/s)</label>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">Uplink Cap (MB/s)</label>
                       <input
                         type="number"
                         min={1}
                         value={kcpUpCap}
                         onChange={(e) => setKcpUpCap(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#07080e] border border-white/[0.1] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#0e0e12] border border-neutral-800 rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Downlink Cap (MB/s)</label>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">Downlink Cap (MB/s)</label>
                       <input
                         type="number"
                         min={1}
                         value={kcpDownCap}
                         onChange={(e) => setKcpDownCap(Number(e.target.value))}
-                        className="w-full px-3 py-1.5 bg-[#07080e] border border-white/[0.1] rounded-lg text-xs text-white font-mono"
+                        className="w-full px-3 py-1.5 bg-[#0e0e12] border border-neutral-800 rounded-lg text-xs text-white font-mono"
                       />
                     </div>
                   </div>
 
-                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer pt-1">
+                  <label className="flex items-center gap-2.5 text-xs text-neutral-300 cursor-pointer pt-1">
                     <input
                       type="checkbox"
                       checked={kcpCongestion}
                       onChange={(e) => setKcpCongestion(e.target.checked)}
-                      className="rounded bg-black/40 border-white/20 text-emerald-500 focus:ring-0"
+                      className="rounded bg-neutral-900 border-neutral-700 text-emerald-500 focus:ring-0"
                     />
                     <span>Enable Congestion Control (Smooth throughput & drop resistance)</span>
                   </label>
@@ -1474,14 +1792,14 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* TCP Header */}
               {network === 'tcp' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-2">
-                  <label className="block text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
+                  <label className="block text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                     TCP Header Obfuscation
                   </label>
                   <select
                     value={tcpHeaderType}
                     onChange={(e) => setTcpHeaderType(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                    className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                   >
                     <option value="none">None (Direct standard TCP stream)</option>
                     <option value="http">HTTP Masquerade (Simulates HTTP GET/POST)</option>
@@ -1495,110 +1813,158 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           {activeTab === 'security' && (
             <div className="space-y-5">
               
-              {protocol === 'shadowsocks' || protocol === 'wireguard' ? (
-                <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center space-y-2.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                    <Shield className="w-5 h-5" />
-                  </div>
-                  <h4 className="text-sm font-bold text-white uppercase tracking-wider">
-                    {protocol === 'shadowsocks' ? 'Native SS2022 / AEAD Cryptography' : 'Native WireGuard Noise Cryptography'}
-                  </h4>
-                  <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
-                    {protocol === 'shadowsocks'
-                      ? 'Shadowsocks encrypts all packets end-to-end using BLAKE3 or AEAD ciphers. Per official Xray documentation, external TLS / REALITY stream wrapping is not supported for Shadowsocks.'
-                      : 'WireGuard provides its own asymmetric Curve25519 tunnel encryption. Stream security is locked to None.'}
-                  </p>
-                </div>
-              ) : (
-                <>
-                  {/* Security Protocol Cards */}
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                          <Shield className="w-3 h-3" />
-                        </div>
-                        <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
-                          Security & Encryption Layer
-                        </label>
+              {(() => {
+                const currentProto = PROTOCOLS.find((p) => p.id === protocol) || PROTOCOLS[0];
+                if (currentProto.isFixedSecurity) {
+                  return (
+                    <div className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-center space-y-3">
+                      <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto shadow-inner">
+                        <Shield className="w-6 h-6" />
                       </div>
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                        {security.toUpperCase()}
-                      </span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                        <span>{currentProto.fixedSecurityName}</span>
+                      </div>
+                      <h4 className="text-sm font-bold text-white uppercase tracking-wider">
+                        Built-in Cryptographic Architecture
+                      </h4>
+                      <p className="text-xs text-zinc-400 max-w-lg mx-auto leading-relaxed">
+                        {currentProto.fixedSecurityDesc}
+                      </p>
                     </div>
+                  );
+                }
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      {[
-                        { id: 'none', title: 'None', desc: 'Plaintext (Internal / CDN WS / Reverse Proxy)', icon: Globe, badge: 'Standard', supported: protocol === 'vless' || protocol === 'vmess' || protocol === 'trojan' || protocol === 'shadowsocks' || protocol === 'wireguard' || protocol === 'socks' || protocol === 'http' || protocol === 'dokodemo-door' },
-                        { id: 'tls', title: 'TLS 1.3', desc: 'Standard SSL / Let\'s Encrypt', icon: Lock, badge: 'Encrypted', supported: protocol === 'vless' || protocol === 'trojan' || protocol === 'vmess' || protocol === 'hysteria' || protocol === 'hysteria2' },
-                        { id: 'reality', title: 'REALITY', desc: 'Zero-Cert TLS Camouflage', icon: Shield, badge: 'Stealth', supported: protocol === 'vless' || protocol === 'trojan' },
-                      ]
-                        .filter((s) => s.supported)
-                        .map((s) => {
+                // Filter security options supported by current protocol
+                const securityOptions = [
+                  {
+                    id: 'none',
+                    title: 'None',
+                    desc: 'Plaintext (Internal / CDN WS / Reverse Proxy)',
+                    icon: Globe,
+                    badge: 'Standard',
+                    supported: currentProto.supportedSecurities.includes('none'),
+                  },
+                  {
+                    id: 'tls',
+                    title: 'TLS 1.3',
+                    desc: protocol === 'hysteria' ? 'Mandatory QUIC TLS Certificate' : 'Standard SSL / Let\'s Encrypt',
+                    icon: Lock,
+                    badge: 'Encrypted',
+                    supported: currentProto.supportedSecurities.includes('tls'),
+                  },
+                  {
+                    id: 'reality',
+                    title: 'REALITY',
+                    desc: 'Zero-Cert TLS 1.3 Camouflage',
+                    icon: Shield,
+                    badge: 'Stealth',
+                    supported: currentProto.supportedSecurities.includes('reality'),
+                  },
+                ].filter((s) => s.supported);
+
+                return (
+                  <>
+                    {/* Security Protocol Cards */}
+                    <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                            <Shield className="w-3 h-3 text-emerald-400" />
+                          </div>
+                          <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
+                            Security & Encryption Layer
+                          </label>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-medium uppercase bg-neutral-900 text-neutral-300 border border-neutral-800">
+                          {security.toUpperCase()}
+                        </span>
+                      </div>
+
+                      {protocol === 'hysteria' && (
+                        <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4 shrink-0 text-blue-400" />
+                          <span>QUIC protocol mandates TLS encryption for every session. Self-signed or CA certs can be used.</span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        {securityOptions.map((s) => {
                           const isSelected = security === s.id;
                           const Icon = s.icon;
                           return (
                             <button
                               key={s.id}
                               type="button"
-                              onClick={() => setSecurity(s.id)}
-                              className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                              onClick={() => {
+                                setSecurity(s.id);
+                                if (s.id === 'reality') {
+                                  if (network !== 'tcp' && network !== 'splithttp' && network !== 'grpc') {
+                                    setNetwork('tcp');
+                                  }
+                                  if (!realityPrivKey) handleGenerateRealityKeys();
+                                }
+                                if (!isRemarkCustom) {
+                                  setRemark(getSuggestedRemark(protocol, s.id, port));
+                                }
+                              }}
+                              className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
                                 isSelected
-                                  ? 'bg-gradient-to-br from-white/[0.08] to-white/[0.02] border-emerald-400/60 shadow-[0_0_15px_rgba(16,185,129,0.15)] ring-1 ring-emerald-500/40'
-                                  : 'bg-[#07080e] border-white/[0.06] hover:border-white/20 hover:bg-white/[0.02]'
+                                  ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10 text-white'
+                                  : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-300'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
-                                  <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                                  <span className={`text-xs font-bold font-mono ${isSelected ? 'text-emerald-300' : 'text-zinc-200'}`}>
+                                  <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-neutral-500'}`} />
+                                  <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
                                     {s.title}
                                   </span>
                                 </div>
                                 {isSelected && (
-                                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-400 flex items-center justify-center text-black">
+                                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-black">
                                     <Check className="w-2.5 h-2.5 stroke-[3]" />
                                   </div>
                                 )}
                               </div>
-                              <p className="text-[10px] text-zinc-500 leading-tight">{s.desc}</p>
+                              <p className="text-[10px] text-neutral-400 leading-tight">{s.desc}</p>
                             </button>
                           );
                         })}
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                );
+              })()}
 
               {/* REALITY Settings Card */}
               {security === 'reality' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">
                         REALITY Handshake Camouflage Parameters
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={handleGenerateRealityKeys}
-                      className="px-2.5 py-1 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 text-[10px] font-mono flex items-center gap-1.5 transition"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Regenerate Keypair</span>
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Target Destination (dest)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Target Destination (dest)</label>
                       <input
                         type="text"
                         value={realityDest}
                         onChange={(e) => setRealityDest(e.target.value)}
                         placeholder="www.google.com:443"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-emerald-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                       {/* Presets */}
                       <div className="flex flex-wrap gap-1.5 mt-2">
@@ -1616,7 +1982,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                               setRealityDest(d.dest);
                               setRealityServerNames(d.sni);
                             }}
-                            className="text-[10px] px-2 py-0.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-zinc-400 hover:text-white font-mono border border-white/[0.04] transition"
+                            className="text-[10px] px-2 py-0.5 rounded-md bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white font-mono border border-neutral-800 transition"
                           >
                             {d.name}
                           </button>
@@ -1625,59 +1991,59 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Server Names (SNI List)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Server Names (SNI List)</label>
                       <input
                         type="text"
                         value={realityServerNames}
                         onChange={(e) => setRealityServerNames(e.target.value)}
                         placeholder="www.google.com,google.com"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-emerald-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
-                      <span className="text-[10px] text-zinc-500 font-mono mt-1 block">
+                      <span className="text-[10px] text-neutral-500 font-mono mt-1 block">
                         Comma-separated domain list matching dest target
                       </span>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Server Private Key (x25519)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Server Private Key (x25519)</label>
                       <input
                         type="text"
                         value={realityPrivKey}
                         onChange={(e) => setRealityPrivKey(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-emerald-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Client Public Key (x25519)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Client Public Key (x25519)</label>
                       <input
                         type="text"
                         value={realityPubKey}
                         readOnly
-                        className="w-full px-3.5 py-2 bg-black/40 border border-white/[0.06] rounded-xl text-xs text-emerald-400 font-mono"
+                        className="w-full px-3.5 py-2 bg-neutral-900/60 border border-neutral-800 rounded-xl text-xs text-neutral-300 font-mono"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Short ID</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Short ID</label>
                       <input
                         type="text"
                         value={realityShortId}
                         onChange={(e) => setRealityShortId(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-emerald-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">SpiderX Path</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">SpiderX Path</label>
                       <input
                         type="text"
                         value={realitySpiderX}
                         onChange={(e) => setRealitySpiderX(e.target.value)}
                         placeholder="/"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-emerald-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1686,51 +2052,51 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* TLS Settings Card */}
               {security === 'tls' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/[0.04]">
-                    <Lock className="w-4 h-4 text-cyan-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">TLS Configuration</span>
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <Lock className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-semibold text-white uppercase tracking-wider">TLS Configuration</span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">SNI Domain (serverName)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">SNI Domain (serverName)</label>
                       <input
                         type="text"
                         value={tlsSNI}
                         onChange={(e) => setTlsSNI(e.target.value)}
                         placeholder="e.g. proxy.domain.com"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">ALPN</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">ALPN</label>
                       <input
                         type="text"
                         value={tlsALPN}
                         onChange={(e) => setTlsALPN(e.target.value)}
                         placeholder="h2,http/1.1"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Min TLS Version</label>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">Min TLS Version</label>
                       <select
                         value={tlsMinVersion}
                         onChange={(e) => setTlsMinVersion(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono"
+                        className="w-full px-3 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono"
                       >
                         <option value="1.2">TLS 1.2</option>
                         <option value="1.3">TLS 1.3</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-medium text-zinc-400 mb-1">Max TLS Version</label>
+                      <label className="block text-[11px] font-medium text-neutral-400 mb-1">Max TLS Version</label>
                       <select
                         value={tlsMaxVersion}
                         onChange={(e) => setTlsMaxVersion(e.target.value)}
-                        className="w-full px-3 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono"
+                        className="w-full px-3 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono"
                       >
                         <option value="1.3">TLS 1.3</option>
                         <option value="1.2">TLS 1.2</option>
@@ -1744,34 +2110,34 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
           {/* TAB 4: ADVANCED TUNING & SOCKOPT */}
           {activeTab === 'advanced' && (
-            <div className="space-y-5">
+            <div className="space-y-4">
               
               {/* Protocol Specific Card (Shadowsocks / WireGuard / Hysteria) */}
               {protocol === 'shadowsocks' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-emerald-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <Lock className="w-4 h-4 text-neutral-300" />
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">
                         Shadowsocks 2022 & FullCone UDP
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={handleGenerateShadowsocksKey}
-                      className="px-2.5 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 text-[10px] font-mono flex items-center gap-1.5 transition"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Generate Key</span>
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Encryption Cipher</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Encryption Cipher</label>
                       <select
                         value={ssMethod}
                         onChange={(e) => setSsMethod(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       >
                         <option value="2022-blake3-aes-128-gcm">2022-blake3-aes-128-gcm (Fast Standard)</option>
                         <option value="2022-blake3-aes-256-gcm">2022-blake3-aes-256-gcm (High Security)</option>
@@ -1781,11 +2147,11 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Network Modes</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Network Modes</label>
                       <select
                         value={ssNetwork}
                         onChange={(e) => setSsNetwork(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       >
                         <option value="tcp,udp">TCP + UDP (FullCone Relay)</option>
                         <option value="tcp">TCP Only</option>
@@ -1794,55 +2160,55 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     </div>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-zinc-300 mb-1.5">Master Base64 Password Key</label>
+                    <label className="block text-xs font-medium text-neutral-300 mb-1.5">Master Base64 Password Key</label>
                     <input
                       type="text"
                       value={ssPassword}
                       onChange={(e) => setSsPassword(e.target.value)}
                       placeholder="Click Generate Key or enter base64 key"
-                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                      className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-neutral-200 font-mono focus:border-neutral-600 focus:outline-none"
                     />
                   </div>
                 </div>
               )}
 
               {protocol === 'wireguard' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-blue-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">
                         WireGuard Kernel/Go-Tun Tunnel
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={handleGenerateWireGuardKeys}
-                      className="px-2.5 py-1 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-300 border border-blue-500/30 text-[10px] font-mono flex items-center gap-1.5 transition"
+                      className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-800 text-[10px] font-mono flex items-center gap-1.5 transition"
                     >
                       <RefreshCw className="w-3 h-3" />
                       <span>Generate Keypair</span>
                     </button>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Server Private Key (Base64)</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Server Private Key (Base64)</label>
                       <input
                         type="text"
                         value={wgSecretKey}
                         onChange={(e) => setWgSecretKey(e.target.value)}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-neutral-200 font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Inner MTU</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Inner MTU</label>
                       <input
                         type="number"
                         min={1280}
                         max={1500}
                         value={wgMtu}
                         onChange={(e) => setWgMtu(Number(e.target.value))}
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
@@ -1850,98 +2216,98 @@ export const InboundModal: React.FC<InboundModalProps> = ({
               )}
 
               {protocol === 'dokodemo-door' && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b border-white/[0.04]">
-                    <ArrowUpRight className="w-4 h-4 text-indigo-400" />
-                    <span className="text-xs font-bold text-white uppercase tracking-wider">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center gap-2 pb-2 border-b border-neutral-800">
+                    <ArrowUpRight className="w-4 h-4 text-blue-400" />
+                    <span className="text-xs font-semibold text-white uppercase tracking-wider">
                       Dokodemo-door Forwarding Target
                     </span>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Destination IP / Host</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Destination IP / Host</label>
                       <input
                         type="text"
                         value={dokoAddress}
                         onChange={(e) => setDokoAddress(e.target.value)}
                         placeholder="127.0.0.1"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-zinc-300 mb-1.5">Destination Port</label>
+                      <label className="block text-xs font-medium text-neutral-300 mb-1.5">Destination Port</label>
                       <input
                         type="number"
                         value={dokoPort}
                         onChange={(e) => setDokoPort(Number(e.target.value))}
                         placeholder="0 = Transparent"
-                        className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                        className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2.5 text-xs text-zinc-300 cursor-pointer pt-1">
+                  <label className="flex items-center gap-2.5 text-xs text-neutral-300 cursor-pointer pt-1">
                     <input
                       type="checkbox"
                       checked={dokoFollowRedirect}
                       onChange={(e) => setDokoFollowRedirect(e.target.checked)}
-                      className="rounded bg-black/40 border-white/20 text-indigo-500 focus:ring-0"
+                      className="rounded bg-neutral-900 border-neutral-700 text-blue-500 focus:ring-0"
                     />
                     <span>Follow Redirect (Accept Linux iptables/nftables TPROXY & REDIRECT)</span>
                   </label>
                 </div>
               )}
 
-              {/* Linux Socket Options (Sockopt) with Rich UI */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+              {/* Linux Socket Options (Sockopt) */}
+              <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                      <Cpu className="w-3 h-3" />
+                    <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                      <Cpu className="w-3 h-3 text-blue-400" />
                     </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                       Linux Socket Performance Options (Sockopt)
                     </label>
                   </div>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/15 text-cyan-300 border border-cyan-500/25">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono bg-neutral-900 text-neutral-300 border border-neutral-800">
                     Kernel Level
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <label className="p-3 rounded-xl bg-[#07080e] border border-white/[0.06] flex items-center justify-between cursor-pointer hover:border-white/10 transition">
+                  <label className="p-3 rounded-xl bg-[#0c0d10] border border-neutral-800/80 flex items-center justify-between cursor-pointer hover:border-neutral-700 transition">
                     <div>
-                      <span className="text-xs font-semibold text-white block">TCP Fast Open (TFO)</span>
-                      <span className="text-[10px] text-zinc-500">0-RTT data in SYN packet</span>
+                      <span className="text-xs font-medium text-white block">TCP Fast Open (TFO)</span>
+                      <span className="text-[10px] text-neutral-400">0-RTT data in SYN packet</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={sockoptTcpFastOpen}
                       onChange={(e) => setSockoptTcpFastOpen(e.target.checked)}
-                      className="rounded bg-black/40 border-white/20 text-cyan-500 focus:ring-0 w-4 h-4"
+                      className="rounded bg-neutral-900 border-neutral-700 text-blue-500 focus:ring-0 w-4 h-4"
                     />
                   </label>
 
-                  <label className="p-3 rounded-xl bg-[#07080e] border border-white/[0.06] flex items-center justify-between cursor-pointer hover:border-white/10 transition">
+                  <label className="p-3 rounded-xl bg-[#0c0d10] border border-neutral-800/80 flex items-center justify-between cursor-pointer hover:border-neutral-700 transition">
                     <div>
-                      <span className="text-xs font-semibold text-white block">Accept PROXY Protocol</span>
-                      <span className="text-[10px] text-zinc-500">Real Client IP from Cloudflare/Nginx</span>
+                      <span className="text-xs font-medium text-white block">Accept PROXY Protocol</span>
+                      <span className="text-[10px] text-neutral-400">Real Client IP from Cloudflare/Nginx</span>
                     </div>
                     <input
                       type="checkbox"
                       checked={sockoptAcceptProxyProtocol}
                       onChange={(e) => setSockoptAcceptProxyProtocol(e.target.checked)}
-                      className="rounded bg-black/40 border-white/20 text-cyan-500 focus:ring-0 w-4 h-4"
+                      className="rounded bg-neutral-900 border-neutral-700 text-blue-500 focus:ring-0 w-4 h-4"
                     />
                   </label>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div>
-                    <label className="block text-[11px] font-medium text-zinc-400 mb-1">TProxy Mode</label>
+                    <label className="block text-[11px] font-medium text-neutral-400 mb-1">TProxy Mode</label>
                     <select
                       value={sockoptTproxy}
                       onChange={(e) => setSockoptTproxy(e.target.value)}
-                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                      className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                     >
                       <option value="off">Off (Standard Socket)</option>
                       <option value="tproxy">TProxy (Transparent Proxying)</option>
@@ -1949,42 +2315,42 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[11px] font-medium text-zinc-400 mb-1">SO_MARK (Routing Mark)</label>
+                    <label className="block text-[11px] font-medium text-neutral-400 mb-1">SO_MARK (Routing Mark)</label>
                     <input
                       type="number"
                       value={sockoptMark}
                       onChange={(e) => setSockoptMark(Number(e.target.value))}
                       placeholder="0 = None"
-                      className="w-full px-3.5 py-2 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:border-cyan-400/60 focus:outline-none"
+                      className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:border-neutral-600 focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* Traffic Sniffing with Micro-Badges */}
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-4">
-                <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+              {/* Traffic Sniffing */}
+              <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                   <div className="flex items-center gap-2">
-                    <div className="w-5 h-5 rounded-lg bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                      <Globe className="w-3 h-3" />
+                    <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                      <Globe className="w-3 h-3 text-blue-400" />
                     </div>
-                    <label className="text-xs font-bold text-zinc-200 uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
                       Real-time Traffic Sniffing
                     </label>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-cyan-400 cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
                     <input
                       type="checkbox"
                       checked={sniffingEnabled}
                       onChange={(e) => setSniffingEnabled(e.target.checked)}
-                      className="rounded bg-black/40 border-white/20 text-cyan-500 focus:ring-0"
+                      className="rounded bg-neutral-900 border-neutral-700 text-blue-500 focus:ring-0"
                     />
-                    <span className="font-semibold">Active</span>
+                    <span className="font-medium">Active</span>
                   </label>
                 </div>
 
                 {sniffingEnabled && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {[
                       { id: 'http', label: 'HTTP Domain', checked: sniffHttp, set: setSniffHttp },
                       { id: 'tls', label: 'TLS (SNI)', checked: sniffTls, set: setSniffTls },
@@ -1995,8 +2361,8 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={item.id} 
                         className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition ${
                           item.checked 
-                            ? 'bg-cyan-500/10 border-cyan-500/30 text-white' 
-                            : 'bg-[#07080e] border-white/[0.06] text-zinc-500'
+                            ? 'bg-neutral-850 border-neutral-600 text-white' 
+                            : 'bg-[#0c0d10] border-neutral-800 text-neutral-400'
                         }`}
                       >
                         <span className="text-xs font-mono font-medium">{item.label}</span>
@@ -2004,7 +2370,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                           type="checkbox"
                           checked={item.checked}
                           onChange={(e) => item.set(e.target.checked)}
-                          className="rounded bg-black/40 border-white/20 text-cyan-500 focus:ring-0"
+                          className="rounded bg-neutral-900 border-neutral-700 text-blue-500 focus:ring-0"
                         />
                       </label>
                     ))}
@@ -2014,24 +2380,24 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
               {/* Port 443 Fallbacks */}
               {(protocol === 'vless' || protocol === 'trojan') && (
-                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06] space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-white/[0.04]">
+                <div className="p-4 rounded-xl bg-neutral-950 border border-neutral-850 space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
                     <div className="flex items-center gap-2">
-                      <Terminal className="w-4 h-4 text-zinc-400" />
-                      <span className="text-xs font-bold text-white uppercase tracking-wider">
+                      <Terminal className="w-4 h-4 text-neutral-400" />
+                      <span className="text-xs font-semibold text-white uppercase tracking-wider">
                         Port 443 Multi-Fallback Rules
                       </span>
                     </div>
-                    <span className="text-[10px] text-zinc-500 font-mono">Nginx/Caddy Coexistence</span>
+                    <span className="text-[10px] text-neutral-500 font-mono">Nginx/Caddy Coexistence</span>
                   </div>
                   <textarea
                     rows={3}
                     value={fallbacksJson}
                     onChange={(e) => setFallbacksJson(e.target.value)}
                     placeholder='[{"dest": 80, "xver": 0}]'
-                    className="w-full px-3.5 py-2.5 bg-[#07080e] border border-white/[0.1] rounded-xl text-xs font-mono text-white focus:outline-none focus:border-cyan-400/60"
+                    className="w-full px-3.5 py-2.5 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-neutral-600"
                   />
-                  <p className="text-[10px] text-zinc-500 font-mono">
+                  <p className="text-[10px] text-neutral-500 font-mono">
                     Routes non-proxy traffic to local web servers seamlessly without triggering active DPI probes.
                   </p>
                 </div>
@@ -2040,29 +2406,29 @@ export const InboundModal: React.FC<InboundModalProps> = ({
           )}
 
           {/* Modal Footer with Status Indicator & Submit Action */}
-          <div className="pt-4 border-t border-white/[0.08] flex items-center justify-between relative z-10 bg-[#0b0c14]">
+          <div className="pt-4 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between relative z-10 bg-white dark:bg-[#161617]">
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${portConflict ? 'bg-rose-500 animate-ping' : 'bg-emerald-400 animate-pulse'}`} />
-              <span className={`text-xs font-mono font-medium ${portConflict ? 'text-rose-400' : 'text-zinc-400'}`}>
+              <div className={`w-2 h-2 rounded-full ${portConflict ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+              <span className={`text-xs font-mono font-bold ${portConflict ? 'text-rose-500 dark:text-rose-400' : 'text-neutral-700 dark:text-neutral-300'}`}>
                 {portConflict ? 'Port Conflict' : 'Port Ready'}
               </span>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-5 py-2.5 rounded-xl text-xs font-medium text-zinc-400 hover:text-white hover:bg-white/[0.06] transition border border-transparent hover:border-white/10"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-transparent dark:hover:bg-neutral-800 transition-all duration-150 border border-neutral-200 dark:border-neutral-800 active:scale-95 cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={Boolean(portConflict) || isSubmitting}
-                className={`px-6 py-2.5 rounded-xl text-xs font-bold shadow-xl transition flex items-center gap-2 ${
+                className={`px-5 py-2 rounded-xl text-xs font-semibold transition shadow-sm flex items-center gap-2 cursor-pointer ${
                   portConflict
-                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30 cursor-not-allowed'
-                    : 'bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-black shadow-[0_0_25px_rgba(16,185,129,0.25)] hover:shadow-[0_0_35px_rgba(16,185,129,0.4)]'
+                    ? 'bg-neutral-200 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-500 border border-neutral-300 dark:border-neutral-800 cursor-not-allowed'
+                    : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 active:scale-98'
                 }`}
               >
                 {isSubmitting ? (

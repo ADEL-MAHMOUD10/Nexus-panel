@@ -22,25 +22,35 @@ export const LogsPage: React.FC = () => {
   const [level, setLevel] = useState<string>('all');
   const [search, setSearch] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [justRefreshed, setJustRefreshed] = useState(false);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedLineIdx, setCopiedLineIdx] = useState<number | null>(null);
   const logsEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (isManual: boolean = false) => {
     setIsLoading(true);
+    const minDelay = isManual ? new Promise((res) => setTimeout(res, 750)) : Promise.resolve();
     try {
       const lvlParam = level === 'all' ? '' : `&level=${level}`;
-      const res = await api.get(`/api/server/logs?count=${count}${lvlParam}`);
+      const [res] = await Promise.all([
+        api.get(`/api/server/logs?count=${count}${lvlParam}`),
+        minDelay
+      ]);
       if (res.data && Array.isArray(res.data.logs)) {
         setLogs(res.data.logs);
+      }
+      if (isManual) {
+        setJustRefreshed(true);
+        notify.success('Logs Refreshed', `Fetched latest ${count} log entries.`);
+        setTimeout(() => setJustRefreshed(false), 1600);
       }
     } catch (e) {
       // ignore
     } finally {
       setIsLoading(false);
     }
-  }, [count, level]);
+  }, [count, level, notify]);
 
   useEffect(() => {
     fetchLogs();
@@ -101,12 +111,12 @@ export const LogsPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-bold text-white tracking-wide">Live System & Kernel Logs</h2>
-            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <h2 className="text-base font-semibold text-white tracking-tight">Live System & Kernel Logs</h2>
+            <span className="px-2 py-0.5 rounded-full text-[10px] font-mono bg-neutral-800 text-neutral-300 border border-neutral-700">
               {filteredLogs.length} lines
             </span>
           </div>
-          <p className="text-xs text-zinc-400 mt-0.5">
+          <p className="text-xs text-neutral-400 mt-0.5">
             Operational kernel logs, routing traces, and system connection events.
           </p>
         </div>
@@ -115,13 +125,13 @@ export const LogsPage: React.FC = () => {
         <div className="flex flex-wrap items-center gap-2">
           {/* Search Box */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-3.5 h-3.5 text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               placeholder="Search logs..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 pr-3 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-cyan-500/40 font-mono w-40 sm:w-48 transition"
+              className="pl-8 pr-3 py-1.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-600 font-mono w-40 sm:w-48 transition"
             />
           </div>
 
@@ -129,7 +139,7 @@ export const LogsPage: React.FC = () => {
           <select
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            className="px-2.5 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs text-zinc-300 font-mono focus:outline-none"
+            className="px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-neutral-300 font-mono focus:outline-none cursor-pointer"
           >
             <option value="all">All Levels</option>
             <option value="error">Errors</option>
@@ -142,7 +152,7 @@ export const LogsPage: React.FC = () => {
           <select
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
-            className="px-2.5 py-1.5 bg-white/[0.03] border border-white/[0.08] rounded-xl text-xs text-zinc-300 font-mono focus:outline-none"
+            className="px-2.5 py-1.5 bg-neutral-900 border border-neutral-800 rounded-xl text-xs text-neutral-300 font-mono focus:outline-none cursor-pointer"
           >
             <option value={50}>50 lines</option>
             <option value={100}>100 lines</option>
@@ -158,7 +168,7 @@ export const LogsPage: React.FC = () => {
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition border flex items-center gap-1.5 cursor-pointer ${
               autoRefresh
                 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                : 'bg-white/[0.03] text-zinc-400 border-white/[0.08] hover:text-white hover:bg-white/[0.06]'
+                : 'bg-neutral-900 text-neutral-400 border-neutral-800 hover:text-white hover:bg-neutral-800'
             }`}
           >
             {autoRefresh ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
@@ -169,10 +179,10 @@ export const LogsPage: React.FC = () => {
           <button
             onClick={handleCopyAll}
             title="Copy all currently displayed logs to clipboard"
-            className={`px-3 py-1.5 rounded-xl text-xs font-medium border flex items-center gap-1.5 transition cursor-pointer active:scale-95 ${
+            className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition cursor-pointer active:scale-95 ${
               copiedAll
                 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                : 'bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+                : 'bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-white border-neutral-800'
             }`}
           >
             {copiedAll ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -183,43 +193,58 @@ export const LogsPage: React.FC = () => {
           <button
             onClick={handleDownloadLogs}
             title="Download log file"
-            className="p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 hover:text-white transition cursor-pointer"
+            className="p-2 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition cursor-pointer"
           >
             <Download className="w-3.5 h-3.5" />
           </button>
 
-          {/* Refresh Button */}
+          {/* Refresh Button with Tactile Micro-interaction */}
           <button
-            onClick={fetchLogs}
+            type="button"
+            onClick={() => fetchLogs(true)}
             disabled={isLoading}
             title="Refresh logs now"
-            className="p-2 rounded-xl border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.08] text-zinc-300 hover:text-white transition cursor-pointer"
+            className={`group/refresh p-2 rounded-xl border transition-all duration-200 active:scale-90 cursor-pointer shadow-xs flex items-center justify-center ${
+              justRefreshed
+                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-emerald-500/10'
+                : isLoading
+                ? 'bg-neutral-800 text-neutral-300 border-neutral-700'
+                : 'bg-neutral-900/80 hover:bg-neutral-800 text-neutral-300 hover:text-white border-neutral-800 hover:border-neutral-700'
+            }`}
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-cyan-400' : ''}`} />
+            {justRefreshed ? (
+              <Check className="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-50 duration-150" />
+            ) : (
+              <RefreshCw
+                className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                  isLoading ? 'animate-spin text-white' : 'group-hover/refresh:rotate-90 group-hover/refresh:scale-110'
+                }`}
+              />
+            )}
           </button>
         </div>
       </div>
 
       {/* Terminal Display Container */}
-      <div className="bg-[#0c0d13]/90 backdrop-blur-xl border border-white/[0.08] shadow-2xl rounded-2xl p-4 relative overflow-hidden">
+      <div className="bg-[#0c0d10] border border-neutral-800 shadow-sm rounded-2xl p-4 relative overflow-hidden">
         {/* Terminal Header Bar */}
-        <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/[0.06] text-xs font-mono text-zinc-500">
+        <div className="flex items-center justify-between pb-3 mb-3 border-b border-neutral-800 text-xs font-mono text-neutral-500">
           <div className="flex items-center gap-2">
-            <Terminal className="w-3.5 h-3.5 text-cyan-400" />
-            <span className="text-zinc-300 font-semibold">Console Stream</span>
+            <Terminal className="w-3.5 h-3.5 text-neutral-400" />
+            <span className="text-neutral-200 font-semibold">Console Stream</span>
             {search && (
-              <span className="text-zinc-400 text-[11px]">
+              <span className="text-neutral-400 text-[11px]">
                 (filtering for &quot;{search}&quot;)
               </span>
             )}
           </div>
-          <div className="text-[11px] text-zinc-500 hidden sm:block">
+          <div className="text-[11px] text-neutral-500 hidden sm:block">
             Click any line to copy individual row • Select text freely
           </div>
         </div>
 
         {/* Scrollable Terminal Output */}
-        <div className="bg-[#05060a] border border-white/[0.06] rounded-xl p-4 h-[640px] overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1 select-text">
+        <div className="bg-neutral-950 border border-neutral-800 rounded-xl p-4 h-[640px] overflow-y-auto font-mono text-[11px] leading-relaxed space-y-1 select-text">
           {filteredLogs.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-zinc-600 space-y-2 py-20 font-sans">
               <Terminal className="w-8 h-8 opacity-40 text-zinc-500" />

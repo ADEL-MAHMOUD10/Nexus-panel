@@ -1,6 +1,6 @@
 *~
 *.tmp
-data/*.db
+data/*.db*
 data/*.json
 frontend/node_modules/
 docs/

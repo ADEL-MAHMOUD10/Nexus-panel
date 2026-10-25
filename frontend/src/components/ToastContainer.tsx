@@ -34,7 +34,7 @@ const ToastCard: React.FC<{ toast: ToastItem; onDismiss: () => void }> = ({ toas
         return <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />;
       case 'info':
       default:
-        return <Info className="w-4 h-4 text-cyan-400 shrink-0" />;
+        return <Info className="w-4 h-4 text-blue-400 shrink-0" />;
     }
   };
 
@@ -97,7 +97,7 @@ const ToastCard: React.FC<{ toast: ToastItem; onDismiss: () => void }> = ({ toas
                 toast.action?.onClick();
                 onDismiss();
               }}
-              className="mt-2 text-[11px] font-mono font-medium text-cyan-400 hover:text-cyan-300 underline underline-offset-2 flex items-center gap-1 transition"
+              className="mt-2 text-[11px] font-mono font-medium text-blue-400 hover:text-blue-300 underline underline-offset-2 flex items-center gap-1 transition"
             >
               {toast.action.label}
             </button>

@@ -1,3 +1,18 @@
+# Nexus Panel v1.3.0 — The Apple / Next.js Redesign & Tactile Ergonomics Release
+
+> **Release Tag:** `v1.3.0`  
+> **Status:** Production Stable  
+> **Kernel Engine:** Xray-core `v26.10.x` & `v26.9.x`  
+> **Platforms:** Linux `amd64` / `arm64`, Windows `x64`  
+
+---
+
+## 🌟 Highlights
+
+Nexus Panel `v1.3.0` is a comprehensive design, interaction, and visual overhaul inspired by modern Next.js and Apple Pro aesthetics. It replaces all legacy styling with borderless matte cards, introduces an adaptive dual-theme engine (Apple Ultra-Black `#000000` & Warm Linen `#f2eeeb`), deploys tactile micro-interactions across every interactive element, redesigns the health index gauge into organic botanical foliage (ورق شجر), and provides 100% polished Light Mode support for all dialogs and modals.
+
+---
+
 # Nexus v1.1.0 — Enterprise Release
 
 > **Release Tag:** `v1.1.0`  

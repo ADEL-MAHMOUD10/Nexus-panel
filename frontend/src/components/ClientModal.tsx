@@ -41,6 +41,18 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   clientToEdit,
 }) => {
   const { notify } = useNotification();
+
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
   const [inboundId, setInboundId] = useState<number>(inbounds[0]?.id || 1);
   const [email, setEmail] = useState('');
   const [uuid, setUuid] = useState('');
@@ -223,41 +235,56 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-      <div className="bg-[#0b0c12] border border-white/[0.1] rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 overflow-y-auto animate-in fade-in duration-200 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white dark:bg-[#161617] border border-neutral-200/80 dark:border-neutral-800 rounded-2xl w-full max-w-2xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200 cursor-default"
+      >
         
         {/* Header Bar */}
-        <div className="px-6 py-5 border-b border-white/[0.08] bg-gradient-to-r from-cyan-950/20 via-blue-950/20 to-transparent flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-inner">
-              <UserPlus className="w-5 h-5" />
+        <div className="px-6 py-4.5 border-b border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-[#161617] flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-800 dark:text-neutral-300">
+              <UserPlus className="w-4 h-4 text-blue-500 dark:text-blue-400" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-base font-bold text-white tracking-wide">
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">
                   {clientToEdit ? 'Edit Client Account' : 'Provision Client Credential'}
                 </h3>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-semibold uppercase">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-100 dark:bg-neutral-850 text-neutral-700 dark:text-neutral-300 border border-neutral-200 dark:border-neutral-750 font-bold uppercase">
                   {clientToEdit ? 'EDIT' : 'NEW'}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-0.5">
                 {clientToEdit 
                   ? 'Update bandwidth limits, validity lifespan, and credentials.'
                   : 'Deploy client authentication, quota limits, and flow acceleration.'}
               </p>
             </div>
           </div>
+          
+          {/* Tactile Rotating Close Button */}
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition border border-transparent hover:border-white/10"
+            title="Close modal (Esc)"
+            className="group/close p-2 rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900/60 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800/80 hover:border-neutral-300 dark:hover:border-neutral-700 transition-all duration-200 active:scale-90 flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
-            <X className="w-5 h-5" />
+            <span className="hidden sm:inline text-[10px] font-mono font-semibold text-neutral-500 group-hover/close:text-neutral-700 dark:group-hover/close:text-neutral-300">Esc</span>
+            <X className="w-4 h-4 transition-transform duration-200 group-hover/close:rotate-90 group-hover/close:scale-110" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[82vh] overflow-y-auto custom-scrollbar">
+        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 max-h-[82vh] overflow-y-auto custom-scrollbar">
           {error && (
             <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2.5">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
@@ -266,21 +293,21 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           )}
 
           {/* 1. Inbound Selection */}
-          <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4">
+          <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                  <Server className="w-3.5 h-3.5" />
+                <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                  <Server className="w-3 h-3 text-blue-400" />
                 </div>
-                <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
+                <span className="text-xs font-semibold text-neutral-200 tracking-wide uppercase">
                   Target Inbound Gateway
                 </span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-medium">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 text-neutral-300 border border-neutral-800 font-medium">
                 ROUTED
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 mb-3 font-normal">
+            <p className="text-[11px] text-neutral-400 mb-3 font-normal">
               Select which proxy listener will authenticate and route this client traffic.
             </p>
 
@@ -295,7 +322,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 }
               }}
               disabled={Boolean(clientToEdit)}
-              className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50 disabled:opacity-60 transition font-sans"
+              className="w-full px-3.5 py-2.5 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:border-neutral-600 disabled:opacity-60 transition font-sans"
             >
               {inbounds.map((inb) => (
                 <option key={inb.id} value={inb.id}>
@@ -306,15 +333,15 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
             {/* Selected Inbound Micro-Preview */}
             {selectedInbound && (
-              <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-white/[0.04]">
-                <div className="px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-[11px] font-mono font-medium flex items-center gap-1.5">
-                  <Radio className="w-3 h-3" />
+              <div className="mt-3 flex flex-wrap items-center gap-2 pt-3 border-t border-neutral-850">
+                <div className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 text-[11px] font-mono font-medium flex items-center gap-1.5">
+                  <Radio className="w-3 h-3 text-blue-400" />
                   <span>Port {selectedInbound.port}</span>
                 </div>
-                <div className="px-2.5 py-1 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[11px] font-mono font-medium uppercase">
+                <div className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 text-[11px] font-mono font-medium uppercase">
                   {selectedInbound.protocol}
                 </div>
-                <div className="px-2.5 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono font-medium">
+                <div className="px-2.5 py-1 rounded-lg bg-neutral-900 border border-neutral-800 text-neutral-300 text-[11px] font-mono font-medium">
                   {selectedInbound.remark || selectedInbound.tag}
                 </div>
               </div>
@@ -322,21 +349,21 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           </div>
 
           {/* 2. Client Email / Identifier */}
-          <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4">
+          <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-                  <User className="w-3.5 h-3.5" />
+                <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                  <User className="w-3 h-3 text-blue-400" />
                 </div>
-                <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
+                <span className="text-xs font-semibold text-neutral-200 tracking-wide uppercase">
                   Client Email / Username
                 </span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-medium">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 text-neutral-300 border border-neutral-800 font-medium">
                 IDENTITY
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 mb-3 font-normal">
+            <p className="text-[11px] text-neutral-400 mb-3 font-normal">
               Unique username used for client remarks, links, and traffic telemetry accounting.
             </p>
 
@@ -347,20 +374,20 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="e.g. user_vip_01"
-                className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500/50 transition font-sans"
+                className="w-full px-3.5 py-2.5 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white focus:outline-none focus:border-neutral-600 transition font-sans"
               />
             </div>
 
             {/* Quick Random Identifiers */}
             {!clientToEdit && (
               <div className="flex items-center gap-1.5 mt-2.5 flex-wrap">
-                <span className="text-[10px] text-zinc-500 font-mono mr-1">Suggest:</span>
+                <span className="text-[10px] text-neutral-500 font-mono mr-1">Suggest:</span>
                 {userSuggestions.map((sug, i) => (
                   <button
                     key={i}
                     type="button"
                     onClick={() => setEmail(sug)}
-                    className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 border border-white/[0.06] hover:border-cyan-500/30 transition"
+                    className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 hover:border-neutral-700 transition"
                   >
                     {sug}
                   </button>
@@ -370,21 +397,21 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           </div>
 
           {/* 3. Credentials (UUID / Password / WireGuard Key) */}
-          <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4">
+          <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                  <Key className="w-3.5 h-3.5" />
+                <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                  <Key className="w-3 h-3 text-amber-400" />
                 </div>
-                <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
+                <span className="text-xs font-semibold text-neutral-200 tracking-wide uppercase">
                   {isWireGuard ? 'Client WireGuard Public Key (Base64)' : isTrojan || isShadowsocks ? 'Client Password / Shared Key' : 'Client UUID Key'}
                 </span>
               </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 font-medium">
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 text-neutral-300 border border-neutral-800 font-medium">
                 {isWireGuard ? 'CURVE25519' : isTrojan || isShadowsocks ? 'SECRET' : 'UUIDv4'}
               </span>
             </div>
-            <p className="text-[11px] text-zinc-400 mb-3 font-normal">
+            <p className="text-[11px] text-neutral-400 mb-3 font-normal">
               {isWireGuard
                 ? 'Client 32-byte Base64 Public Key required by WireGuard tunnel for peer verification.'
                 : 'Cryptographic authentication credential required by clients to establish connections.'}
@@ -398,7 +425,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   value={uuid}
                   onChange={(e) => setUuid(e.target.value)}
                   placeholder={isWireGuard ? 'Client 32-byte Base64 Public Key' : isTrojan ? 'Enter password' : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'}
-                  className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-amber-300/90 font-mono focus:outline-none focus:border-amber-500/50 transition"
+                  className="w-full px-3.5 py-2.5 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-neutral-200 font-mono focus:outline-none focus:border-neutral-600 transition"
                 />
               </div>
 
@@ -406,7 +433,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               <button
                 type="button"
                 onClick={handleCopyKey}
-                className="px-3 py-2.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono"
+                className="px-3 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 hover:text-white transition flex items-center gap-1.5 text-xs font-mono"
                 title="Copy Key"
               >
                 {copiedKey ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -418,7 +445,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setUuid(generateUuid())}
-                  className="px-3 py-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  className="px-3 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 transition flex items-center gap-1.5 text-xs font-mono font-medium"
                   title="Generate UUID"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
@@ -430,10 +457,10 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 <button
                   type="button"
                   onClick={handleGenerateWireGuardKeys}
-                  className="px-3 py-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/25 text-blue-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  className="px-3 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 transition flex items-center gap-1.5 text-xs font-mono font-medium"
                   title="Generate WireGuard Curve25519 Keypair"
                 >
-                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-blue-400" />
                   <span>WG Key</span>
                 </button>
               )}
@@ -442,10 +469,10 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setUuid(generateAlphanumericPassword(16))}
-                  className="px-3 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  className="px-3 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 transition flex items-center gap-1.5 text-xs font-mono font-medium"
                   title="Generate Password"
                 >
-                  <Key className="w-3.5 h-3.5" />
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
                   <span>Pass</span>
                 </button>
               )}
@@ -454,10 +481,10 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                 <button
                   type="button"
                   onClick={() => setUuid(generateBase64Key(16))}
-                  className="px-3 py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/20 text-cyan-400 transition flex items-center gap-1.5 text-xs font-mono font-medium"
+                  className="px-3 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-200 transition flex items-center gap-1.5 text-xs font-mono font-medium"
                   title="Generate SS2022 Base64 Key"
                 >
-                  <Key className="w-3.5 h-3.5" />
+                  <Key className="w-3.5 h-3.5 text-amber-400" />
                   <span>SS2022</span>
                 </button>
               )}
@@ -465,24 +492,24 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           </div>
 
           {/* 4. Quota & Lifespan Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* Traffic Quota */}
-            <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4 flex flex-col justify-between">
+            <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-                      <Database className="w-3.5 h-3.5" />
+                    <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                      <Database className="w-3 h-3 text-emerald-400" />
                     </div>
-                    <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
+                    <span className="text-xs font-semibold text-neutral-200 tracking-wide uppercase">
                       Traffic Quota
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 text-neutral-300 border border-neutral-800 font-medium">
                     BANDWIDTH
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mb-3 font-normal">
+                <p className="text-[11px] text-neutral-400 mb-3 font-normal">
                   Maximum gigabytes allowed before client is suspended.
                 </p>
 
@@ -493,25 +520,25 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     value={quotaGB}
                     onChange={(e) => setQuotaGB(Number(e.target.value))}
                     placeholder="0 = Unlimited"
-                    className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-emerald-500/50 pr-12 transition"
+                    className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 pr-12 transition"
                   />
-                  <span className="absolute right-3.5 top-2.5 text-xs font-mono text-zinc-400">
+                  <span className="absolute right-3.5 top-2 text-xs font-mono text-neutral-400">
                     GB
                   </span>
                 </div>
               </div>
 
               {/* Quota Presets */}
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/[0.04]">
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-850">
                 {quotaPresets.map((qp) => (
                   <button
                     key={qp.val}
                     type="button"
                     onClick={() => setQuotaGB(qp.val)}
-                    className={`text-[10px] font-mono px-2 py-1 rounded-lg border transition ${
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${
                       quotaGB === qp.val
-                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300 font-semibold shadow-sm'
-                        : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05]'
+                        ? 'bg-white text-black font-semibold border-white'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                     }`}
                   >
                     {qp.label}
@@ -521,22 +548,22 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             </div>
 
             {/* Validity Days */}
-            <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4 flex flex-col justify-between">
+            <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4 flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
-                      <Calendar className="w-3.5 h-3.5" />
+                    <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                      <Calendar className="w-3 h-3 text-rose-400" />
                     </div>
-                    <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
+                    <span className="text-xs font-semibold text-neutral-200 tracking-wide uppercase">
                       Validity Lifespan
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 font-medium">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 text-neutral-300 border border-neutral-800 font-medium">
                     EXPIRY
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mb-3 font-normal">
+                <p className="text-[11px] text-neutral-400 mb-3 font-normal">
                   Active access duration in days before token expiration.
                 </p>
 
@@ -547,25 +574,25 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     value={expiryDays}
                     onChange={(e) => setExpiryDays(Number(e.target.value))}
                     placeholder="0 = Permanent"
-                    className="w-full px-3.5 py-2.5 bg-[#08090d] border border-white/[0.1] rounded-xl text-xs text-white font-mono focus:outline-none focus:border-rose-500/50 pr-14 transition"
+                    className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 pr-14 transition"
                   />
-                  <span className="absolute right-3.5 top-2.5 text-xs font-mono text-zinc-400">
+                  <span className="absolute right-3.5 top-2 text-xs font-mono text-neutral-400">
                     Days
                   </span>
                 </div>
               </div>
 
               {/* Duration Presets */}
-              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-white/[0.04]">
+              <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-850">
                 {durationPresets.map((dp) => (
                   <button
                     key={dp.val}
                     type="button"
                     onClick={() => setExpiryDays(dp.val)}
-                    className={`text-[10px] font-mono px-2 py-1 rounded-lg border transition ${
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${
                       expiryDays === dp.val
-                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-300 font-semibold shadow-sm'
-                        : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05]'
+                        ? 'bg-white text-black font-semibold border-white'
+                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
                     }`}
                   >
                     {dp.label}
@@ -576,9 +603,9 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           </div>
 
           {/* Expiry Date Live Indicator Banner */}
-          <div className="px-3.5 py-2 rounded-xl bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-[11px] font-mono">
-            <div className="flex items-center gap-2 text-zinc-400">
-              <Clock className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="px-3.5 py-2 rounded-xl bg-neutral-950 border border-neutral-850 flex items-center justify-between text-[11px] font-mono">
+            <div className="flex items-center gap-2 text-neutral-400">
+              <Clock className="w-3.5 h-3.5 text-blue-400" />
               <span>Calculated Expiration:</span>
             </div>
             <span className={expiryDays > 0 ? 'text-amber-400 font-medium' : 'text-emerald-400 font-medium'}>
@@ -588,21 +615,21 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
           {/* 5. Flow Transmission (For VLESS) */}
           {isVless && (
-            <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4">
+            <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-                    <Zap className="w-3.5 h-3.5" />
+                  <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
+                    <Zap className="w-3 h-3 text-blue-400" />
                   </div>
-                  <span className="text-xs font-semibold text-zinc-200 tracking-wide uppercase">
+                  <span className="text-xs font-semibold text-neutral-200 tracking-wide uppercase">
                     Flow Transmission Steering
                   </span>
                 </div>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 font-medium">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-neutral-900 text-neutral-300 border border-neutral-800 font-medium">
                   XTLS VISION
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 mb-3 font-normal">
+              <p className="text-[11px] text-neutral-400 mb-3 font-normal">
                 Packet steering mechanism for direct TLS 1.3 splice and anti-DPI firewall evasion.
               </p>
 
@@ -611,17 +638,17 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   onClick={() => setFlow('xtls-rprx-vision')}
                   className={`p-3.5 rounded-xl border cursor-pointer transition flex flex-col justify-between ${
                     flow === 'xtls-rprx-vision'
-                      ? 'bg-indigo-500/10 border-indigo-500/40 shadow-inner shadow-indigo-500/10'
-                      : 'bg-[#08090d] border-white/[0.06] hover:border-white/10 opacity-75 hover:opacity-100'
+                      ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10'
+                      : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-mono font-bold text-white">xtls-rprx-vision</span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-semibold">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">
                       RECOMMENDED
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
+                  <p className="text-[10px] text-neutral-400 leading-relaxed mt-1">
                     Zero-overhead direct TCP splice for REALITY & TLS. Optimal performance and stealth.
                   </p>
                 </div>
@@ -630,17 +657,17 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                   onClick={() => setFlow('none')}
                   className={`p-3.5 rounded-xl border cursor-pointer transition flex flex-col justify-between ${
                     flow === 'none'
-                      ? 'bg-zinc-700/20 border-white/30 shadow-inner'
-                      : 'bg-[#08090d] border-white/[0.06] hover:border-white/10 opacity-75 hover:opacity-100'
+                      ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10'
+                      : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-xs font-mono font-bold text-white">none</span>
-                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/10 text-zinc-400 border border-white/10 font-semibold">
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-400 border border-neutral-800 font-medium">
                       STANDARD
                     </span>
                   </div>
-                  <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
+                  <p className="text-[10px] text-neutral-400 leading-relaxed mt-1">
                     Standard raw proxy forwarding without XTLS flow injection (useful for non-TLS transports).
                   </p>
                 </div>
@@ -649,7 +676,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
           )}
 
           {/* 6. Account Status Toggle */}
-          <div className="bg-[#0f1118]/80 rounded-xl border border-white/[0.06] p-4 flex items-center justify-between">
+          <div className="bg-neutral-950 rounded-xl border border-neutral-850 p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-lg flex items-center justify-center border transition ${
                 enable 
@@ -660,8 +687,8 @@ export const ClientModal: React.FC<ClientModalProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-white">Account Provisioning State</span>
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-semibold border ${
+                  <span className="text-xs font-semibold text-white">Account Provisioning State</span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-md font-semibold border ${
                     enable 
                       ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                       : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
@@ -669,7 +696,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
                     {enable ? 'ACTIVE' : 'SUSPENDED'}
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-400 mt-0.5">
+                <p className="text-[11px] text-neutral-400 mt-0.5">
                   {enable 
                     ? 'Client credentials are fully active and permitted to establish connections.' 
                     : 'Client credentials will be rejected by the server firewall.'}
@@ -680,31 +707,31 @@ export const ClientModal: React.FC<ClientModalProps> = ({
             <button
               type="button"
               onClick={() => setEnable(!enable)}
-              className={`w-12 h-6 rounded-full transition-colors relative focus:outline-none p-1 ${
-                enable ? 'bg-cyan-500' : 'bg-zinc-700'
+              className={`w-11 h-6 rounded-full transition-colors relative focus:outline-none p-0.5 ${
+                enable ? 'bg-emerald-500' : 'bg-neutral-700'
               }`}
             >
               <div
-                className={`w-4 h-4 rounded-full bg-white transition-transform ${
-                  enable ? 'translate-x-6' : 'translate-x-0'
+                className={`w-5 h-5 rounded-full bg-white shadow-md transition-transform ${
+                  enable ? 'translate-x-5' : 'translate-x-0'
                 }`}
               />
             </button>
           </div>
 
           {/* Action Footer */}
-          <div className="pt-4 border-t border-white/[0.08] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-neutral-800 flex items-center justify-end gap-2.5">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-white/[0.08] hover:bg-white/5 text-xs text-zinc-400 hover:text-white transition font-medium"
+              className="px-4 py-2 rounded-xl border border-neutral-800 hover:bg-neutral-800 text-xs text-neutral-400 hover:text-white transition-all duration-150 active:scale-95 cursor-pointer font-semibold"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 via-blue-600 to-indigo-600 hover:from-cyan-400 hover:to-blue-500 text-white font-medium rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition flex items-center gap-2 disabled:opacity-50"
+              className="px-5 py-2 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-xl text-xs shadow-sm transition flex items-center gap-2 disabled:opacity-50"
             >
               {isSubmitting ? (
                 <>

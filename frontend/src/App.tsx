@@ -222,11 +222,40 @@ export function App() {
     setIsCheckingUpdates(false);
   }, [notify]);
 
-  const refreshAll = useCallback(async () => {
+  const [justRefreshed, setJustRefreshed] = useState(false);
+
+  const refreshAll = useCallback(async (isManual: boolean = false) => {
     setIsRefreshing(true);
-    await Promise.all([fetchStatus(), fetchInbounds(), fetchCertificates(), fetchUpdates()]);
-    setIsRefreshing(false);
-  }, [fetchStatus, fetchInbounds, fetchCertificates, fetchUpdates]);
+    const minDelay = isManual ? new Promise((res) => setTimeout(res, 750)) : Promise.resolve();
+    try {
+      await Promise.all([fetchStatus(), fetchInbounds(), fetchCertificates(), fetchUpdates(), minDelay]);
+      if (isManual) {
+        setJustRefreshed(true);
+        notify.success('Telemetry Synchronized', 'System metrics, inbound traffic, and core state updated.');
+        setTimeout(() => setJustRefreshed(false), 1600);
+      }
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [fetchStatus, fetchInbounds, fetchCertificates, fetchUpdates, notify]);
+
+  // Global Keyboard Shortcut: Press 'R' to refresh data
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'r' || e.key === 'R') {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) {
+          return;
+        }
+        if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+          e.preventDefault();
+          refreshAll(true);
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [refreshAll]);
 
   // Periodic Refresh
   useEffect(() => {
@@ -588,8 +617,9 @@ export function App() {
               ? 'Configure routing interfaces and ports'
               : undefined
           }
-          onRefresh={refreshAll}
+          onRefresh={() => refreshAll(true)}
           isRefreshing={isRefreshing}
+          justRefreshed={justRefreshed}
           publicIP={status.publicIP}
           showPublicIP={showPublicIP}
           onToggleShowPublicIP={handleToggleShowPublicIP}

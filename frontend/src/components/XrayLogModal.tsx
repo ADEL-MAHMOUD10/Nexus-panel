@@ -30,6 +30,7 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
   const { notify } = useNotification();
   const [logs, setLogs] = useState<XrayLogEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [justRefreshed, setJustRefreshed] = useState(false);
   const [search, setSearch] = useState('');
   const [level, setLevel] = useState<string>('all'); // all, error, warning, info, access
   const [count, setCount] = useState<number>(100);
@@ -37,19 +38,28 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
   const [copied, setCopied] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
-  const fetchLogs = useCallback(async () => {
+  const fetchLogs = useCallback(async (isManual: boolean = false) => {
     try {
       setLoading(true);
-      const res = await api.get(`/api/server/xraylogs?count=${count}&filter=${encodeURIComponent(search)}&level=${level}`);
+      const minDelay = isManual ? new Promise((res) => setTimeout(res, 750)) : Promise.resolve();
+      const [res] = await Promise.all([
+        api.get(`/api/server/xraylogs?count=${count}&filter=${encodeURIComponent(search)}&level=${level}`),
+        minDelay
+      ]);
       if (res.data && res.data.logs) {
         setLogs(res.data.logs);
+      }
+      if (isManual) {
+        setJustRefreshed(true);
+        notify.success('Kernel Logs Synced', `Fetched latest ${count} kernel log entries.`);
+        setTimeout(() => setJustRefreshed(false), 1600);
       }
     } catch (e: any) {
       // ignore transient polling errors
     } finally {
       setLoading(false);
     }
-  }, [count, search, level]);
+  }, [count, search, level, notify]);
 
   // Initial and reactive fetch
   useEffect(() => {
@@ -109,29 +119,48 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
     URL.revokeObjectURL(url);
   };
 
+  // Close on Escape key press
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-fadeIn">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-md animate-in fade-in duration-200 cursor-pointer"
+    >
       <div 
-        className="w-full max-w-5xl h-[88vh] bg-[#090a0f] border border-white/[0.12] rounded-2xl shadow-2xl flex flex-col overflow-hidden relative"
+        className="w-full max-w-5xl h-[88vh] bg-white dark:bg-[#161617] border border-neutral-200/80 dark:border-neutral-800 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative animate-in zoom-in-95 duration-200 cursor-default"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Terminal Header */}
-        <div className="px-5 py-4 border-b border-white/[0.08] bg-[#0c0d14] flex flex-wrap items-center justify-between gap-3 shrink-0">
+        <div className="px-5 py-4 border-b border-neutral-200/80 dark:border-neutral-800 bg-white dark:bg-[#161617] flex flex-wrap items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
+            <div className="w-8 h-8 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-800 dark:text-white">
               <Terminal className="w-4 h-4" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-white tracking-wide">Xray Core Kernel Logs</h3>
-                <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                <h3 className="text-sm font-bold text-neutral-900 dark:text-white tracking-tight">Xray Core Kernel Logs</h3>
+                <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-ping" />
                   LIVE STREAM
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-500 font-mono">
+              <p className="text-[11px] text-neutral-500 dark:text-neutral-400 font-mono font-medium">
                 Real-time stdout/stderr event stream and client access records
               </p>
             </div>
@@ -142,10 +171,10 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
               title={autoRefresh ? 'Pause Auto-Refresh' : 'Resume Auto-Refresh'}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition border flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all duration-150 border flex items-center gap-1.5 active:scale-95 cursor-pointer ${
                 autoRefresh
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
-                  : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white'
+                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20'
+                  : 'bg-neutral-100 hover:bg-neutral-200 dark:bg-zinc-800 text-neutral-600 dark:text-zinc-400 border-neutral-200 dark:border-zinc-700 hover:text-neutral-900 dark:hover:text-white'
               }`}
             >
               {autoRefresh ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
@@ -153,25 +182,41 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
             </button>
 
             <button
-              onClick={fetchLogs}
-              title="Refresh Logs Now"
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition"
+              type="button"
+              onClick={() => fetchLogs(true)}
+              disabled={loading}
+              title="Refresh logs now"
+              className={`group/refresh p-2 rounded-xl border transition-all duration-200 active:scale-90 cursor-pointer shadow-xs flex items-center justify-center ${
+                justRefreshed
+                  ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 shadow-emerald-500/10'
+                  : loading
+                  ? 'bg-neutral-100 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-300 border-neutral-200 dark:border-neutral-700'
+                  : 'bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900/80 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700'
+              }`}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
+              {justRefreshed ? (
+                <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400 animate-in zoom-in-50 duration-150" />
+              ) : (
+                <RefreshCw
+                  className={`w-3.5 h-3.5 transition-transform duration-300 ${
+                    loading ? 'animate-spin text-neutral-800 dark:text-white' : 'group-hover/refresh:rotate-90 group-hover/refresh:scale-110'
+                  }`}
+                />
+              )}
             </button>
 
             <button
               onClick={handleCopyLogs}
               title="Copy to Clipboard"
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition"
+              className="p-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white border border-neutral-200 dark:border-neutral-800 transition-all duration-150 active:scale-90 cursor-pointer"
             >
-              {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+              {copied ? <Check className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
 
             <button
               onClick={handleDownloadLogs}
               title="Download Logs"
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-300 hover:text-white border border-white/10 transition"
+              className="p-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900 dark:hover:bg-neutral-800 text-neutral-700 hover:text-neutral-900 dark:text-neutral-300 dark:hover:text-white border border-neutral-200 dark:border-neutral-800 transition-all duration-150 active:scale-90 cursor-pointer"
             >
               <Download className="w-3.5 h-3.5" />
             </button>
@@ -179,40 +224,44 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
             <button
               onClick={handleClearLogs}
               title="Clear Log View"
-              className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/25 transition"
+              className="p-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-500/25 transition-all duration-150 active:scale-90 cursor-pointer"
             >
               <Trash2 className="w-3.5 h-3.5" />
             </button>
 
+            {/* Tactile Rotating Close Button */}
             <button
+              type="button"
               onClick={onClose}
-              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white border border-white/10 transition ml-1"
+              title="Close modal (Esc)"
+              className="group/close p-1.5 rounded-xl text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-900/60 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800/80 hover:border-neutral-300 dark:hover:border-neutral-700 transition-all duration-200 active:scale-90 flex items-center gap-1.5 cursor-pointer ml-1 shadow-xs"
             >
-              <X className="w-4 h-4" />
+              <span className="hidden sm:inline text-[10px] font-mono font-semibold text-neutral-500 group-hover/close:text-neutral-700 dark:group-hover/close:text-neutral-300">Esc</span>
+              <X className="w-4 h-4 transition-transform duration-200 group-hover/close:rotate-90 group-hover/close:scale-110" />
             </button>
           </div>
         </div>
 
         {/* Filter and Control Bar */}
-        <div className="px-5 py-2.5 bg-[#08090e] border-b border-white/[0.06] flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs">
+        <div className="px-5 py-2.5 bg-neutral-50 dark:bg-[#0a0b0e] border-b border-neutral-200/80 dark:border-neutral-800 flex flex-wrap items-center justify-between gap-3 shrink-0 text-xs">
           {/* Level Filter Tabs */}
           <div className="flex items-center gap-1">
             {[
-              { id: 'all', label: 'All Events', color: 'zinc' },
-              { id: 'error', label: 'Errors', color: 'rose' },
-              { id: 'warning', label: 'Warnings', color: 'amber' },
-              { id: 'info', label: 'Info', color: 'cyan' },
-              { id: 'access', label: 'Connections', color: 'emerald' },
+              { id: 'all', label: 'All Events' },
+              { id: 'error', label: 'Errors' },
+              { id: 'warning', label: 'Warnings' },
+              { id: 'info', label: 'Info' },
+              { id: 'access', label: 'Connections' },
             ].map((lvl) => {
               const active = level === lvl.id;
               return (
                 <button
                   key={lvl.id}
                   onClick={() => setLevel(lvl.id)}
-                  className={`px-2.5 py-1 rounded-lg font-mono text-[11px] transition border ${
+                  className={`px-2.5 py-1 rounded-lg font-mono text-[11px] transition border cursor-pointer ${
                     active
-                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40 font-semibold'
-                      : 'bg-white/[0.02] text-zinc-400 hover:text-zinc-200 border-white/[0.06] hover:bg-white/[0.05]'
+                      ? 'bg-neutral-900 dark:bg-white text-white dark:text-neutral-950 border-neutral-900 dark:border-white font-semibold shadow-xs'
+                      : 'bg-white dark:bg-neutral-900 text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-white border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800'
                   }`}
                 >
                   {lvl.label}
@@ -224,20 +273,20 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
           {/* Search & Row Count */}
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="w-3 h-3 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <Search className="w-3 h-3 text-neutral-400 dark:text-neutral-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
                 placeholder="Filter IP, port, email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-7 pr-3 py-1 bg-[#05060a] border border-white/[0.08] focus:border-cyan-500/40 rounded-lg text-[11px] text-white placeholder-zinc-600 focus:outline-none font-mono w-48 transition"
+                className="pl-7 pr-3 py-1 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 focus:border-neutral-400 dark:focus:border-neutral-600 rounded-lg text-[11px] text-neutral-900 dark:text-white placeholder-neutral-400 dark:placeholder-neutral-600 focus:outline-none font-mono w-48 transition"
               />
             </div>
 
             <select
               value={count}
               onChange={(e) => setCount(Number(e.target.value))}
-              className="px-2 py-1 bg-[#05060a] border border-white/[0.08] rounded-lg text-[11px] text-zinc-300 font-mono focus:outline-none"
+              className="px-2 py-1 bg-white dark:bg-neutral-950 border border-neutral-200 dark:border-neutral-800 rounded-lg text-[11px] text-neutral-700 dark:text-neutral-300 font-mono focus:outline-none cursor-pointer"
             >
               <option value={50}>50 lines</option>
               <option value={100}>100 lines</option>
@@ -249,44 +298,44 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Terminal Body */}
-        <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed bg-[#05060a] text-zinc-300 space-y-1 select-text">
+        <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] leading-relaxed bg-neutral-50/50 dark:bg-[#05060a] text-neutral-800 dark:text-zinc-300 space-y-1 select-text">
           {logs.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center text-zinc-600 space-y-2">
-              <Terminal className="w-8 h-8 opacity-40 text-zinc-500" />
+            <div className="h-full flex flex-col items-center justify-center text-neutral-400 dark:text-zinc-600 space-y-2">
+              <Terminal className="w-8 h-8 opacity-40 text-neutral-400 dark:text-zinc-500" />
               <p className="text-xs">No Xray log entries match the current filter.</p>
-              <p className="text-[10px] text-zinc-700">Events appear dynamically as proxy connections occur.</p>
+              <p className="text-[10px] text-neutral-400 dark:text-zinc-700">Events appear dynamically as proxy connections occur.</p>
             </div>
           ) : (
             logs.map((item, idx) => {
               const lvl = (item.level || 'info').toLowerCase();
-              let badgeColor = 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20';
+              let badgeColor = 'text-blue-600 dark:text-blue-400 bg-blue-500/10 border-blue-500/20';
               let rowHighlight = '';
 
               if (lvl === 'error') {
-                badgeColor = 'text-rose-400 bg-rose-500/15 border-rose-500/30';
-                rowHighlight = 'bg-rose-500/[0.04] text-rose-200';
+                badgeColor = 'text-rose-600 dark:text-rose-400 bg-rose-500/15 border-rose-500/30';
+                rowHighlight = 'bg-rose-500/[0.04] text-rose-700 dark:text-rose-200';
               } else if (lvl === 'warning' || lvl === 'warn') {
-                badgeColor = 'text-amber-400 bg-amber-500/15 border-amber-500/30';
-                rowHighlight = 'bg-amber-500/[0.03] text-amber-200';
+                badgeColor = 'text-amber-600 dark:text-amber-400 bg-amber-500/15 border-amber-500/30';
+                rowHighlight = 'bg-amber-500/[0.03] text-amber-700 dark:text-amber-200';
               } else if (lvl === 'access') {
-                badgeColor = 'text-emerald-400 bg-emerald-500/15 border-emerald-500/30';
-                rowHighlight = 'bg-emerald-500/[0.02] text-emerald-200';
+                badgeColor = 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/15 border-emerald-500/30';
+                rowHighlight = 'bg-emerald-500/[0.02] text-emerald-700 dark:text-emerald-200';
               } else if (lvl === 'debug') {
-                badgeColor = 'text-zinc-400 bg-zinc-800 border-zinc-700';
+                badgeColor = 'text-neutral-600 dark:text-zinc-400 bg-neutral-200 dark:bg-zinc-800 border-neutral-300 dark:border-zinc-700';
               }
 
               return (
                 <div
                   key={item.id || idx}
-                  className={`flex items-start gap-2.5 py-1 px-2 rounded-lg hover:bg-white/[0.03] transition-colors group ${rowHighlight}`}
+                  className={`flex items-start gap-2.5 py-1 px-2 rounded-lg hover:bg-neutral-100 dark:hover:bg-white/[0.03] transition-colors group ${rowHighlight}`}
                 >
                   {/* Line Number */}
-                  <span className="text-zinc-600 select-none text-[10px] w-8 text-right shrink-0 pt-0.5">
+                  <span className="text-neutral-400 dark:text-zinc-600 select-none text-[10px] w-8 text-right shrink-0 pt-0.5">
                     {idx + 1}
                   </span>
 
                   {/* Timestamp */}
-                  <span className="text-zinc-500 shrink-0 select-none text-[10px] pt-0.5">
+                  <span className="text-neutral-500 dark:text-zinc-500 shrink-0 select-none text-[10px] pt-0.5">
                     {item.timestamp || '00:00:00'}
                   </span>
 
@@ -296,7 +345,7 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
                   </span>
 
                   {/* Log Content */}
-                  <span className="break-all flex-1 text-zinc-200">
+                  <span className="break-all flex-1 text-neutral-800 dark:text-zinc-200 font-medium">
                     {item.message || item.raw}
                   </span>
                 </div>
@@ -307,15 +356,15 @@ export const XrayLogModal: React.FC<XrayLogModalProps> = ({ isOpen, onClose }) =
         </div>
 
         {/* Terminal Footer */}
-        <div className="px-5 py-2.5 bg-[#090a10] border-t border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-zinc-500 shrink-0">
+        <div className="px-5 py-2.5 bg-neutral-100/80 dark:bg-[#090a10] border-t border-neutral-200/80 dark:border-white/[0.06] flex items-center justify-between text-[11px] font-mono text-neutral-600 dark:text-zinc-500 shrink-0">
           <div className="flex items-center gap-3">
             <span>Buffer: {logs.length} events loaded</span>
             <span>•</span>
-            <span className="text-zinc-400">Level: {level.toUpperCase()}</span>
+            <span className="text-neutral-700 dark:text-zinc-400">Level: {level.toUpperCase()}</span>
           </div>
-          <div className="flex items-center gap-2 text-zinc-400">
+          <div className="flex items-center gap-2 text-neutral-600 dark:text-zinc-400">
             <span>Auto-Refresh:</span>
-            <span className={autoRefresh ? 'text-emerald-400 font-semibold' : 'text-zinc-600'}>
+            <span className={autoRefresh ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-neutral-400 dark:text-zinc-600'}>
               {autoRefresh ? 'Active (2.5s)' : 'Paused'}
             </span>
           </div>
