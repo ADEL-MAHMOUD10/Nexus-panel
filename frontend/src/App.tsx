@@ -21,12 +21,44 @@ import { LoginPage } from './pages/LoginPage';
 import { BackgroundCanvas } from './components/BackgroundCanvas';
 import { useNotification } from './context/NotificationContext';
 import { useConfirm } from './context/ConfirmContext';
+import { getTabFromPath, getPathFromTab, getTitleFromTab, getSubtitleFromTab } from './router/routes';
 
 export function App() {
   const { notify } = useNotification();
   const confirm = useConfirm();
   const [token, setToken] = useState<string | null>(localStorage.getItem('nexus_token'));
-  const [activeTab, setActiveTab] = useState<string>('overview');
+  const [activeTab, setActiveTabState] = useState<string>(() => {
+    return getTabFromPath(window.location.pathname);
+  });
+
+  // Dedicated navigation function that synchronizes React state, browser URL, and document title
+  const handleNavigate = useCallback((tab: string, replace = false) => {
+    setActiveTabState(tab);
+    const newPath = getPathFromTab(tab);
+    if (window.location.pathname !== newPath) {
+      if (replace) {
+        window.history.replaceState({ tab }, '', newPath);
+      } else {
+        window.history.pushState({ tab }, '', newPath);
+      }
+    }
+    document.title = getTitleFromTab(tab);
+  }, []);
+
+  // Browser back/forward navigation listener and initial title hydration
+  useEffect(() => {
+    const handlePopState = () => {
+      const tab = getTabFromPath(window.location.pathname);
+      setActiveTabState(tab);
+      document.title = getTitleFromTab(tab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    document.title = getTitleFromTab(activeTab);
+
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeTab]);
+
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRestartingXray, setIsRestartingXray] = useState(false);
@@ -572,7 +604,7 @@ export function App() {
       {/* Sleek Sidebar with Mobile Drawer support & PC Hover/Pin behavior */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigate}
         xrayRunning={status.xrayRunning}
         onlineCount={onlineCount}
         inboundsCount={inbounds.length}
@@ -612,13 +644,7 @@ export function App() {
               ? 'Core Engine Configuration'
               : 'Xray Logs'
           }
-          subtitle={
-            activeTab === 'overview'
-              ? 'Live system telemetry & network analytics'
-              : activeTab === 'inbounds'
-              ? 'Configure routing interfaces and ports'
-              : undefined
-          }
+          subtitle={getSubtitleFromTab(activeTab)}
           onRefresh={() => refreshAll(true)}
           isRefreshing={isRefreshing}
           justRefreshed={justRefreshed}
@@ -642,7 +668,7 @@ export function App() {
               <DashboardPage
                 status={status}
                 inbounds={inbounds}
-                onNavigateTab={setActiveTab}
+                onNavigateTab={handleNavigate}
                 formatBytes={formatBytes}
                 formatSpeed={formatSpeed}
                 updates={updates}
@@ -713,7 +739,7 @@ export function App() {
         {/* Mobile Quick Bottom Navigation */}
         <MobileBottomNav
           activeTab={activeTab}
-          setActiveTab={setActiveTab}
+          setActiveTab={handleNavigate}
           onlineCount={onlineCount}
           inboundsCount={inbounds.length}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}

@@ -251,21 +251,28 @@ func main() {
 		_, _ = w.Write(htmlBytes)
 	}
 
-	// Distinct Panel Page Endpoints
+	// Distinct Panel Page Endpoints (Deep-linking)
 	panelRoutes := []string{
-		"GET /panel",
-		"GET /panel/",
-		"GET /panel/inbounds",
-		"GET /panel/clients",
-		"GET /panel/logs",
-		"GET /panel/config",
-		"GET /panel/settings",
-		"GET /panel/updates",
+		"GET /dashboard",
 		"GET /inbounds",
 		"GET /clients",
-		"GET /logs",
+		"GET /certificates",
 		"GET /config",
+		"GET /logs",
+		"GET /backup",
+		"GET /login",
 		"GET /settings",
+		"GET /panel",
+		"GET /panel/",
+		"GET /panel/dashboard",
+		"GET /panel/inbounds",
+		"GET /panel/clients",
+		"GET /panel/certificates",
+		"GET /panel/config",
+		"GET /panel/settings",
+		"GET /panel/logs",
+		"GET /panel/backup",
+		"GET /panel/updates",
 	}
 	for _, pr := range panelRoutes {
 		mux.HandleFunc(pr, serveUI)
@@ -300,9 +307,12 @@ func main() {
 		serveUI(w, r)
 	})
 
+	// Wrap with enterprise security headers, panic recovery, and request telemetry
+	productionHandler := api.PanicRecovery(api.SecurityHeaders(api.RequestLogger(mux)))
+
 	srv := &http.Server{
 		Addr:    ":" + webPort,
-		Handler: mux,
+		Handler: productionHandler,
 	}
 
 	go func() {

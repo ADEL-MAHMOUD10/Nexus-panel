@@ -89,6 +89,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/logout", s.handleLogout)
 
 	// Inbounds & Clients (Protected)
+	mux.HandleFunc("GET /api/inbounds", s.authMiddleware(s.handleListInbounds))
 	mux.HandleFunc("GET /api/inbounds/list", s.authMiddleware(s.handleListInbounds))
 	mux.HandleFunc("GET /panel/api/inbounds/list", s.authMiddleware(s.handleListInbounds))
 
@@ -96,6 +97,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/inbounds/{id}", s.authMiddleware(s.handleGetInbound))
 	mux.HandleFunc("GET /panel/api/inbounds/get/{id}", s.authMiddleware(s.handleGetInbound))
 
+	mux.HandleFunc("POST /api/inbounds", s.authMiddleware(s.handleCreateInbound))
 	mux.HandleFunc("POST /api/inbounds/create", s.authMiddleware(s.handleCreateInbound))
 	mux.HandleFunc("POST /api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
 	mux.HandleFunc("POST /panel/api/inbounds/add", s.authMiddleware(s.handleCreateInbound))
@@ -122,6 +124,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/inbounds/del/{id}", s.authMiddleware(s.handleDeleteInbound))
 
 	// Clients
+	mux.HandleFunc("GET /api/clients", s.authMiddleware(s.handleListClients))
 	mux.HandleFunc("GET /api/clients/list", s.authMiddleware(s.handleListClients))
 	mux.HandleFunc("GET /panel/api/clients/list", s.authMiddleware(s.handleListClients))
 	mux.HandleFunc("GET /api/clients/link/{id}", s.authMiddleware(s.handleGetClientLink))
@@ -131,6 +134,7 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/inbounds/link/{id}", s.authMiddleware(s.handleGetInboundLink))
 	mux.HandleFunc("GET /panel/api/inbounds/link/{id}", s.authMiddleware(s.handleGetInboundLink))
 
+	mux.HandleFunc("POST /api/clients", s.authMiddleware(s.handleCreateClient))
 	mux.HandleFunc("POST /api/clients/create", s.authMiddleware(s.handleCreateClient))
 	mux.HandleFunc("POST /api/clients/add", s.authMiddleware(s.handleCreateClient))
 	mux.HandleFunc("POST /panel/api/clients/add", s.authMiddleware(s.handleCreateClient))
@@ -158,6 +162,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/clients/onlines", s.authMiddleware(s.handleGetOnlineClients))
 
 	// System Status & Core Controls
+	mux.HandleFunc("GET /api/dashboard", s.authMiddleware(s.handleServerStatus))
+	mux.HandleFunc("GET /api/dashboard/stats", s.authMiddleware(s.handleServerStatus))
 	mux.HandleFunc("GET /api/server/status", s.authMiddleware(s.handleServerStatus))
 	mux.HandleFunc("GET /panel/api/server/status", s.authMiddleware(s.handleServerStatus))
 
@@ -180,6 +186,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/server/stop-xray", s.authMiddleware(s.handleStopXray))
 	mux.HandleFunc("POST /panel/api/server/stop-xray", s.authMiddleware(s.handleStopXray))
 
+	mux.HandleFunc("GET /api/logs", s.authMiddleware(s.handleGetLogs))
+	mux.HandleFunc("GET /api/logs/system", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("GET /api/server/logs", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("POST /api/server/logs", s.authMiddleware(s.handleGetLogs))
 	mux.HandleFunc("POST /api/server/logs/{count}", s.authMiddleware(s.handleGetLogs))
@@ -188,12 +196,14 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/server/logs/{count}", s.authMiddleware(s.handleGetLogs))
 
 	// Xray Core Live Logs & Telemetry Metrics Matrix
+	mux.HandleFunc("GET /api/logs/xray", s.authMiddleware(s.handleGetXrayLogs))
 	mux.HandleFunc("GET /api/server/xraylogs", s.authMiddleware(s.handleGetXrayLogs))
 	mux.HandleFunc("POST /api/server/xraylogs", s.authMiddleware(s.handleGetXrayLogs))
 	mux.HandleFunc("GET /api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
 	mux.HandleFunc("POST /api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
 	mux.HandleFunc("GET /panel/api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
 	mux.HandleFunc("POST /panel/api/server/xraylogs/{count}", s.authMiddleware(s.handleGetXrayLogs))
+	mux.HandleFunc("POST /api/logs/clear", s.authMiddleware(s.handleClearXrayLogs))
 	mux.HandleFunc("POST /api/server/clear-xraylogs", s.authMiddleware(s.handleClearXrayLogs))
 	mux.HandleFunc("POST /panel/api/server/clear-xraylogs", s.authMiddleware(s.handleClearXrayLogs))
 
@@ -201,6 +211,10 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /panel/api/server/xraymetrics", s.authMiddleware(s.handleGetXrayMetrics))
 	mux.HandleFunc("GET /panel/api/server/xrayMetricsState", s.authMiddleware(s.handleGetXrayMetrics))
 
+	mux.HandleFunc("GET /api/config", s.authMiddleware(s.handleGetConfig))
+	mux.HandleFunc("GET /api/config/raw", s.authMiddleware(s.handleGetConfig))
+	mux.HandleFunc("POST /api/config", s.authMiddleware(s.handleSaveConfig))
+	mux.HandleFunc("POST /api/config/apply", s.authMiddleware(s.handleSaveConfig))
 	mux.HandleFunc("GET /api/server/config", s.authMiddleware(s.handleGetConfig))
 	mux.HandleFunc("POST /api/server/config", s.authMiddleware(s.handleSaveConfig))
 	mux.HandleFunc("GET /panel/api/server/config", s.authMiddleware(s.handleGetConfig))
@@ -211,6 +225,9 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/crypto/shadowsocks-key", s.authMiddleware(s.handleGenerateShadowsocksKey))
 
 	// SSL Certificate Management
+	mux.HandleFunc("GET /api/certificates", s.authMiddleware(s.handleListCertificates))
+	mux.HandleFunc("GET /api/certificates/list", s.authMiddleware(s.handleListCertificates))
+	mux.HandleFunc("POST /api/certificates/issue", s.authMiddleware(s.handleIssueCertificate))
 	mux.HandleFunc("GET /api/server/certificates", s.authMiddleware(s.handleListCertificates))
 	mux.HandleFunc("GET /panel/api/server/certificates", s.authMiddleware(s.handleListCertificates))
 	mux.HandleFunc("POST /api/server/get-cert", s.authMiddleware(s.handleGetCertificate))
@@ -219,6 +236,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /panel/api/server/issue-cert", s.authMiddleware(s.handleIssueCertificate))
 
 	// Database Backup & Disaster Recovery Restore
+	mux.HandleFunc("GET /api/backup", s.authMiddleware(s.handleExportBackup))
+	mux.HandleFunc("POST /api/backup/restore", s.authMiddleware(s.handleImportBackup))
 	mux.HandleFunc("GET /api/server/backup", s.authMiddleware(s.handleExportBackup))
 	mux.HandleFunc("GET /panel/api/server/backup", s.authMiddleware(s.handleExportBackup))
 	mux.HandleFunc("GET /panel/api/server/getDb", s.authMiddleware(s.handleExportBackup))
@@ -2581,34 +2600,76 @@ func (s *Server) getRealPublicIP(r *http.Request) string {
 
 func (s *Server) handleListEndpoints(w http.ResponseWriter, r *http.Request) {
 	endpoints := []map[string]any{
-		{"method": "POST", "path": "/api/auth/login", "auth": false, "description": "Authenticate user and get session token"},
-		{"method": "POST", "path": "/api/auth/logout", "auth": true, "description": "Invalidate current session"},
-		{"method": "GET",  "path": "/api/server/status", "auth": true, "description": "System hardware telemetry, load, network IO and Xray core status"},
-		{"method": "GET",  "path": "/api/server/logs", "auth": true, "description": "Panel and Xray core logs with count, level, and syslog parameters"},
-		{"method": "POST", "path": "/api/server/restart-panel", "auth": true, "description": "Restart Nexus Web Management Panel"},
-		{"method": "POST", "path": "/api/server/restart-xray", "auth": true, "description": "Restart Xray core service process"},
-		{"method": "POST", "path": "/api/server/stop-xray", "auth": true, "description": "Stop Xray core service process"},
-		{"method": "GET",  "path": "/api/server/check-updates", "auth": true, "description": "Check latest available releases for Nexus Panel and Xray core"},
-		{"method": "POST", "path": "/api/server/update-panel", "auth": true, "description": "Trigger automated remote upgrade for Nexus Panel"},
-		{"method": "POST", "path": "/api/server/update-xray", "auth": true, "description": "Trigger automated remote upgrade for Xray core"},
-		{"method": "GET",  "path": "/api/server/config", "auth": true, "description": "Get current raw Xray JSON config"},
-		{"method": "POST", "path": "/api/server/config", "auth": true, "description": "Save and hot-apply new raw Xray JSON config"},
-		{"method": "GET",  "path": "/api/inbounds/list", "auth": true, "description": "List all configured inbounds and active clients"},
-		{"method": "GET",  "path": "/api/inbounds/get/{id}", "auth": true, "description": "Get specific inbound by ID"},
-		{"method": "POST", "path": "/api/inbounds/create", "auth": true, "description": "Create a new proxy inbound"},
-		{"method": "POST", "path": "/api/inbounds/delete", "auth": true, "description": "Delete inbound by ID in body or URL path (/api/inbounds/del/{id})"},
-		{"method": "POST", "path": "/api/clients/create", "auth": true, "description": "Add new client credential to an inbound"},
-		{"method": "POST", "path": "/api/clients/update", "auth": true, "description": "Update client parameters (traffic limit, expiry date, enable)"},
-		{"method": "POST", "path": "/api/clients/delete", "auth": true, "description": "Delete client by ID or email (/api/clients/del/{email})"},
-		{"method": "POST", "path": "/api/clients/reset-traffic", "auth": true, "description": "Reset client traffic consumption"},
-		{"method": "GET",  "path": "/api/crypto/reality-keys", "auth": true, "description": "Generate new x25519 REALITY key pair"},
-		{"method": "GET",  "path": "/sub/{subId}", "auth": false, "description": "Fetch subscription configuration profiles for client devices"},
+		// Authentication
+		{"domain": "Auth", "method": "POST", "path": "/api/auth/login", "auth": false, "description": "Authenticate user credentials and receive session token"},
+		{"domain": "Auth", "method": "POST", "path": "/api/auth/logout", "auth": true, "description": "Invalidate current active session"},
+
+		// Dashboard & Status Page
+		{"domain": "Dashboard", "method": "GET",  "path": "/api/dashboard/stats", "auth": true, "description": "System hardware load, uptime, network I/O rates, and Xray core status"},
+		{"domain": "Dashboard", "method": "GET",  "path": "/api/server/status", "auth": true, "description": "Telemetry status data (CPU, RAM, SWAP, storage, network speeds)"},
+		{"domain": "Dashboard", "method": "GET",  "path": "/api/server/xraymetrics", "auth": true, "description": "Real-time Xray gRPC telemetry and traffic matrix"},
+
+		// Inbounds Page
+		{"domain": "Inbounds", "method": "GET",  "path": "/api/inbounds", "auth": true, "description": "List all configured inbounds and active clients"},
+		{"domain": "Inbounds", "method": "GET",  "path": "/api/inbounds/list", "auth": true, "description": "List all configured inbounds (legacy alias)"},
+		{"domain": "Inbounds", "method": "GET",  "path": "/api/inbounds/{id}", "auth": true, "description": "Get detailed inbound configuration by ID"},
+		{"domain": "Inbounds", "method": "POST", "path": "/api/inbounds/create", "auth": true, "description": "Create a new proxy listener inbound"},
+		{"domain": "Inbounds", "method": "POST", "path": "/api/inbounds/update/{id}", "auth": true, "description": "Update inbound configuration with hot-reload"},
+		{"domain": "Inbounds", "method": "POST", "path": "/api/inbounds/delete/{id}", "auth": true, "description": "Delete inbound and disconnect listeners"},
+		{"domain": "Inbounds", "method": "POST", "path": "/api/inbounds/toggle/{id}", "auth": true, "description": "Enable or disable inbound port listener"},
+		{"domain": "Inbounds", "method": "POST", "path": "/api/inbounds/reset-traffic/{id}", "auth": true, "description": "Reset traffic consumption counter for inbound"},
+		{"domain": "Inbounds", "method": "POST", "path": "/api/inbounds/clone/{id}", "auth": true, "description": "Duplicate inbound configuration to a new port"},
+		{"domain": "Inbounds", "method": "GET",  "path": "/api/inbounds/check-port", "auth": true, "description": "Port Guard diagnostic scan for collisions and firewall status"},
+
+		// Clients Page
+		{"domain": "Clients", "method": "GET",  "path": "/api/clients", "auth": true, "description": "Aggregated list of all clients across all inbounds"},
+		{"domain": "Clients", "method": "POST", "path": "/api/clients/create", "auth": true, "description": "Add new client credentials to an inbound"},
+		{"domain": "Clients", "method": "POST", "path": "/api/clients/update/{email}", "auth": true, "description": "Update client parameters (quota limit, expiry, enable)"},
+		{"domain": "Clients", "method": "POST", "path": "/api/clients/delete/{email}", "auth": true, "description": "Delete client and close active connections"},
+		{"domain": "Clients", "method": "POST", "path": "/api/clients/toggle/{id}", "auth": true, "description": "Enable or suspend client access"},
+		{"domain": "Clients", "method": "POST", "path": "/api/clients/reset-traffic/{email}", "auth": true, "description": "Reset individual client traffic consumption"},
+		{"domain": "Clients", "method": "POST", "path": "/api/clients/bulk", "auth": true, "description": "Perform bulk operations (enable, disable, delete, reset traffic)"},
+		{"domain": "Clients", "method": "GET",  "path": "/api/clients/onlines", "auth": true, "description": "Query currently active connected clients"},
+		{"domain": "Clients", "method": "GET",  "path": "/api/clients/link/{email}", "auth": true, "description": "Export connection URI and subscription link for client"},
+
+		// Certificates Page
+		{"domain": "Certificates", "method": "GET",  "path": "/api/certificates", "auth": true, "description": "List SSL/TLS certificates, domain SANs, and expiry dates"},
+		{"domain": "Certificates", "method": "POST", "path": "/api/certificates/issue", "auth": true, "description": "Automated ACME Let's Encrypt / ZeroSSL certificate issuance"},
+
+		// Core Configuration Page
+		{"domain": "Config", "method": "GET",  "path": "/api/config/raw", "auth": true, "description": "Get current raw Xray JSON config"},
+		{"domain": "Config", "method": "POST", "path": "/api/config/apply", "auth": true, "description": "Save and hot-apply new raw Xray JSON config"},
+		{"domain": "Config", "method": "POST", "path": "/api/server/restart-xray", "auth": true, "description": "Restart Xray core service process"},
+		{"domain": "Config", "method": "POST", "path": "/api/server/stop-xray", "auth": true, "description": "Stop Xray core service process"},
+
+		// Logs Page
+		{"domain": "Logs", "method": "GET",  "path": "/api/logs/system", "auth": true, "description": "Nexus daemon operational logs"},
+		{"domain": "Logs", "method": "GET",  "path": "/api/logs/xray", "auth": true, "description": "Live Xray core kernel access and error stream"},
+		{"domain": "Logs", "method": "POST", "path": "/api/logs/clear", "auth": true, "description": "Clear live log buffers"},
+
+		// Database Backup & Disaster Recovery
+		{"domain": "Backup", "method": "GET",  "path": "/api/backup", "auth": true, "description": "Download 1-click SQLite database export archive"},
+		{"domain": "Backup", "method": "POST", "path": "/api/backup/restore", "auth": true, "description": "Restore database from backup file with schema migration"},
+
+		// Cryptography & Keys
+		{"domain": "Crypto", "method": "GET",  "path": "/api/crypto/reality-keys", "auth": true, "description": "Generate new x25519 REALITY key pair"},
+		{"domain": "Crypto", "method": "GET",  "path": "/api/crypto/wireguard-keys", "auth": true, "description": "Generate WireGuard curve25519 keys"},
+		{"domain": "Crypto", "method": "GET",  "path": "/api/crypto/shadowsocks-key", "auth": true, "description": "Generate 256-bit ShadowSocks cryptographic key"},
+
+		// System Updates
+		{"domain": "Updates", "method": "GET",  "path": "/api/server/check-updates", "auth": true, "description": "Check latest available releases for Nexus Panel and Xray core"},
+		{"domain": "Updates", "method": "POST", "path": "/api/server/update-panel", "auth": true, "description": "Trigger automated remote upgrade for Nexus Panel"},
+		{"domain": "Updates", "method": "POST", "path": "/api/server/update-xray", "auth": true, "description": "Trigger automated remote upgrade for Xray core"},
+
+		// Client Subscription
+		{"domain": "Subscription", "method": "GET",  "path": "/sub/{subId}", "auth": false, "description": "Fetch subscription configuration profiles for client devices"},
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{
 		"success":   true,
-		"service":   "Nexus Control Panel API",
+		"service":   "Nexus Control Panel Production API",
 		"version":   GetPanelVersion(),
+		"total":     len(endpoints),
 		"endpoints": endpoints,
 	})
 }
