@@ -240,20 +240,20 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           {/* Quick Metrics */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="px-3 py-1.5 rounded-xl bg-neutral-950 border border-neutral-850 flex items-center gap-2">
-              <Users className="w-3.5 h-3.5 text-neutral-400" />
+            <div className="px-3 py-1.5 rounded-xl bg-neutral-950 border border-neutral-850 hover:border-neutral-750 hover:bg-neutral-900/60 transition-all flex items-center gap-2 cursor-default group">
+              <Users className="w-3.5 h-3.5 text-neutral-400 group-hover:text-neutral-200 transition-colors" />
               <span className="text-xs text-neutral-400">Total Clients:</span>
               <span className="text-xs font-mono font-semibold text-white">{allClients.length}</span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 hover:border-emerald-500/40 hover:bg-emerald-500/15 transition-all flex items-center gap-2 cursor-default">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span className="text-xs text-emerald-400 font-medium">Online Live:</span>
               <span className="text-xs font-mono font-semibold text-emerald-400">{onlineCount}</span>
             </div>
 
-            <div className="px-3 py-1.5 rounded-xl bg-neutral-950 border border-neutral-850 flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 text-blue-400" />
+            <div className="px-3 py-1.5 rounded-xl bg-neutral-950 border border-neutral-850 hover:border-neutral-750 hover:bg-neutral-900/60 transition-all flex items-center gap-2 cursor-default group">
+              <Zap className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
               <span className="text-xs text-neutral-400">Total Transferred:</span>
               <span className="text-xs font-mono font-semibold text-neutral-200">{formatBytes(totalTrafficTransferred)}</span>
             </div>
@@ -262,7 +262,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
           {/* New Client Button */}
           <button
             onClick={onOpenAddClient}
-            className="px-4 py-2 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition active:scale-98 shrink-0"
+            className="px-4 py-2 bg-white hover:bg-neutral-200 text-neutral-950 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95 cursor-pointer hover:shadow-md shrink-0"
           >
             <Plus className="w-4 h-4 stroke-[2.5]" />
             <span>New Client</span>
@@ -354,7 +354,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
             <button
               onClick={() => handleBatchAction('enable')}
               disabled={isBatchProcessing}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <Power className="w-3.5 h-3.5" />
               <span>Enable</span>
@@ -363,7 +363,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
             <button
               onClick={() => handleBatchAction('disable')}
               disabled={isBatchProcessing}
-              className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 text-xs font-medium flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded-lg bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 text-neutral-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <PowerOff className="w-3.5 h-3.5 text-neutral-400" />
               <span>Disable</span>
@@ -372,7 +372,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
             <button
               onClick={() => handleBatchAction('reset-traffic')}
               disabled={isBatchProcessing}
-              className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 text-amber-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Traffic</span>
@@ -381,7 +381,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
             <button
               onClick={() => handleBatchAction('delete')}
               disabled={isBatchProcessing}
-              className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-1.5 transition"
+              className="px-3 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
             >
               <Trash2 className="w-3.5 h-3.5" />
               <span>Delete</span>
@@ -389,7 +389,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
 
             <button
               onClick={() => setSelectedIds([])}
-              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/[0.08] rounded-lg transition ml-2"
+              className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/[0.08] rounded-lg transition-all cursor-pointer active:scale-90 ml-2"
               title="Clear selection"
             >
               <X className="w-3.5 h-3.5" />
@@ -398,17 +398,17 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
         </div>
       )}
 
-      {/* 3. Real-Time Clients Data Table (Borderless) */}
-      <div className="bg-[#0c0d10] rounded-2xl shadow-sm overflow-hidden">
-        {filtered.length === 0 ? (
-          <div className="py-20 text-center text-neutral-500 text-xs font-sans">
-            <Users className="w-10 h-10 text-neutral-600 mx-auto mb-3 opacity-60" />
-            <span>No client accounts found matching the criteria.</span>
-          </div>
-        ) : (
-          <>
-            {/* Desktop Table View (>= md screens) */}
-            <div className="hidden md:block overflow-x-auto">
+      {/* 3. Real-Time Clients Data Table & Cards */}
+      {filtered.length === 0 ? (
+        <div className="bg-[#0c0d10] rounded-2xl shadow-sm p-16 text-center text-neutral-500 text-xs font-sans border border-neutral-850/60">
+          <Users className="w-10 h-10 text-neutral-600 mx-auto mb-3 opacity-60" />
+          <span>No client accounts found matching the criteria.</span>
+        </div>
+      ) : (
+        <>
+          {/* Desktop Table View (>= md screens) */}
+          <div className="hidden md:block bg-[#0c0d10] rounded-2xl shadow-sm overflow-hidden border border-neutral-850/60">
+            <div className="overflow-x-auto">
             <table className="w-full text-left text-xs whitespace-nowrap">
               <thead>
                 <tr className="border-b border-neutral-800/80 text-neutral-400 font-mono text-[11px] bg-neutral-950/60">
@@ -516,7 +516,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                           <button
                             onClick={() => onShareClient(client, inbound)}
                             title="QR Code & Subscription Link"
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.08] transition-all cursor-pointer active:scale-90 hover:scale-110"
                           >
                             <QrCode className="w-3.5 h-3.5" />
                           </button>
@@ -525,7 +525,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                           <button
                             onClick={() => setInspectClient({ client, inbound })}
                             title="Inspect Client Details"
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 transition cursor-pointer"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all cursor-pointer active:scale-90 hover:scale-110"
                           >
                             <Info className="w-3.5 h-3.5" />
                           </button>
@@ -534,7 +534,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                           <button
                             onClick={() => onResetClientTraffic(client.id)}
                             title="Reset Traffic Counters"
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all cursor-pointer active:scale-90 hover:scale-110"
                           >
                             <RotateCcw className="w-3.5 h-3.5" />
                           </button>
@@ -543,7 +543,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                           <button
                             onClick={() => onOpenEditClient(client)}
                             title="Edit Client"
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 transition"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all cursor-pointer active:scale-90 hover:scale-110"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
@@ -552,7 +552,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                           <button
                             onClick={() => onDeleteClient(client.id)}
                             title="Delete Client"
-                            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer active:scale-90 hover:scale-110"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -725,241 +725,265 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
               </tbody>
             </table>
           </div>
+        </div>
 
-          {/* Mobile Card List View (< md screens) */}
-          <div className="block md:hidden divide-y divide-neutral-850">
-            {/* Mobile Select All Bar */}
-            <div className="p-3 bg-neutral-950 border-b border-neutral-850 flex items-center justify-between text-xs">
-              <button
-                onClick={handleSelectAll}
-                className="flex items-center gap-2 text-neutral-300 font-mono text-xs"
-              >
-                {selectedIds.length > 0 && selectedIds.length === filtered.length ? (
-                  <CheckSquare className="w-4 h-4 text-blue-500" />
-                ) : (
-                  <Square className="w-4 h-4 text-neutral-500" />
-                )}
-                <span>Select All ({filtered.length})</span>
-              </button>
-              {selectedIds.length > 0 && (
-                <span className="text-[11px] font-mono text-blue-400 font-medium">
-                  {selectedIds.length} selected
-                </span>
+        {/* Mobile Card List View (< md screens) */}
+        <div className="block md:hidden space-y-3.5">
+          {/* Mobile Select All Bar */}
+          <div className="p-3 bg-[#0c0d10] border border-neutral-800/80 rounded-2xl flex items-center justify-between text-xs shadow-xs">
+            <button
+              onClick={handleSelectAll}
+              className="flex items-center gap-2 text-neutral-300 hover:text-white font-mono text-xs cursor-pointer select-none transition-colors"
+            >
+              {selectedIds.length > 0 && selectedIds.length === filtered.length ? (
+                <CheckSquare className="w-4 h-4 text-blue-500" />
+              ) : (
+                <Square className="w-4 h-4 text-neutral-500 hover:text-neutral-400" />
               )}
-            </div>
+              <span>Select All ({filtered.length})</span>
+            </button>
+            {selectedIds.length > 0 && (
+              <span className="text-[11px] font-mono text-blue-400 font-medium px-2 py-0.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                {selectedIds.length} selected
+              </span>
+            )}
+          </div>
 
-            {filtered.map(({ client, inbound }) => {
-              const used = (client.up || 0) + (client.down || 0);
-              const isDepleted = client.total > 0 && used >= client.total;
-              const isExpired = client.expiryTime > 0 && now > client.expiryTime;
-              const isSelected = selectedIds.includes(client.id);
-              const remainingBytes = client.total > 0 ? Math.max(0, client.total - used) : 0;
+          {filtered.map(({ client, inbound }) => {
+            const used = (client.up || 0) + (client.down || 0);
+            const isDepleted = client.total > 0 && used >= client.total;
+            const isExpired = client.expiryTime > 0 && now > client.expiryTime;
+            const isSelected = selectedIds.includes(client.id);
+            const remainingBytes = client.total > 0 ? Math.max(0, client.total - used) : 0;
 
-              let durationLabel = '∞';
-              if (client.expiryTime > 0) {
-                const diffSec = client.expiryTime - now;
-                if (diffSec <= 0) {
-                  durationLabel = 'Expired';
-                } else {
-                  const diffDays = Math.floor(diffSec / 86400);
-                  const diffHours = Math.floor((diffSec % 86400) / 3600);
-                  durationLabel = diffDays > 0 ? `${diffDays}d left` : `${diffHours}h left`;
-                }
+            let durationLabel = '∞';
+            if (client.expiryTime > 0) {
+              const diffSec = client.expiryTime - now;
+              if (diffSec <= 0) {
+                durationLabel = 'Expired';
+              } else {
+                const diffDays = Math.floor(diffSec / 86400);
+                const diffHours = Math.floor((diffSec % 86400) / 3600);
+                durationLabel = diffDays > 0 ? `${diffDays}d left` : `${diffHours}h left`;
               }
+            }
 
-              const percent = client.total > 0 ? Math.min(100, Math.round((used / client.total) * 100)) : 0;
-              const upSpeed = client.upSpeed || 0;
-              const downSpeed = client.downSpeed || 0;
+            const percent = client.total > 0 ? Math.min(100, Math.round((used / client.total) * 100)) : 0;
+            const upSpeed = client.upSpeed || 0;
+            const downSpeed = client.downSpeed || 0;
 
-              return (
-                <div
-                  key={`mobile-${client.id}`}
-                  className={`p-4 space-y-3 transition-colors ${
-                    isSelected ? 'bg-neutral-850/60' : 'bg-transparent hover:bg-neutral-900/30'
-                  }`}
-                >
-                  {/* Top Row: Checkbox, Name, Online Badge, Switch */}
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-2.5">
-                      <button
-                        onClick={() => handleToggleSelect(client.id)}
-                        className="p-1 text-neutral-500 hover:text-neutral-200 transition mt-0.5"
-                      >
-                        {isSelected ? (
-                          <CheckSquare className="w-4 h-4 text-blue-500" />
-                        ) : (
-                          <Square className="w-4 h-4" />
-                        )}
-                      </button>
-                      <div>
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-semibold text-white text-sm tracking-tight">
+            return (
+              <div
+                key={`mobile-${client.id}`}
+                className={`p-4 rounded-2xl border transition-all duration-200 space-y-3.5 shadow-xs ${
+                  isSelected
+                    ? 'bg-[#0f141f] border-blue-500/50 ring-1 ring-blue-500/20 shadow-md shadow-blue-500/5'
+                    : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-[#0e0f14] hover:shadow-lg hover:shadow-black/25'
+                }`}
+              >
+                {/* Top Row: Checkbox, Name, Online Badge, Switch */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-2.5">
+                    <button
+                      onClick={() => handleToggleSelect(client.id)}
+                      className="p-1 -ml-1 text-neutral-500 hover:text-white hover:bg-neutral-800/60 rounded-lg transition-all duration-150 cursor-pointer active:scale-90 mt-0.5"
+                      title={isSelected ? 'Deselect client' : 'Select client'}
+                    >
+                      {isSelected ? (
+                        <CheckSquare className="w-4 h-4 text-blue-500" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div
+                          onClick={() => handleCopy(client.email, `email-${client.id}`)}
+                          className="group/name cursor-pointer inline-flex items-center gap-1.5 select-none"
+                          title="Click to copy username"
+                        >
+                          <span className="font-semibold text-white text-sm tracking-tight group-hover/name:text-blue-400 transition-colors">
                             {client.email}
                           </span>
-                          {client.isOnline ? (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                              Online
-                            </span>
+                          {copiedKey === `email-${client.id}` ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400 animate-in zoom-in-50 duration-150" />
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-mono text-neutral-500 bg-neutral-900 border border-neutral-800">
-                              <span className="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
-                              Offline
-                            </span>
+                            <Copy className="w-3.5 h-3.5 text-neutral-600 opacity-0 group-hover/name:opacity-100 group-hover/name:text-neutral-300 transition-all duration-150" />
                           )}
                         </div>
-                        {/* Attached Inbound Pill */}
-                        <div className="flex items-center gap-1.5 text-[11px] font-mono text-neutral-400 mt-1">
-                          <span className="px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-200 border border-neutral-800 font-bold">
-                            :{inbound.port}
+                        {client.isOnline ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 hover:border-emerald-500/40 hover:scale-105 transition-all select-none cursor-default">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                            Online
                           </span>
-                          <span className="truncate max-w-[120px]">{inbound.remark || inbound.tag}</span>
-                          <span className="uppercase text-[9px] px-1 py-0.2 rounded bg-neutral-900 text-neutral-300 border border-neutral-800">
-                            {inbound.protocol}
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono text-neutral-500 bg-neutral-900 border border-neutral-800 hover:border-neutral-700 hover:text-neutral-400 transition-all select-none cursor-default">
+                            <span className="w-1.5 h-1.5 rounded-full bg-neutral-600"></span>
+                            Offline
                           </span>
-                        </div>
+                        )}
+                      </div>
+                      {/* Attached Inbound Pill */}
+                      <div className="flex items-center gap-1.5 text-[11px] font-mono text-neutral-400 mt-1.5 flex-wrap">
+                        <button
+                          onClick={() => handleCopy(String(inbound.port), `port-${client.id}`)}
+                          className="px-2 py-0.5 rounded bg-neutral-900 hover:bg-neutral-800 text-neutral-200 hover:text-blue-400 border border-neutral-800 hover:border-neutral-750 font-bold active:scale-95 transition-all cursor-pointer"
+                          title="Click to copy port"
+                        >
+                          :{inbound.port}
+                        </button>
+                        <span
+                          className="truncate max-w-[140px] text-neutral-400 hover:text-neutral-200 cursor-default transition-colors"
+                          title={inbound.remark || inbound.tag}
+                        >
+                          {inbound.remark || inbound.tag}
+                        </span>
+                        <span className="uppercase text-[9px] px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 hover:border-neutral-700 hover:text-white transition-colors cursor-default select-none font-medium">
+                          {inbound.protocol}
+                        </span>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Enabled Switch */}
+                  {/* Enabled Switch */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleEnable(client)}
+                    disabled={togglingClientId === client.id}
+                    className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-200 ease-in-out focus:outline-none hover:ring-2 hover:ring-blue-500/40 hover:scale-105 active:scale-95 ${
+                      client.enable ? 'bg-blue-600' : 'bg-neutral-800 hover:bg-neutral-750'
+                    } ${togglingClientId === client.id ? 'opacity-50' : ''}`}
+                    title={client.enable ? 'Click to disable client' : 'Click to enable client'}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        client.enable ? 'translate-x-4' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                </div>
+
+                {/* Speed Row (when online) */}
+                {client.isOnline && (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-neutral-950/80 border border-neutral-850 hover:border-neutral-750 hover:bg-neutral-900/50 transition-all text-xs font-mono cursor-default">
+                    <span className="text-neutral-400 flex items-center gap-1.5 text-[11px]">
+                      <Activity className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+                      Live Speed:
+                    </span>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      <span className="text-emerald-400 hover:brightness-125 transition-all flex items-center gap-0.5">
+                        <ArrowUpRight className="w-3 h-3" />
+                        {formatSpeed ? formatSpeed(upSpeed) : formatBytes(upSpeed) + '/s'}
+                      </span>
+                      <span className="text-neutral-600">/</span>
+                      <span className="text-blue-400 hover:brightness-125 transition-all flex items-center gap-0.5">
+                        <ArrowDownLeft className="w-3 h-3" />
+                        {formatSpeed ? formatSpeed(downSpeed) : formatBytes(downSpeed) + '/s'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Traffic Bar */}
+                <div className="p-2.5 rounded-xl bg-neutral-950/50 border border-neutral-850/60 hover:border-neutral-750 hover:bg-neutral-950/80 transition-all duration-150 space-y-2 cursor-default group/traffic">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-neutral-400 group-hover/traffic:text-neutral-300 transition-colors">Traffic:</span>
+                    <span className="text-neutral-200 group-hover/traffic:text-white transition-colors font-medium">
+                      {formatBytes(used)} / {client.total > 0 ? formatBytes(client.total) : '∞'}
+                      {client.total > 0 && <span className="text-neutral-500 text-[10px] ml-1">({percent}%)</span>}
+                    </span>
+                  </div>
+                  <div className="w-full bg-neutral-800/80 h-1.5 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all duration-300 ${
+                        isDepleted
+                          ? 'bg-rose-500'
+                          : percent > 85
+                          ? 'bg-amber-400'
+                          : 'bg-blue-500'
+                      }`}
+                      style={{ width: `${client.total > 0 ? percent : Math.min(100, (used / (100 * 1024 * 1024 * 1024)) * 100)}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500">
+                    <span className="flex items-center gap-1 hover:text-emerald-400 transition-colors">
+                      <ArrowUpRight className="w-2.5 h-2.5 text-emerald-400" /> {formatBytes(client.up || 0)}
+                    </span>
+                    <span className="flex items-center gap-1 hover:text-blue-400 transition-colors">
+                      <ArrowDownLeft className="w-2.5 h-2.5 text-blue-400" /> {formatBytes(client.down || 0)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Remaining & Duration Chips */}
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-850/80 hover:border-neutral-700 hover:bg-neutral-900/70 hover:shadow-xs transition-all duration-150 cursor-default group/quota">
+                    <span className="text-[10px] text-neutral-500 group-hover/quota:text-neutral-400 transition-colors block">Remaining Quota</span>
+                    <span className={`font-medium transition-colors ${isDepleted ? 'text-rose-400' : 'text-neutral-200 group-hover/quota:text-white'}`}>
+                      {client.total > 0 ? formatBytes(remainingBytes) : '∞ Unlimited'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-neutral-950/70 border border-neutral-850/80 hover:border-neutral-700 hover:bg-neutral-900/70 hover:shadow-xs transition-all duration-150 cursor-default group/dur">
+                    <span className="text-[10px] text-neutral-500 group-hover/dur:text-neutral-400 transition-colors block">Duration / Expiry</span>
+                    <span className={`font-medium transition-colors ${isExpired ? 'text-rose-400' : 'text-neutral-200 group-hover/dur:text-white'}`}>
+                      {durationLabel}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Mobile Action Buttons */}
+                <div className="flex items-center justify-between pt-2.5 border-t border-neutral-850/80">
+                  <div className="flex items-center gap-2">
                     <button
-                      type="button"
-                      onClick={() => handleToggleEnable(client)}
-                      disabled={togglingClientId === client.id}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        client.enable ? 'bg-blue-600' : 'bg-neutral-800'
-                      } ${togglingClientId === client.id ? 'opacity-50' : ''}`}
+                      onClick={() => onShareClient(client, inbound)}
+                      className="px-3 py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-white text-xs font-medium flex items-center gap-1.5 border border-neutral-800 hover:border-neutral-700 transition-all duration-150 cursor-pointer active:scale-95 hover:shadow-sm group/btn"
                     >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                          client.enable ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
+                      <QrCode className="w-3.5 h-3.5 text-neutral-400 group-hover/btn:text-white group-hover/btn:scale-110 transition-all" />
+                      <span>QR & Link</span>
+                    </button>
+
+                    <button
+                      onClick={() => setInspectClient({ client, inbound })}
+                      className="px-3 py-1.5 rounded-xl bg-neutral-900/90 hover:bg-neutral-800 text-neutral-200 hover:text-blue-400 text-xs font-medium flex items-center gap-1.5 border border-neutral-800 hover:border-neutral-700 transition-all duration-150 cursor-pointer active:scale-95 hover:shadow-sm group/btn"
+                    >
+                      <Info className="w-3.5 h-3.5 text-blue-400 group-hover/btn:scale-110 transition-transform" />
+                      <span>Details</span>
                     </button>
                   </div>
 
-                  {/* Speed Row (when online) */}
-                  {client.isOnline && (
-                    <div className="flex items-center justify-between p-2 rounded-xl bg-neutral-950 border border-neutral-850 text-xs font-mono">
-                      <span className="text-neutral-400 flex items-center gap-1 text-[11px]">
-                        <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                        Live Speed:
-                      </span>
-                      <div className="flex items-center gap-1.5 text-[11px]">
-                        <span className="text-emerald-400 flex items-center gap-0.5">
-                          <ArrowUpRight className="w-3 h-3" />
-                          {formatSpeed(upSpeed)}
-                        </span>
-                        <span className="text-neutral-600">/</span>
-                        <span className="text-blue-400 flex items-center gap-0.5">
-                          <ArrowDownLeft className="w-3 h-3" />
-                          {formatSpeed(downSpeed)}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => onResetClientTraffic(client.id)}
+                      title="Reset Traffic Counters"
+                      className="p-2 rounded-xl text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/20 border border-transparent transition-all duration-150 cursor-pointer active:scale-90 hover:scale-110"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
 
-                  {/* Traffic Bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs font-mono">
-                      <span className="text-neutral-400">Traffic:</span>
-                      <span className="text-neutral-200 font-medium">
-                        {formatBytes(used)} / {client.total > 0 ? formatBytes(client.total) : '∞'}
-                        {client.total > 0 && <span className="text-neutral-500 text-[10px] ml-1">({percent}%)</span>}
-                      </span>
-                    </div>
-                    <div className="w-full bg-neutral-800/80 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className={`h-full rounded-full transition-all duration-300 ${
-                          isDepleted
-                            ? 'bg-rose-500'
-                            : percent > 85
-                            ? 'bg-amber-400'
-                            : 'bg-blue-500'
-                        }`}
-                        style={{ width: `${client.total > 0 ? percent : Math.min(100, (used / (100 * 1024 * 1024 * 1024)) * 100)}%` }}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500">
-                      <span className="flex items-center gap-0.5">
-                        <ArrowUpRight className="w-2.5 h-2.5 text-emerald-400" /> {formatBytes(client.up || 0)}
-                      </span>
-                      <span className="flex items-center gap-0.5">
-                        <ArrowDownLeft className="w-2.5 h-2.5 text-blue-400" /> {formatBytes(client.down || 0)}
-                      </span>
-                    </div>
-                  </div>
+                    <button
+                      onClick={() => onOpenEditClient(client)}
+                      title="Edit Client"
+                      className="p-2 rounded-xl text-neutral-400 hover:text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/20 border border-transparent transition-all duration-150 cursor-pointer active:scale-90 hover:scale-110"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
 
-                  {/* Remaining & Duration Chips */}
-                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
-                      <span className="text-[10px] text-neutral-500 block">Remaining Quota</span>
-                      <span className={`font-medium ${isDepleted ? 'text-rose-400' : 'text-neutral-200'}`}>
-                        {client.total > 0 ? formatBytes(remainingBytes) : '∞ Unlimited'}
-                      </span>
-                    </div>
-
-                    <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850">
-                      <span className="text-[10px] text-neutral-500 block">Duration / Expiry</span>
-                      <span className={`font-medium ${isExpired ? 'text-rose-400' : 'text-neutral-200'}`}>
-                        {durationLabel}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Mobile Action Buttons */}
-                  <div className="flex items-center justify-between pt-2 border-t border-neutral-850">
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => onShareClient(client, inbound)}
-                        className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-xs flex items-center gap-1.5 border border-neutral-800 transition"
-                      >
-                        <QrCode className="w-3.5 h-3.5 text-neutral-400" />
-                        <span>QR & Link</span>
-                      </button>
-
-                      <button
-                        onClick={() => setInspectClient({ client, inbound })}
-                        className="px-2.5 py-1 rounded-lg bg-neutral-900 hover:bg-neutral-800 text-neutral-200 text-xs flex items-center gap-1.5 border border-neutral-800 transition"
-                      >
-                        <Info className="w-3.5 h-3.5 text-blue-400" />
-                        <span>Details</span>
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => onResetClientTraffic(client.id)}
-                        title="Reset Traffic Counters"
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition"
-                      >
-                        <RotateCcw className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => onOpenEditClient(client)}
-                        title="Edit Client"
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
-                      >
-                        <Edit className="w-3.5 h-3.5" />
-                      </button>
-
-                      <button
-                        onClick={() => onDeleteClient(client.id)}
-                        title="Delete Client"
-                        className="p-1.5 rounded-lg text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 transition"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => onDeleteClient(client.id)}
+                      title="Delete Client"
+                      className="p-2 rounded-xl text-neutral-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/20 border border-transparent transition-all duration-150 cursor-pointer active:scale-90 hover:scale-110"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-      </div>
+              </div>
+            );
+          })}
+        </div>
+      </>
+    )}
 
       {/* 4. Client Details Inspection Modal */}
       {inspectClient && (
