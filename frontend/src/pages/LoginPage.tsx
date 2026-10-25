@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
 import { BackgroundCanvas } from '../components/BackgroundCanvas';
-import { ThemeToggle } from '../components/ThemeToggle';
 
 interface LoginPageProps {
   onLogin: (token: string) => void;
@@ -39,17 +38,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 relative select-none">
+    <div className="login-page-wrapper min-h-screen flex items-center justify-center p-4 relative select-none bg-[#07080b]">
       {/* Background with geometry & Nexus monogram */}
       <BackgroundCanvas />
 
-      {/* Top right theme toggle */}
-      <div className="absolute top-4 right-4 z-20">
-        <ThemeToggle />
-      </div>
-
       {/* Login Card */}
-      <div className="w-full max-w-sm bg-[#0c0d13]/85 backdrop-blur-2xl border border-white/[0.09] rounded-2xl p-7 shadow-2xl relative z-10">
+      <div className="login-card w-full max-w-sm bg-[#0c0d13]/85 backdrop-blur-2xl border border-white/[0.09] rounded-2xl p-7 shadow-2xl relative z-10">
         {/* Branding */}
         <div className="text-center mb-6">
           <div className="w-10 h-10 rounded-xl bg-zinc-100 text-zinc-950 flex items-center justify-center font-bold text-base tracking-tighter mx-auto mb-3 shadow-sm font-sans">
@@ -69,7 +63,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Username</label>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5" data-no-ui>Username</label>
             <div className="relative">
               <User className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input
@@ -84,7 +78,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-zinc-300 mb-1.5">Password</label>
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5" data-no-ui>Password</label>
             <div className="relative">
               <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500" />
               <input
@@ -101,7 +95,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLogin }) => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-medium rounded-lg text-xs transition flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+            className="w-full py-2 bg-zinc-100 hover:bg-zinc-200 text-zinc-950 font-medium rounded-lg text-xs transition flex items-center justify-center gap-2 mt-4 disabled:opacity-50 cursor-pointer"
           >
             <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
             <ArrowRight className="w-3.5 h-3.5" />

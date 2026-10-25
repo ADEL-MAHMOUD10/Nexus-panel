@@ -14,7 +14,6 @@ import {
   Pin,
   PinOff,
   ArrowUpCircle,
-  Copy,
   Check,
   ExternalLink
 } from 'lucide-react';
@@ -55,6 +54,17 @@ interface SidebarProps {
   hasUpdates?: boolean;
 }
 
+const formatShortVersion = (ver?: string) => {
+  if (!ver) return 'v1.3';
+  const hasV = ver.toLowerCase().startsWith('v');
+  const clean = ver.replace(/^[vV]/, '');
+  const parts = clean.split('.');
+  if (parts.length >= 2) {
+    return `${hasV ? 'v' : ''}${parts[0]}.${parts[1]}`;
+  }
+  return ver;
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
@@ -75,15 +85,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   hasUpdates = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
-  const [copiedIP, setCopiedIP] = useState(false);
-
-  const handleCopyIP = () => {
-    if (publicIP) {
-      navigator.clipboard.writeText(publicIP);
-      setCopiedIP(true);
-      setTimeout(() => setCopiedIP(false), 2000);
-    }
-  };
 
   // Prevent background scrolling when mobile sidebar is open
   useEffect(() => {
@@ -133,7 +134,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="flex items-center gap-1.5">
                   <span className="font-bold text-sm text-zinc-100 tracking-tight">Nexus</span>
                   <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08] font-bold">
-                    {panelVersion || 'v1.3.1'}
+                    {formatShortVersion(panelVersion)}
                   </span>
                   <a
                     href="https://github.com/ADEL-MAHMOUD10/Nexus-panel"
@@ -295,33 +296,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     Check
                   </span>
                 )}
-              </button>
-            )}
-
-            {/* Public IP Badge - Interactive Click to Copy */}
-            {publicIP && (
-              <button
-                type="button"
-                onClick={handleCopyIP}
-                className="w-full p-2.5 rounded-xl border border-neutral-200/80 dark:border-white/[0.07] bg-neutral-100/70 dark:bg-white/[0.03] hover:bg-neutral-200/80 dark:hover:bg-white/[0.07] flex items-center justify-between text-xs font-mono text-neutral-700 dark:text-zinc-400 transition-all cursor-pointer active:scale-[0.98] group select-none shadow-xs"
-                title="Click to copy Server Public IP"
-              >
-                <div className="flex items-center gap-2">
-                  <Server className="w-3.5 h-3.5 text-neutral-500 dark:text-zinc-500 group-hover:scale-110 transition-transform" />
-                  <span className="text-[11px] font-sans font-medium text-neutral-600 dark:text-zinc-400">Server IP</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[11px] text-neutral-900 dark:text-zinc-200 font-medium truncate max-w-[105px]">
-                    {publicIP}
-                  </span>
-                  {copiedIP ? (
-                    <span className="text-[10px] font-sans font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5 animate-in zoom-in-75">
-                      <Check className="w-3 h-3 stroke-[3]" /> Copied!
-                    </span>
-                  ) : (
-                    <Copy className="w-3 h-3 text-neutral-400 dark:text-zinc-500 group-hover:text-neutral-700 dark:group-hover:text-zinc-300 transition-colors" />
-                  )}
-                </div>
               </button>
             )}
 
