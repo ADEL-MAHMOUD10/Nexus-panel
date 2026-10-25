@@ -141,7 +141,7 @@ export const NotificationCenter: React.FC = () => {
           </div>
 
           {/* Notifications Scroll Area */}
-          <div className="max-h-72 sm:max-h-80 overflow-y-auto divide-y divide-neutral-200/60 dark:divide-zinc-800/60 p-1.5">
+          <div className="max-h-72 sm:max-h-80 overflow-y-auto p-2 sm:p-2.5 space-y-2">
             {filteredNotifications.length === 0 ? (
               <div className="py-8 text-center flex flex-col items-center justify-center">
                 <ShieldCheck className="w-5 h-5 text-neutral-400 dark:text-zinc-500 mb-1" />
@@ -153,10 +153,10 @@ export const NotificationCenter: React.FC = () => {
                 <div
                   key={notif.id}
                   onClick={() => markAsRead(notif.id)}
-                  className={`p-2.5 rounded-xl transition flex items-start gap-2.5 relative group cursor-pointer ${
+                  className={`p-2.5 rounded-xl transition-all flex items-start gap-2.5 relative group cursor-pointer border ${
                     notif.read 
-                      ? 'opacity-75 hover:opacity-100 hover:bg-neutral-100/70 dark:hover:bg-zinc-800/40' 
-                      : 'bg-blue-50/60 dark:bg-zinc-900/60 hover:bg-blue-50 dark:hover:bg-zinc-800/60'
+                      ? 'bg-neutral-50/70 hover:bg-neutral-100/80 border-neutral-200/70 opacity-75 hover:opacity-100 dark:bg-white/[0.02] dark:hover:bg-zinc-800/40 dark:border-white/[0.04]' 
+                      : 'bg-white hover:bg-neutral-50 border-neutral-200 dark:bg-zinc-900/70 dark:hover:bg-zinc-800/70 dark:border-zinc-800 shadow-xs'
                   }`}
                 >
                   <div className="mt-0.5 p-1 rounded-lg bg-neutral-100 dark:bg-zinc-800/80 shrink-0 border border-neutral-200/60 dark:border-transparent">

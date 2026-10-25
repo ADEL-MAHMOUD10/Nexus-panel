@@ -65,7 +65,7 @@ func GetPanelVersion() string {
 		return v
 	}
 
-	return "v1.3.0"
+	return "v1.3.1"
 }
 
 // SetInstalledPanelVersion records the newly installed version to the persistent version file
