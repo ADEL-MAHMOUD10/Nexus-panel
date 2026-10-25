@@ -33,6 +33,12 @@
             "flow": "xtls-rprx-vision",
             "email": "user_5573",
             "level": 0
+          },
+          {
+            "id": "22ffb435-2d12-4af2-ab3a-92ac00ff770b",
+            "flow": "xtls-rprx-vision",
+            "email": "user_9112",
+            "level": 0
           }
         ],
         "decryption": "none",
