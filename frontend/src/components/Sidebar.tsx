@@ -12,7 +12,8 @@ import {
   Server,
   X,
   Pin,
-  PinOff
+  PinOff,
+  ArrowUpCircle
 } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 
@@ -31,6 +32,8 @@ interface SidebarProps {
   onCloseMobile?: () => void;
   isPinned?: boolean;
   onTogglePin?: () => void;
+  onOpenUpdates?: () => void;
+  hasUpdates?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -48,6 +51,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
   isPinned = false,
   onTogglePin,
+  onOpenUpdates,
+  hasUpdates = false,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
 
@@ -224,6 +229,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
       <div className="p-2.5 border-t border-white/[0.06] space-y-2 shrink-0">
         {isExpanded ? (
           <>
+            {/* System Updates Action */}
+            {onOpenUpdates && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (onCloseMobile) onCloseMobile();
+                  onOpenUpdates();
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer select-none ${
+                  hasUpdates 
+                    ? 'bg-amber-500/15 border border-amber-500/40 text-amber-600 dark:text-amber-300 shadow-xs' 
+                    : 'bg-neutral-100/80 dark:bg-white/[0.03] border border-neutral-200 dark:border-white/[0.07] text-neutral-800 dark:text-zinc-300 hover:text-black dark:hover:text-white hover:bg-neutral-200/80 dark:hover:bg-white/[0.06]'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <ArrowUpCircle className={`w-4 h-4 shrink-0 ${hasUpdates ? 'text-amber-500 animate-pulse' : 'text-neutral-500 dark:text-zinc-400'}`} />
+                  <span className="font-semibold truncate">System Updates</span>
+                </div>
+                {hasUpdates ? (
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-amber-500 text-white dark:text-neutral-950 shrink-0">
+                    Update Ready
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-mono text-neutral-500 dark:text-zinc-400 shrink-0">
+                    Check
+                  </span>
+                )}
+              </button>
+            )}
+
             {/* Public IP Badge */}
             {publicIP && (
               <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06] flex items-center justify-between text-xs font-mono text-zinc-400">
@@ -271,6 +306,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </>
         ) : (
           <div className="space-y-1.5 flex flex-col items-center">
+            {onOpenUpdates && (
+              <button
+                type="button"
+                onClick={onOpenUpdates}
+                className={`w-full flex items-center justify-center p-2 rounded-xl transition ${
+                  hasUpdates 
+                    ? 'bg-amber-500/20 text-amber-500' 
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05]'
+                }`}
+                title={hasUpdates ? "System Update Available" : "Check for Updates"}
+              >
+                <ArrowUpCircle className="w-4 h-4" />
+              </button>
+            )}
             <ThemeToggle className="w-10 h-10 p-0 justify-center" showLabel={false} />
             <button
               onClick={() => {

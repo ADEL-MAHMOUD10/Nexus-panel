@@ -73,14 +73,15 @@ export const NotificationCenter: React.FC = () => {
       {/* Bell Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg border border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition"
+        className="relative p-2 rounded-xl border border-neutral-200/90 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 hover:bg-neutral-100 dark:hover:bg-zinc-800 text-neutral-700 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200 transition cursor-pointer select-none active:scale-95"
         title="Notifications"
+        aria-label="Notifications"
       >
-        <Bell className="w-4 h-4 text-zinc-400" />
+        <Bell className="w-4 h-4 text-neutral-600 dark:text-zinc-400" />
         
         {/* Unread Badge */}
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white font-mono">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-blue-600 text-[9px] font-bold text-white font-mono shadow-xs">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
@@ -88,13 +89,13 @@ export const NotificationCenter: React.FC = () => {
 
       {/* Dropdown Popover */}
       {isOpen && (
-        <div className="fixed sm:absolute inset-x-2.5 sm:inset-x-auto sm:right-0 top-16 sm:top-auto sm:mt-2 sm:w-96 bg-[#0c0d13]/95 backdrop-blur-2xl border border-white/[0.1] rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[80vh] sm:max-h-[32rem]">
+        <div className="fixed sm:absolute right-3 sm:right-0 top-14 sm:top-auto sm:mt-2 w-[calc(100vw-28px)] max-w-[325px] sm:w-96 bg-white/95 dark:bg-[#161617]/95 backdrop-blur-2xl border border-neutral-200/90 dark:border-white/[0.1] rounded-2xl shadow-2xl z-50 overflow-hidden flex flex-col max-h-[75vh] sm:max-h-[32rem]">
           {/* Header */}
-          <div className="p-3.5 border-b border-white/[0.07] flex items-center justify-between">
+          <div className="p-3 sm:p-3.5 border-b border-neutral-200 dark:border-white/[0.07] flex items-center justify-between bg-neutral-50/60 dark:bg-transparent">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-100">Notifications</span>
+              <span className="text-xs font-bold text-neutral-900 dark:text-zinc-100">Notifications</span>
               {unreadCount > 0 && (
-                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/[0.06] text-zinc-300 border border-white/[0.08]">
+                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-bold">
                   {unreadCount} new
                 </span>
               )}
@@ -104,7 +105,7 @@ export const NotificationCenter: React.FC = () => {
               {unreadCount > 0 && (
                 <button
                   onClick={markAllAsRead}
-                  className="p-1 rounded text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] transition"
+                  className="p-1 rounded-lg text-neutral-500 dark:text-zinc-400 hover:text-neutral-900 dark:hover:text-zinc-200 hover:bg-neutral-200/60 dark:hover:bg-white/[0.06] transition cursor-pointer"
                   title="Mark all as read"
                 >
                   <CheckCheck className="w-3.5 h-3.5" />
@@ -113,7 +114,7 @@ export const NotificationCenter: React.FC = () => {
               {notifications.length > 0 && (
                 <button
                   onClick={clearNotifications}
-                  className="p-1 rounded text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition"
+                  className="p-1 rounded-lg text-neutral-500 dark:text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-neutral-200/60 dark:hover:bg-zinc-800 transition cursor-pointer"
                   title="Clear all"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
@@ -123,15 +124,15 @@ export const NotificationCenter: React.FC = () => {
           </div>
 
           {/* Filter Pills */}
-          <div className="px-3 py-1.5 border-b border-zinc-800 bg-zinc-900/40 flex items-center gap-1 text-[11px] font-medium text-zinc-400">
+          <div className="px-3 py-1.5 border-b border-neutral-200 dark:border-zinc-800 bg-neutral-100/50 dark:bg-zinc-900/40 flex items-center gap-1 text-[11px] font-medium text-neutral-600 dark:text-zinc-400">
             {['all', 'system', 'security', 'clients'].map((cat) => (
               <button
                 key={cat}
                 onClick={() => setFilterCategory(cat)}
-                className={`px-2 py-0.5 rounded capitalize transition ${
+                className={`px-2 py-0.5 rounded-lg capitalize transition cursor-pointer ${
                   filterCategory === cat
-                    ? 'bg-zinc-800 text-white font-medium'
-                    : 'hover:text-zinc-200'
+                    ? 'bg-neutral-900 dark:bg-zinc-800 text-white font-medium shadow-xs'
+                    : 'hover:text-neutral-900 dark:hover:text-zinc-200 hover:bg-neutral-200/50 dark:hover:bg-transparent'
                 }`}
               >
                 {cat}
@@ -140,38 +141,40 @@ export const NotificationCenter: React.FC = () => {
           </div>
 
           {/* Notifications Scroll Area */}
-          <div className="max-h-80 overflow-y-auto divide-y divide-zinc-800/60 p-1.5">
+          <div className="max-h-72 sm:max-h-80 overflow-y-auto divide-y divide-neutral-200/60 dark:divide-zinc-800/60 p-1.5">
             {filteredNotifications.length === 0 ? (
               <div className="py-8 text-center flex flex-col items-center justify-center">
-                <ShieldCheck className="w-5 h-5 text-zinc-500 mb-1" />
-                <p className="text-xs font-medium text-zinc-400">All systems nominal</p>
-                <p className="text-[11px] text-zinc-500">No new alerts</p>
+                <ShieldCheck className="w-5 h-5 text-neutral-400 dark:text-zinc-500 mb-1" />
+                <p className="text-xs font-medium text-neutral-600 dark:text-zinc-400">All systems nominal</p>
+                <p className="text-[11px] text-neutral-400 dark:text-zinc-500">No new alerts</p>
               </div>
             ) : (
               filteredNotifications.map((notif) => (
                 <div
                   key={notif.id}
                   onClick={() => markAsRead(notif.id)}
-                  className={`p-2.5 rounded-lg transition flex items-start gap-2.5 relative group cursor-pointer ${
-                    notif.read ? 'opacity-70 hover:opacity-100 hover:bg-zinc-800/40' : 'bg-zinc-900/60 hover:bg-zinc-800/60'
+                  className={`p-2.5 rounded-xl transition flex items-start gap-2.5 relative group cursor-pointer ${
+                    notif.read 
+                      ? 'opacity-75 hover:opacity-100 hover:bg-neutral-100/70 dark:hover:bg-zinc-800/40' 
+                      : 'bg-blue-50/60 dark:bg-zinc-900/60 hover:bg-blue-50 dark:hover:bg-zinc-800/60'
                   }`}
                 >
-                  <div className="mt-0.5 p-1 rounded bg-zinc-800/80">
+                  <div className="mt-0.5 p-1 rounded-lg bg-neutral-100 dark:bg-zinc-800/80 shrink-0 border border-neutral-200/60 dark:border-transparent">
                     {getTypeIcon(notif.type)}
                   </div>
 
                   <div className="flex-1 min-w-0 pr-3">
                     <div className="flex items-center justify-between gap-2">
-                      <h5 className={`text-xs truncate ${notif.read ? 'text-zinc-300' : 'text-white font-medium'}`}>
+                      <h5 className={`text-xs truncate ${notif.read ? 'text-neutral-700 dark:text-zinc-300 font-medium' : 'text-neutral-950 dark:text-white font-bold'}`}>
                         {notif.title}
                       </h5>
-                      <span className="text-[10px] font-mono text-zinc-500 shrink-0">
+                      <span className="text-[10px] font-mono text-neutral-400 dark:text-zinc-500 shrink-0">
                         {formatRelativeTime(notif.timestamp)}
                       </span>
                     </div>
 
                     {notif.message && (
-                      <p className="text-[11px] text-zinc-400 mt-0.5 leading-snug line-clamp-2 font-sans">
+                      <p className="text-[11px] text-neutral-600 dark:text-zinc-400 mt-0.5 leading-snug line-clamp-2 font-sans">
                         {notif.message}
                       </p>
                     )}
@@ -183,7 +186,7 @@ export const NotificationCenter: React.FC = () => {
                           notif.action?.onClick();
                           setIsOpen(false);
                         }}
-                        className="mt-1.5 text-[11px] font-mono font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 transition"
+                        className="mt-1.5 text-[11px] font-mono font-medium text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 transition cursor-pointer"
                       >
                         <span>{notif.action.label}</span>
                         <ExternalLink className="w-3 h-3" />
@@ -193,7 +196,7 @@ export const NotificationCenter: React.FC = () => {
 
                   {/* Unread indicator */}
                   {!notif.read && (
-                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500 absolute right-2.5 top-3"></span>
+                    <span className="w-2 h-2 rounded-full bg-blue-600 absolute right-2.5 top-3 shadow-xs"></span>
                   )}
                 </div>
               ))
@@ -202,7 +205,7 @@ export const NotificationCenter: React.FC = () => {
 
           {/* Footer */}
           {notifications.length > 0 && (
-            <div className="p-2.5 border-t border-white/[0.06] bg-black/20 text-center text-[10px] font-mono text-zinc-500">
+            <div className="p-2 border-t border-neutral-200 dark:border-white/[0.06] bg-neutral-50/60 dark:bg-black/20 text-center text-[10px] font-mono text-neutral-500 dark:text-zinc-500">
               Nexus Activity & Alert Log • Auto-synced
             </div>
           )}

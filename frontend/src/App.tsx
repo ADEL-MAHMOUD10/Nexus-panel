@@ -588,6 +588,8 @@ export function App() {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
         isPinned={isSidebarPinned}
         onTogglePin={handleToggleSidebarPin}
+        onOpenUpdates={() => setIsUpdatesModalOpen(true)}
+        hasUpdates={updates.panel.hasUpdate || updates.xray.hasUpdate}
       />
 
       {/* Desktop Spacer: w-[68px] when collapsed (hover to open), w-64 when pinned */}

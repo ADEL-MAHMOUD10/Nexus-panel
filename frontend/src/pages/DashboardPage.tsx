@@ -125,7 +125,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
 
         {/* Engine status pills */}
-        <div className="flex items-center gap-2 text-xs font-mono">
+        <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
           <div className="px-3 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.07] flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${status.xrayRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
             <span className="text-zinc-400">Core:</span>
@@ -138,6 +138,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
             <span>Kernel:</span>
             <span className="text-zinc-200">{status.xrayVersion}</span>
           </div>
+
+          {onOpenUpdatesModal && (
+            <button
+              type="button"
+              onClick={onOpenUpdatesModal}
+              className={`px-3 py-1.5 rounded-lg border transition flex items-center gap-1.5 cursor-pointer font-sans text-xs ${
+                updates?.panel.hasUpdate || updates?.xray.hasUpdate
+                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-500 dark:text-amber-300 hover:bg-amber-500/25'
+                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 hover:text-white border-white/[0.08]'
+              }`}
+              title="Check for System & Kernel Updates"
+            >
+              <ArrowUpCircle className={`w-3.5 h-3.5 ${updates?.panel.hasUpdate || updates?.xray.hasUpdate ? 'text-amber-400 animate-pulse' : 'text-zinc-400'}`} />
+              <span>Updates</span>
+              {(updates?.panel.hasUpdate || updates?.xray.hasUpdate) && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -346,19 +365,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         {/* Right Column: Dual-stream Network Traffic Chart & Live Throughput Area */}
         <div className="lg:col-span-7 bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] shadow-xl rounded-xl p-5 flex flex-col justify-between">
           {/* Card Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-zinc-800">
             <span className="text-xs font-semibold text-zinc-200 uppercase tracking-wider flex items-center gap-2">
               <Radio className="w-4 h-4 text-zinc-400" />
               Network Traffic & Throughput
             </span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 border border-zinc-700/60">
                 Peak: {formatSpeed(status.net.peakSpeed || 0)}
               </span>
               {onOpenUpdatesModal && (
                 <button
+                  type="button"
                   onClick={onOpenUpdatesModal}
-                  className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-1.5"
+                  className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-1.5 cursor-pointer"
                 >
                   <ArrowUpCircle className="w-3 h-3 text-zinc-400" />
                   <span>Check Updates</span>

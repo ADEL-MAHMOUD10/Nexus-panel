@@ -12,7 +12,8 @@ import {
   Terminal,
   Activity,
   Database,
-  Check
+  Check,
+  ArrowUpCircle
 } from 'lucide-react';
 import { NotificationCenter } from './NotificationCenter';
 import { ThemeToggle } from './ThemeToggle';
@@ -200,17 +201,19 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Updates indicator if available */}
             {onOpenUpdates && (
               <button
+                type="button"
                 onClick={onOpenUpdates}
-                className={`p-2 sm:px-2.5 sm:py-1.5 rounded-lg text-xs font-medium border transition flex items-center gap-1.5 ${
+                className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-medium border transition-all flex items-center gap-1.5 cursor-pointer select-none active:scale-95 ${
                   hasUpdates 
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-300 hover:bg-amber-500/20' 
-                    : 'bg-zinc-900/60 border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-300 hover:bg-amber-500/25 shadow-xs' 
+                    : 'bg-white/80 dark:bg-zinc-900/80 border-neutral-200/90 dark:border-zinc-800 text-neutral-700 dark:text-zinc-300 hover:text-neutral-900 dark:hover:text-zinc-100 hover:bg-neutral-100 dark:hover:bg-zinc-800'
                 }`}
-                title="System Updates"
+                title={hasUpdates ? "System Update Available" : "System Updates"}
+                aria-label="System Updates"
               >
-                <ShieldAlert className="w-3.5 h-3.5 text-zinc-400" />
+                <ArrowUpCircle className={`w-3.5 h-3.5 ${hasUpdates ? 'text-amber-500 dark:text-amber-400 animate-pulse' : 'text-neutral-500 dark:text-zinc-400'}`} />
                 <span className="hidden sm:inline">Updates</span>
-                {hasUpdates && <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>}
+                {hasUpdates && <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping"></span>}
               </button>
             )}
 
