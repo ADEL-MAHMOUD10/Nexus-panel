@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, AlertCircle, Key, RefreshCw, Shield, Zap, Sliders, Radio, Globe, Lock, 
   Cpu, Server, Tag, Hash, Database, Calendar, Check, Copy, Layers, Wifi, 
@@ -221,7 +221,7 @@ const TRANSPORTS = [
 ];
 
 const getSuggestedRemark = (proto: string, sec: string, p: number) => {
-  const pStr = p || 2053;
+  const pStr = p && p > 0 ? String(p) : 'custom';
   switch ((proto || 'vless').toLowerCase()) {
     case 'shadowsocks':
       return `SS-2022-${pStr}`;
@@ -255,6 +255,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 }) => {
   const { notify } = useNotification();
   const [activeTab, setActiveTab] = useState<'basics' | 'transport' | 'security' | 'advanced'>('basics');
+  const prevIsOpenRef = useRef(false);
   
   // Close on Escape key press
   useEffect(() => {
@@ -373,8 +374,13 @@ export const InboundModal: React.FC<InboundModalProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Populate data when editing
+  // Populate data when opening modal or editing
   useEffect(() => {
+    const justOpened = isOpen && !prevIsOpenRef.current;
+    prevIsOpenRef.current = isOpen;
+
+    if (!isOpen) return;
+
     if (inboundToEdit) {
       setRemark(inboundToEdit.remark || inboundToEdit.tag || '');
       setPort(inboundToEdit.port);
@@ -467,12 +473,17 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         if (sn.routeOnly !== undefined) setSniffRouteOnly(sn.routeOnly);
       } catch (e) {}
 
-    } else {
-      // New Inbound defaults
+    } else if (justOpened) {
+      // New Inbound defaults - runs ONCE when modal is opened!
       setIsRemarkCustom(false);
 
       // Auto-assign the next genuinely free port based on existing inbounds
-      const occupiedPorts = new Set((existingInbounds || []).map((i) => i.port));
+      const occupiedPorts = new Set(
+        (existingInbounds || [])
+          .map((i) => Number(i.port))
+          .filter((p) => !isNaN(p) && p > 0)
+      );
+
       let initialPort = 2053;
       while (occupiedPorts.has(initialPort) && initialPort < 65535) {
         initialPort++;
@@ -487,7 +498,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
       setPortConflict(null);
       setPortOccupiedBy(null);
     }
-  }, [inboundToEdit, isOpen, existingInbounds]);
+  }, [inboundToEdit, isOpen]);
 
   // Debounced Live Port Collision Check
   useEffect(() => {
@@ -615,17 +626,21 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
   const handleUpdatePort = (newPort: number) => {
     setPort(newPort);
-    if (!isRemarkCustom) {
+    if (!isRemarkCustom && newPort > 0) {
       setRemark(getSuggestedRemark(protocol, security, newPort));
     }
   };
 
   // Find next free port
   const handlePickNextAvailablePort = async () => {
-    const occupiedPorts = new Set((existingInbounds || []).map((i) => i.port));
+    const occupiedPorts = new Set(
+      (existingInbounds || [])
+        .map((i) => Number(i.port))
+        .filter((p) => !isNaN(p) && p > 0)
+    );
     const commonPorts = [2053, 2054, 2055, 2056, 2083, 2087, 2096, 8443, 8080, 443, 10443, 20443];
-    let candidate = port + 1;
-    if (candidate > 65000) candidate = 2053;
+    let candidate = (port && port > 0 ? port : 2053) + 1;
+    if (candidate > 65000) candidate = 2054;
     
     // Check candidates
     for (let p of [candidate, ...commonPorts]) {
@@ -1127,8 +1142,19 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       required
                       min={1}
                       max={65535}
-                      value={port}
-                      onChange={(e) => handleUpdatePort(Number(e.target.value))}
+                      value={port === 0 ? '' : port}
+                      onChange={(e) => {
+                        const raw = e.target.value.trim();
+                        if (raw === '') {
+                          handleUpdatePort(0);
+                        } else {
+                          const val = parseInt(raw, 10);
+                          if (!isNaN(val)) {
+                            handleUpdatePort(val);
+                          }
+                        }
+                      }}
+                      placeholder="e.g. 2083"
                       className={`w-full px-3.5 py-2 bg-[#0e0e12] border rounded-xl text-xs font-mono text-white focus:outline-none transition ${
                         portConflict 
                           ? 'border-rose-500/80 bg-rose-500/10 text-rose-500 ring-1 ring-rose-500/30' 

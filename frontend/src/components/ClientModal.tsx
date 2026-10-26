@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   RefreshCw, 
@@ -41,6 +41,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   clientToEdit,
 }) => {
   const { notify } = useNotification();
+  const prevIsOpenRef = useRef(false);
 
   // Close on Escape key press
   useEffect(() => {
@@ -121,6 +122,11 @@ export const ClientModal: React.FC<ClientModalProps> = ({
   };
 
   useEffect(() => {
+    const justOpened = isOpen && !prevIsOpenRef.current;
+    prevIsOpenRef.current = isOpen;
+
+    if (!isOpen) return;
+
     if (clientToEdit) {
       setInboundId(clientToEdit.inboundId);
       setEmail(clientToEdit.email);
@@ -135,7 +141,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       } else {
         setExpiryDays(0);
       }
-    } else {
+    } else if (justOpened) {
       const initialInbound = inbounds[0]?.id || 1;
       setInboundId(initialInbound);
       setEmail('user_' + Math.floor(Math.random() * 9000 + 1000));
@@ -151,7 +157,7 @@ export const ClientModal: React.FC<ClientModalProps> = ({
       setEnable(true);
     }
     setError(null);
-  }, [clientToEdit, isOpen, inbounds]);
+  }, [clientToEdit, isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
