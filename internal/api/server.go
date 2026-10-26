@@ -56,6 +56,8 @@ type Server struct {
 	publicIPMu      sync.RWMutex
 	cachedPublicIP  string
 	lastPublicIPGet time.Time
+
+	geoService *GeoService
 }
 
 // NewServer initializes the REST API server
@@ -65,6 +67,7 @@ func NewServer(db *database.DB, controller *xray.Controller, pm *xray.ProcessMan
 		xrayController: controller,
 		processManager: pm,
 		sessions:       make(map[string]time.Time),
+		geoService:     NewGeoService(),
 	}
 }
 
@@ -166,6 +169,8 @@ func (s *Server) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/dashboard/stats", s.authMiddleware(s.handleServerStatus))
 	mux.HandleFunc("GET /api/server/status", s.authMiddleware(s.handleServerStatus))
 	mux.HandleFunc("GET /panel/api/server/status", s.authMiddleware(s.handleServerStatus))
+	mux.HandleFunc("GET /api/server/geo", s.authMiddleware(s.handleGetGeoNodes))
+	mux.HandleFunc("GET /panel/api/server/geo", s.authMiddleware(s.handleGetGeoNodes))
 
 	mux.HandleFunc("GET /api/server/check-updates", s.authMiddleware(s.handleCheckUpdates))
 	mux.HandleFunc("GET /panel/api/server/check-updates", s.authMiddleware(s.handleCheckUpdates))
@@ -2498,6 +2503,14 @@ func (s *Server) handleSubscription(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Record requesting client IP for geospatial node tracking
+	if s.geoService != nil {
+		reqIP := s.extractClientIP(r)
+		for _, c := range clients {
+			s.geoService.RecordClientIP(c.Email, reqIP)
+		}
+	}
+
 	host := r.Host
 	if h, _, err := net.SplitHostPort(r.Host); err == nil {
 		host = h
@@ -2553,6 +2566,20 @@ func writeJSON(w http.ResponseWriter, statusCode int, data any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	w.WriteHeader(statusCode)
 	_ = json.NewEncoder(w).Encode(data)
+}
+
+// extractClientIP retrieves the real client IP from connection headers or remote address
+func (s *Server) extractClientIP(r *http.Request) string {
+	clientIP := r.RemoteAddr
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		clientIP = strings.TrimSpace(strings.Split(fwd, ",")[0])
+	} else if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
+		clientIP = strings.TrimSpace(realIP)
+	}
+	if h, _, err := net.SplitHostPort(clientIP); err == nil {
+		clientIP = h
+	}
+	return clientIP
 }
 
 // getRealPublicIP returns the true public IPv4 address of the VPS host (without port or domain name)

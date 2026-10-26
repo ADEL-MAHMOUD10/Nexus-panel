@@ -22,6 +22,7 @@ import {
 import { ServerStatus, Inbound, UpdateInfo } from '../types';
 import { RadialHealthGauge } from '../components/RadialHealthGauge';
 import { TrafficChart } from '../components/TrafficChart';
+import { GeoConnectionMap } from '../components/GeoConnectionMap';
 
 interface DashboardPageProps {
   status: ServerStatus;
@@ -444,7 +445,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         </div>
       </div>
 
-      {/* 3. Sockets & Process Stats Strip */}
+      {/* 3. Global Mesh Geospatial Telemetry Map (World Dot Matrix, Server Beacon, Online Client Beacons, Blur Guard) */}
+      <GeoConnectionMap
+        formatBytes={formatBytes}
+        showPublicIP={showPublicIP}
+      />
+
+      {/* 4. Sockets & Process Stats Strip */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="bg-[#0c0d13]/85 backdrop-blur-xl border border-white/[0.08] hover:border-white/[0.16] shadow-xl rounded-xl p-4 flex items-center justify-between">
           <div>

@@ -186,3 +186,24 @@ export interface UpdateInfo {
     publishedAt: string;
   };
 }
+
+export interface GeoNode {
+  id: number;
+  email?: string;
+  ip: string;
+  country: string;
+  countryCode: string;
+  city: string;
+  lat: number;
+  lon: number;
+  isOnline: boolean;
+  up?: number;
+  down?: number;
+  lastOnline?: number;
+}
+
+export interface GeoNetworkData {
+  success: boolean;
+  server: GeoNode;
+  clients: GeoNode[];
+}
