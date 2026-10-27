@@ -188,12 +188,13 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
   const onlineCount = useMemo(() => clientNodes.filter((c) => c.isOnline).length, [clientNodes]);
 
-  // 1. Initialize Leaflet Map
+  // 1. Initialize Leaflet Map and keep TileLayer in sync
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    if (!mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
+    let map = mapInstanceRef.current;
+    if (!map) {
+      map = L.map(mapContainerRef.current, {
         center: [30, 20], // Global centered Earth view
         zoom: 3,
         minZoom: 2,
@@ -203,7 +204,6 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         worldCopyJump: true,
       });
 
-      // Layer groups for markers & animated arcs
       const linesGroup = L.layerGroup().addTo(map);
       const markersGroup = L.layerGroup().addTo(map);
 
@@ -212,19 +212,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       mapInstanceRef.current = map;
     }
 
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // 2. Manage Tile Layer switching (Satellite Earth vs Dark Matter vs Streets)
-  useEffect(() => {
-    const map = mapInstanceRef.current;
-    if (!map) return;
-
+    // Manage Tile Layer switching (Satellite Earth vs Dark Matter vs Streets)
     if (tileLayerRef.current) {
       map.removeLayer(tileLayerRef.current);
     }
@@ -237,7 +225,55 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
     newLayer.addTo(map);
     tileLayerRef.current = newLayer;
+
+    // Ensure Leaflet calculates viewport properly
+    map.invalidateSize();
+    const initTimer = setTimeout(() => {
+      map?.invalidateSize();
+    }, 100);
+
+    // ResizeObserver ensures Leaflet never stays black when container dimensions change
+    const resizeObserver = new ResizeObserver(() => {
+      map?.invalidateSize();
+    });
+    resizeObserver.observe(mapContainerRef.current);
+
+    return () => {
+      clearTimeout(initTimer);
+      resizeObserver.disconnect();
+    };
   }, [selectedTheme]);
+
+  // Clean unmount on page exit
+  useEffect(() => {
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+        tileLayerRef.current = null;
+        markersLayerRef.current = null;
+        linesLayerRef.current = null;
+      }
+    };
+  }, []);
+
+  // 2. Keep Leaflet viewport synchronized when toggling privacy blur on/off
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    map.invalidateSize();
+    const timers = [
+      setTimeout(() => map.invalidateSize(), 50),
+      setTimeout(() => map.invalidateSize(), 150),
+      setTimeout(() => map.invalidateSize(), 350),
+      setTimeout(() => map.invalidateSize(), 500),
+    ];
+
+    return () => {
+      timers.forEach(clearTimeout);
+    };
+  }, [isBlurred]);
 
   // 3. Render Markers & Connection Arcs
   useEffect(() => {
@@ -635,13 +671,13 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
       {/* 3. Interactive Leaflet Map Container */}
       <div className="relative my-3 w-full h-[450px] rounded-xl overflow-hidden bg-[#07080c] border border-white/[0.08] shadow-inner select-none nexus-map-container">
-        {/* Map Canvas with smooth blur transition */}
+        {/* Map Canvas with smooth filter blur transition without transform matrix collision */}
         <div 
           ref={mapContainerRef} 
-          className={`w-full h-full transition-all duration-700 ease-out ${
+          className={`w-full h-full transition-[filter,opacity] duration-300 ease-out ${
             isBlurred 
-              ? 'filter blur-xl scale-[1.02] opacity-30 pointer-events-none' 
-              : 'filter-none scale-100 opacity-100'
+              ? 'filter blur-xl opacity-35 pointer-events-none' 
+              : 'filter-none opacity-100'
           }`}
         />
 
