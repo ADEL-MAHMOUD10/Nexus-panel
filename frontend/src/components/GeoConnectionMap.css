@@ -10,6 +10,12 @@
 }
 
 /* Custom dark popup styling */
+.nexus-server-marker,
+.nexus-client-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
 .nexus-map-popup .leaflet-popup-content-wrapper {
   background: rgba(12, 13, 19, 0.94) !important;
   backdrop-filter: blur(16px) !important;

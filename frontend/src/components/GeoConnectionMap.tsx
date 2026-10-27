@@ -257,15 +257,21 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       });
     };
 
-    // A. Draw Server Beacon Marker
+    // A. Draw Server Beacon Marker (With Real Server SVG Icon)
     const serverHtml = `
-      <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
-        <span class="absolute w-12 h-12 rounded-full bg-violet-500/40 animate-ping"></span>
-        <span class="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#0c0d13] border-2 border-violet-400 shadow-[0_0_16px_rgba(168,85,247,0.8)]">
-          <span class="w-3.5 h-3.5 rounded-full bg-violet-400 shadow-[0_0_8px_#ffffff]"></span>
-        </span>
-        <div class="absolute -top-7 whitespace-nowrap px-2 py-0.5 rounded bg-[#0c0d13]/90 text-[10px] font-mono font-bold text-violet-200 border border-violet-500/40 shadow-lg pointer-events-none">
-          HOST • ${serverNode.countryCode || 'SERVER'}
+      <div class="relative flex items-center justify-center w-10 h-10 cursor-pointer group">
+        <span class="absolute w-12 h-12 rounded-full bg-violet-500/40 animate-ping pointer-events-none"></span>
+        <div class="relative w-10 h-10 rounded-full bg-[#0c0d13] border-2 border-violet-400 shadow-[0_0_16px_rgba(168,85,247,0.85)] flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
+            <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
+            <line x1="6" x2="6.01" y1="6" y2="6"/>
+            <line x1="6" x2="6.01" y1="18" y2="18"/>
+          </svg>
+        </div>
+        <div class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#0c0d13]/95 text-[10px] font-mono font-bold text-violet-200 border border-violet-500/40 shadow-lg pointer-events-none flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <span>HOST • ${serverNode.countryCode || 'DE'}</span>
         </div>
       </div>
     `;
@@ -273,7 +279,9 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     const serverIcon = L.divIcon({
       html: serverHtml,
       className: 'nexus-server-marker',
-      iconSize: [0, 0],
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
+      popupAnchor: [0, -22],
     });
 
     const serverMarker = L.marker([serverNode.lat, serverNode.lon], { icon: serverIcon });
@@ -324,34 +332,31 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
     serverMarker.addTo(markersGroup);
 
-    // B. Draw Client Markers and Connection Arcs
+    // B. Draw Client Markers (With Real User SVG Icon) and Connection Arcs
     visibleClients.forEach((client) => {
       const isOnline = client.isOnline;
 
-      const clientHtml = isOnline
-        ? `
-          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
-            <span class="absolute w-8 h-8 rounded-full bg-emerald-500/40 animate-ping"></span>
-            <span class="relative flex items-center justify-center w-6 h-6 rounded-full bg-[#0c0d13] border-2 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)]">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-300 shadow-[0_0_6px_#ffffff]"></span>
-            </span>
-            <div class="absolute -top-6 opacity-0 group-hover:opacity-100 transition whitespace-nowrap px-1.5 py-0.5 rounded bg-[#0c0d13]/90 text-[9px] font-mono font-medium text-emerald-300 border border-emerald-500/30 pointer-events-none">
-              ${client.city}
-            </div>
+      const clientHtml = `
+        <div class="relative flex items-center justify-center w-9 h-9 cursor-pointer group">
+          ${isOnline ? '<span class="absolute w-10 h-10 rounded-full bg-emerald-500/35 animate-ping pointer-events-none"></span>' : ''}
+          <div class="relative w-9 h-9 rounded-full ${isOnline ? 'bg-[#0c0d13] border-2 border-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.85)]' : 'bg-[#0c0d13]/90 border border-zinc-600'} flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isOnline ? '#34d399' : '#a1a1aa'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
           </div>
-        `
-        : `
-          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
-            <span class="w-5 h-5 rounded-full bg-zinc-900 border-2 border-zinc-500 flex items-center justify-center shadow">
-              <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
-            </span>
+          <div class="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full bg-[#0c0d13]/90 text-[9px] font-mono font-medium ${isOnline ? 'text-emerald-300 border border-emerald-500/40' : 'text-zinc-400 border border-zinc-700'} shadow pointer-events-none">
+            ${client.city || client.countryCode || 'Client'}
           </div>
-        `;
+        </div>
+      `;
 
       const clientIcon = L.divIcon({
         html: clientHtml,
         className: 'nexus-client-marker',
-        iconSize: [0, 0],
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -20],
       });
 
       const clientMarker = L.marker([client.lat, client.lon], { icon: clientIcon });
