@@ -22,7 +22,8 @@ import {
   Activity,
   Infinity as InfinityIcon,
   Filter,
-  ArrowUpDown
+  ArrowUpDown,
+  Radio
 } from 'lucide-react';
 import { Client, Inbound } from '../types';
 import api from '../services/api';
@@ -99,9 +100,10 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
         const matchEmail = (client.email || '').toLowerCase().includes(q);
         const matchUUID = (client.uuid || '').toLowerCase().includes(q);
         const matchSubID = (client.subId || '').toLowerCase().includes(q);
+        const matchIP = (client.lastIp || '').toLowerCase().includes(q);
         const matchInb = (inbound.remark || inbound.tag || '').toLowerCase().includes(q);
         const matchPort = inbound.port.toString().includes(q);
-        return matchEmail || matchUUID || matchSubID || matchInb || matchPort;
+        return matchEmail || matchUUID || matchSubID || matchIP || matchInb || matchPort;
       }
       return true;
     });
@@ -595,9 +597,17 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                       {/* Client Email & UUID / SubID */}
                       <td className="py-3.5 px-4 font-sans">
                         <div className="flex flex-col">
-                          <span className="font-semibold text-neutral-100 text-xs">
-                            {client.email}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-neutral-100 text-xs">
+                              {client.email}
+                            </span>
+                            {client.lastIp && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20" title="Last Connection IP">
+                                <Radio className="w-2.5 h-2.5 text-blue-400" />
+                                {client.lastIp}
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-500 mt-0.5">
                             <span className="truncate max-w-[150px]" title={client.uuid || client.subId}>
                               {client.subId || client.uuid}
@@ -841,6 +851,12 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                         <span className="uppercase text-[9px] px-1.5 py-0.5 rounded bg-neutral-900 text-neutral-300 border border-neutral-800 hover:border-neutral-700 hover:text-white transition-colors cursor-default select-none font-medium">
                           {inbound.protocol}
                         </span>
+                        {client.lastIp && (
+                          <span className="inline-flex items-center gap-1 text-[9px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20" title="Last Connection IP">
+                            <Radio className="w-2.5 h-2.5 text-blue-400" />
+                            {client.lastIp}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1022,6 +1038,66 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
 
             {/* Content Details Grid */}
             <div className="space-y-3.5 my-5 text-xs font-mono">
+              {/* Connection Source IP & Live Telemetry */}
+              <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-sans font-semibold text-neutral-400 block uppercase tracking-wider flex items-center gap-1.5">
+                    <Radio className="w-3.5 h-3.5 text-blue-400" />
+                    <span>Connection & Source IP</span>
+                  </span>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded ${
+                    inspectClient.client.lastIp 
+                      ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' 
+                      : 'bg-neutral-900 text-neutral-500 border border-neutral-800'
+                  }`}>
+                    {inspectClient.client.lastIp ? 'Recorded' : 'Awaiting Connection'}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between py-1.5 border-b border-neutral-850">
+                  <span className="text-neutral-500">Source IP (IP الاتصال):</span>
+                  <div className="flex items-center gap-2">
+                    {inspectClient.client.lastIp ? (
+                      <>
+                        <span className="font-mono font-bold text-sm text-blue-400 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/25">
+                          {inspectClient.client.lastIp}
+                        </span>
+                        <button
+                          onClick={() => handleCopy(inspectClient.client.lastIp || '', 'modal-ip')}
+                          className="p-1 rounded text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer"
+                          title="Copy Source IP"
+                        >
+                          {copiedKey === 'modal-ip' ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-neutral-500 text-[11px] italic font-sans">
+                        لم يتم تسجيل اتصال بعد (No IP Yet)
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between py-1 border-b border-neutral-850">
+                  <span className="text-neutral-500">Connection State:</span>
+                  <div className="flex items-center gap-1.5 font-semibold text-[11px]">
+                    <span className={`w-2 h-2 rounded-full ${inspectClient.client.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-600'}`} />
+                    <span className={inspectClient.client.isOnline ? 'text-emerald-400' : 'text-neutral-400 font-normal'}>
+                      {inspectClient.client.isOnline ? 'Online • متصل حالياً' : 'Offline • غير متصل'}
+                    </span>
+                  </div>
+                </div>
+
+                {inspectClient.client.lastOnline && inspectClient.client.lastOnline > 0 ? (
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-neutral-500">Last Seen (آخر ظهور):</span>
+                    <span className="text-neutral-300 font-mono text-[11px]">
+                      {new Date(inspectClient.client.lastOnline * 1000).toLocaleString()}
+                    </span>
+                  </div>
+                ) : null}
+              </div>
+
               {/* Account Credentials */}
               <div className="p-3.5 rounded-xl bg-neutral-950 border border-neutral-850 space-y-2">
                 <span className="text-[11px] font-sans font-semibold text-neutral-400 block uppercase tracking-wider">

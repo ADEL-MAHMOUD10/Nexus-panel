@@ -80,6 +80,7 @@ export interface Client {
   expiryTime: number;
   subId: string;
   lastOnline?: number;
+  lastIp?: string;
   isOnline?: boolean;
   upSpeed?: number;
   downSpeed?: number;

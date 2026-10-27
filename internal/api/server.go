@@ -62,13 +62,36 @@ type Server struct {
 
 // NewServer initializes the REST API server
 func NewServer(db *database.DB, controller *xray.Controller, pm *xray.ProcessManager) *Server {
-	return &Server{
+	geo := NewGeoService()
+	geo.SetDB(db)
+
+	srv := &Server{
 		db:             db,
 		xrayController: controller,
 		processManager: pm,
 		sessions:       make(map[string]time.Time),
-		geoService:     NewGeoService(),
+		geoService:     geo,
 	}
+
+	if pm != nil {
+		pm.SetOnClientAccess(func(email, ip string) {
+			geo.RecordClientIP(email, ip)
+		})
+	}
+
+	return srv
+}
+
+// RecordClientIP records and persists a client IP address
+func (s *Server) RecordClientIP(email, ip string) {
+	if s.geoService != nil {
+		s.geoService.RecordClientIP(email, ip)
+	}
+}
+
+// GetGeoService returns the internal GeoService instance
+func (s *Server) GetGeoService() *GeoService {
+	return s.geoService
 }
 
 // RegisterRoutes registers all REST and subscription endpoints on the ServeMux
@@ -386,6 +409,9 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 		var clientUpSum, clientDownSum float64
 
 		for _, c := range clients {
+			if c.LastIP == "" && s.geoService != nil {
+				c.LastIP = s.geoService.GetClientIP(c.Email)
+			}
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
 			var upSpd, downSpd float64
 			if s.xrayController != nil {
@@ -460,6 +486,9 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 	for _, in := range inbounds {
 		clients, _ := s.db.GetClientsByInbound(in.ID)
 		for _, c := range clients {
+			if c.LastIP == "" && s.geoService != nil {
+				c.LastIP = s.geoService.GetClientIP(c.Email)
+			}
 			link := subscription.BuildInboundLink(&in, &c, serverHost)
 			var upSpd, downSpd float64
 			if s.xrayController != nil {

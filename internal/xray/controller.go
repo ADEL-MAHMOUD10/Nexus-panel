@@ -3,6 +3,7 @@ package xray
 import (
 	"context"
 	"fmt"
+	"net"
 	"regexp"
 	"strings"
 	"sync"
@@ -316,11 +317,17 @@ func (c *Controller) GetTraffic() ([]*InboundTraffic, []*ClientTraffic, []string
 
 // GetOnlineUsers queries Xray StatsService.GetUsersStats to return every user with an active connection
 func (c *Controller) GetOnlineUsers() ([]string, error) {
+	users, _, err := c.GetOnlineUsersWithIPs()
+	return users, err
+}
+
+// GetOnlineUsersWithIPs queries Xray StatsService.GetUsersStats to return active users and their connected source IPs
+func (c *Controller) GetOnlineUsersWithIPs() ([]string, map[string]string, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
 	if err := c.ensureConnected(); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -329,18 +336,21 @@ func (c *Controller) GetOnlineUsers() ([]string, error) {
 	resp, err := c.statsClient.GetUsersStats(ctx, &statsService.GetUsersStatsRequest{})
 	if err != nil {
 		// Do not tear down overall connection if GetUsersStats is unimplemented on this core
-		return nil, fmt.Errorf("users stats not supported or failed: %w", err)
+		return nil, nil, fmt.Errorf("users stats not supported or failed: %w", err)
 	}
 
 	now := time.Now().Unix()
 	var users []string
+	userIPs := make(map[string]string)
+
 	for _, u := range resp.GetUsers() {
 		if u == nil || u.GetEmail() == "" {
 			continue
 		}
 
-		// A client is online if they have an active connection (seen within 90s grace period, zero-timestamp, or registered in GetUsersStats)
+		email := strings.TrimSpace(u.GetEmail())
 		hasLiveConnection := false
+
 		if len(u.GetIps()) == 0 {
 			hasLiveConnection = true
 		} else {
@@ -348,19 +358,29 @@ func (c *Controller) GetOnlineUsers() ([]string, error) {
 				if entry == nil {
 					continue
 				}
+				rawIP := strings.TrimSpace(entry.GetIp())
+				if rawIP != "" {
+					cleanIP := rawIP
+					if h, _, err := net.SplitHostPort(rawIP); err == nil {
+						cleanIP = h
+					}
+					cleanIP = strings.Trim(cleanIP, "[]")
+					if cleanIP != "" && cleanIP != "127.0.0.1" && cleanIP != "::1" {
+						userIPs[email] = cleanIP
+					}
+				}
 				if entry.GetLastSeen() == 0 || (now-entry.GetLastSeen() <= 90) {
 					hasLiveConnection = true
-					break
 				}
 			}
 		}
 
 		if hasLiveConnection {
-			users = append(users, u.GetEmail())
+			users = append(users, email)
 		}
 	}
 
-	return users, nil
+	return users, userIPs, nil
 }
 
 // RefreshOnline updates the internal live online tracking table and prunes clients seen past gracePeriodSec

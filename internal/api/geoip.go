@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"nexus/internal/database"
 )
 
 // GeoLocation holds geographical details resolved for an IP
@@ -64,6 +66,7 @@ type GeoService struct {
 	ipCache    map[string]GeoLocation
 	clientIPs  map[string]string // email -> ip
 	httpClient *http.Client
+	db         *database.DB
 }
 
 // NewGeoService creates a new GeoService instance
@@ -77,7 +80,21 @@ func NewGeoService() *GeoService {
 	}
 }
 
-// RecordClientIP associates a client email with their requesting IP address
+// SetDB attaches the database and populates existing client IPs
+func (g *GeoService) SetDB(db *database.DB) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.db = db
+	if db != nil {
+		if ips, err := db.GetAllClientIPs(); err == nil {
+			for email, ip := range ips {
+				g.clientIPs[strings.ToLower(email)] = ip
+			}
+		}
+	}
+}
+
+// RecordClientIP associates a client email with their requesting IP address and persists to DB
 func (g *GeoService) RecordClientIP(email, ip string) {
 	if email == "" || ip == "" {
 		return
@@ -86,9 +103,25 @@ func (g *GeoService) RecordClientIP(email, ip string) {
 	if h, _, err := net.SplitHostPort(cleanIP); err == nil {
 		cleanIP = h
 	}
+	cleanIP = strings.Trim(cleanIP, "[]")
+	if cleanIP == "" || cleanIP == "127.0.0.1" || cleanIP == "::1" {
+		return
+	}
+
+	cleanEmail := strings.ToLower(strings.TrimSpace(email))
 	g.mu.Lock()
-	defer g.mu.Unlock()
-	g.clientIPs[strings.ToLower(email)] = cleanIP
+	g.clientIPs[cleanEmail] = cleanIP
+	db := g.db
+	g.mu.Unlock()
+
+	if db != nil {
+		_ = db.UpdateClientLastIP(cleanEmail, cleanIP)
+	}
+
+	// Pre-resolve IP asynchronously so map has coordinates ready
+	go func(targetIP string) {
+		_ = g.ResolveIP(targetIP)
+	}(cleanIP)
 }
 
 // GetClientIP returns the last known IP recorded for a client
@@ -276,23 +309,27 @@ func (s *Server) handleGetGeoNodes(w http.ResponseWriter, r *http.Request) {
 						isOnline = s.xrayController.IsClientOnline(c.Email)
 					}
 
-					clientIP := s.geoService.GetClientIP(c.Email)
-					var clientGeo GeoLocation
-					if clientIP != "" && !s.geoService.isPrivateIP(clientIP) {
-						clientGeo = s.geoService.ResolveIP(clientIP)
-					} else {
-						clientGeo = s.geoService.ResolveClientLocation(c.Email, clientIP)
+					clientIP := strings.TrimSpace(c.LastIP)
+					if clientIP == "" {
+						clientIP = strings.TrimSpace(s.geoService.GetClientIP(c.Email))
 					}
 
-					displayIP := clientIP
-					if displayIP == "" {
-						displayIP = "بانتظار الاتصال (No IP Yet)"
+					// STRICT USER REQUIREMENT:
+					// Do NOT put any client on the map unless their real connection IP has been captured and saved!
+					if clientIP == "" {
+						continue
+					}
+
+					// Resolve real location from the client's captured IP
+					clientGeo := s.geoService.ResolveIP(clientIP)
+					if clientGeo.Lat == 0 && clientGeo.Lon == 0 {
+						continue
 					}
 
 					clientNodes = append(clientNodes, GeoNode{
 						ID:          c.ID,
 						Email:       c.Email,
-						IP:          displayIP,
+						IP:          clientIP,
 						Country:     clientGeo.Country,
 						CountryCode: clientGeo.CountryCode,
 						City:        clientGeo.City,

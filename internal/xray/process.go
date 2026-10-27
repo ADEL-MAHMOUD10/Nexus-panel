@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 )
 
 var xrayLogRegex = regexp.MustCompile(`^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?) \[([^\]]+)\] (.+)$`)
+var xrayAccessRegex = regexp.MustCompile(`(?i)(?:^|\s)([\d\.:a-fA-F]+)\s+accepted\s+.*email:\s*([^\s,\]]+)`)
 
 
 // XrayLogItem represents a structured log entry captured from Xray-core
@@ -40,8 +42,16 @@ type ProcessManager struct {
 	logs       []string
 	logItems   []XrayLogItem
 	logSeq     int64
-	doneChan   chan struct{}
-	logWriter  io.Writer
+	doneChan       chan struct{}
+	logWriter      io.Writer
+	onClientAccess func(email, ip string)
+}
+
+// SetOnClientAccess registers a callback invoked whenever Xray logs an accepted client connection
+func (m *ProcessManager) SetOnClientAccess(fn func(email, ip string)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.onClientAccess = fn
 }
 
 // NewProcessManager creates a new ProcessManager
@@ -230,6 +240,25 @@ func (m *ProcessManager) appendLog(s string) {
 		trimmed := strings.TrimSpace(l)
 		if trimmed == "" {
 			continue
+		}
+
+		// Check for Xray access log pattern to capture client IP in real time
+		if accessMatches := xrayAccessRegex.FindStringSubmatch(trimmed); len(accessMatches) >= 3 {
+			rawIP := accessMatches[1]
+			clientEmail := strings.TrimSpace(accessMatches[2])
+			cleanIP := rawIP
+			if h, _, err := net.SplitHostPort(rawIP); err == nil {
+				cleanIP = h
+			}
+			cleanIP = strings.Trim(cleanIP, "[]")
+			if clientEmail != "" && cleanIP != "" && cleanIP != "127.0.0.1" && cleanIP != "::1" {
+				m.mu.RLock()
+				cb := m.onClientAccess
+				m.mu.RUnlock()
+				if cb != nil {
+					go cb(clientEmail, cleanIP)
+				}
+			}
 		}
 
 		itemLevel := "info"

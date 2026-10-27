@@ -111,7 +111,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
   useEffect(() => {
     fetchGeoData();
-    const interval = setInterval(fetchGeoData, 20000);
+    // Live Real-Time map polling every 5 seconds
+    const interval = setInterval(fetchGeoData, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -351,7 +352,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             </svg>
           </div>
           <div class="nexus-marker-badge ${isOnline ? 'is-online' : 'is-offline'} absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full text-[9px] font-mono pointer-events-none">
-            ${client.city || client.countryCode || client.email || 'Client'}
+            ${isOnline ? '🟢 ' : '⚪ '}${client.city || client.countryCode || client.email || 'Client'}
           </div>
         </div>
       `;
@@ -460,27 +461,34 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
       clientMarker.addTo(markersGroup);
 
-      // C. Draw Curved Connection Arc for Online Clients
-      if (isOnline) {
-        const arcCoords = getCurvedArcPoints(
-          [client.lat, client.lon],
-          [serverNode.lat, serverNode.lon]
-        );
+      // C. Draw Curved Connection Arc from Client to Server
+      const arcCoords = getCurvedArcPoints(
+        [client.lat, client.lon],
+        [serverNode.lat, serverNode.lon]
+      );
 
-        // Background luminous line
+      if (isOnline) {
+        // Online: Luminous line + animated streaming green pulses
         L.polyline(arcCoords, {
           color: '#818cf8',
           weight: 1.5,
           opacity: 0.35,
         }).addTo(linesGroup);
 
-        // Animated dashed streaming line
         L.polyline(arcCoords, {
           color: '#34d399',
           weight: 2,
           opacity: 0.85,
           dashArray: '8, 8',
           className: 'nexus-animated-arc',
+        }).addTo(linesGroup);
+      } else {
+        // Offline (saved history): subtle static dashed arc
+        L.polyline(arcCoords, {
+          color: '#71717a',
+          weight: 1,
+          opacity: 0.22,
+          dashArray: '4, 6',
         }).addTo(linesGroup);
       }
     });

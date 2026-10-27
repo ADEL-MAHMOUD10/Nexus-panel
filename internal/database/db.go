@@ -48,6 +48,7 @@ type Client struct {
 	ExpiryTime int64  `json:"expiryTime"` // 0 means unlimited
 	SubID      string `json:"subId"`
 	LastOnline int64  `json:"lastOnline"`
+	LastIP     string `json:"lastIp,omitempty"`
 }
 
 // DB wraps SQLite operations for Nexus
@@ -266,13 +267,13 @@ func (db *DB) migrate() error {
 		expiry_time INTEGER DEFAULT 0,
 		sub_id TEXT DEFAULT '',
 		last_online INTEGER DEFAULT 0,
+		last_ip TEXT DEFAULT '',
 		FOREIGN KEY(inbound_id) REFERENCES inbounds(id) ON DELETE CASCADE,
 		UNIQUE(inbound_id, email)
 	);
 	CREATE INDEX IF NOT EXISTS idx_client_sub_id ON clients(sub_id);
 	CREATE INDEX IF NOT EXISTS idx_clients_inbound_id ON clients(inbound_id);
 	CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
-	CREATE INDEX IF NOT EXISTS idx_clients_last_online ON clients(last_online);
 	CREATE INDEX IF NOT EXISTS idx_inbounds_port ON inbounds(port);
 	`
 	if _, err := db.conn.Exec(schema); err != nil {
@@ -282,6 +283,11 @@ func (db *DB) migrate() error {
 	_, _ = db.conn.Exec("ALTER TABLE inbounds ADD COLUMN listen TEXT DEFAULT '0.0.0.0'")
 	_, _ = db.conn.Exec("ALTER TABLE inbounds ADD COLUMN sniffing TEXT DEFAULT '{}'")
 	_, _ = db.conn.Exec("ALTER TABLE clients ADD COLUMN last_online INTEGER DEFAULT 0")
+	_, _ = db.conn.Exec("ALTER TABLE clients ADD COLUMN last_ip TEXT DEFAULT ''")
+
+	_, _ = db.conn.Exec("CREATE INDEX IF NOT EXISTS idx_clients_last_online ON clients(last_online)")
+	_, _ = db.conn.Exec("CREATE INDEX IF NOT EXISTS idx_clients_last_ip ON clients(last_ip)")
+	return nil
 	return nil
 }
 
@@ -491,7 +497,7 @@ func listenOverlaps(a, b string) bool {
 // Clients Queries
 // -----------------------------------------------------------------------------
 func (db *DB) GetClientsByInbound(inboundID int) ([]Client, error) {
-	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE inbound_id = ?", inboundID)
+	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online, coalesce(last_ip, '') FROM clients WHERE inbound_id = ?", inboundID)
 	if err != nil {
 		return nil, err
 	}
@@ -501,7 +507,7 @@ func (db *DB) GetClientsByInbound(inboundID int) ([]Client, error) {
 	for rows.Next() {
 		var c Client
 		var enableInt int
-		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
+		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline, &c.LastIP); err != nil {
 			return nil, err
 		}
 		c.Enable = enableInt == 1
@@ -511,7 +517,7 @@ func (db *DB) GetClientsByInbound(inboundID int) ([]Client, error) {
 }
 
 func (db *DB) GetClientsBySubID(subID string) ([]Client, error) {
-	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE sub_id = ?", subID)
+	rows, err := db.conn.Query("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online, coalesce(last_ip, '') FROM clients WHERE sub_id = ?", subID)
 	if err != nil {
 		return nil, err
 	}
@@ -521,7 +527,7 @@ func (db *DB) GetClientsBySubID(subID string) ([]Client, error) {
 	for rows.Next() {
 		var c Client
 		var enableInt int
-		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
+		if err := rows.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline, &c.LastIP); err != nil {
 			return nil, err
 		}
 		c.Enable = enableInt == 1
@@ -531,10 +537,10 @@ func (db *DB) GetClientsBySubID(subID string) ([]Client, error) {
 }
 
 func (db *DB) GetClientByID(id int) (*Client, error) {
-	row := db.conn.QueryRow("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE id = ?", id)
+	row := db.conn.QueryRow("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online, coalesce(last_ip, '') FROM clients WHERE id = ?", id)
 	var c Client
 	var enableInt int
-	if err := row.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
+	if err := row.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline, &c.LastIP); err != nil {
 		return nil, err
 	}
 	c.Enable = enableInt == 1
@@ -542,10 +548,10 @@ func (db *DB) GetClientByID(id int) (*Client, error) {
 }
 
 func (db *DB) GetClientByEmail(email string) (*Client, error) {
-	row := db.conn.QueryRow("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online FROM clients WHERE email = ?", email)
+	row := db.conn.QueryRow("SELECT id, inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online, coalesce(last_ip, '') FROM clients WHERE email = ?", email)
 	var c Client
 	var enableInt int
-	if err := row.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline); err != nil {
+	if err := row.Scan(&c.ID, &c.InboundID, &c.Email, &c.UUID, &c.Password, &c.Flow, &enableInt, &c.Up, &c.Down, &c.Total, &c.ExpiryTime, &c.SubID, &c.LastOnline, &c.LastIP); err != nil {
 		return nil, err
 	}
 	c.Enable = enableInt == 1
@@ -560,9 +566,9 @@ func (db *DB) SaveClient(c *Client) error {
 
 	if c.ID == 0 {
 		res, err := db.conn.Exec(`
-			INSERT INTO clients(inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online)
-			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`, c.InboundID, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.LastOnline)
+			INSERT INTO clients(inbound_id, email, uuid, password, flow, enable, up, down, total, expiry_time, sub_id, last_online, last_ip)
+			VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`, c.InboundID, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.LastOnline, c.LastIP)
 		if err != nil {
 			return err
 		}
@@ -572,10 +578,35 @@ func (db *DB) SaveClient(c *Client) error {
 	}
 
 	_, err := db.conn.Exec(`
-		UPDATE clients SET email=?, uuid=?, password=?, flow=?, enable=?, up=?, down=?, total=?, expiry_time=?, sub_id=?, last_online=?
+		UPDATE clients SET email=?, uuid=?, password=?, flow=?, enable=?, up=?, down=?, total=?, expiry_time=?, sub_id=?, last_online=?, last_ip=?
 		WHERE id=?
-	`, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.LastOnline, c.ID)
+	`, c.Email, c.UUID, c.Password, c.Flow, enableInt, c.Up, c.Down, c.Total, c.ExpiryTime, c.SubID, c.LastOnline, c.LastIP, c.ID)
 	return err
+}
+
+func (db *DB) UpdateClientLastIP(email, ip string) error {
+	if email == "" || ip == "" {
+		return nil
+	}
+	_, err := db.conn.Exec("UPDATE clients SET last_ip = ? WHERE email = ?", ip, email)
+	return err
+}
+
+func (db *DB) GetAllClientIPs() (map[string]string, error) {
+	rows, err := db.conn.Query("SELECT email, last_ip FROM clients WHERE last_ip != ''")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	res := make(map[string]string)
+	for rows.Next() {
+		var email, ip string
+		if err := rows.Scan(&email, &ip); err == nil && email != "" && ip != "" {
+			res[strings.ToLower(strings.TrimSpace(email))] = strings.TrimSpace(ip)
+		}
+	}
+	return res, nil
 }
 
 func (db *DB) DeleteClient(id int) error {

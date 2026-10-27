@@ -128,6 +128,9 @@ func main() {
 		defer ctrl.Close()
 	}
 
+	// Initialize REST API Server & Geo Engine early so background workers can record IPs
+	apiServer := api.NewServer(db, ctrl, pm)
+
 	// Background Traffic & Online Monitoring Worker (every 2.5 seconds for responsive real-time speed & online tracking)
 	go func() {
 		ticker := time.NewTicker(2500 * time.Millisecond)
@@ -186,14 +189,19 @@ func main() {
 			// Decay speeds for clients with zero traffic this cycle
 			ctrl.DecayClientSpeeds(activeThisTick)
 
-			// 2. Query currently connected users from Xray (StatsUserOnline)
-			onlineUsers, err := ctrl.GetOnlineUsers()
+			// 2. Query currently connected users & client source IPs from Xray (StatsUserOnline)
+			onlineUsers, userIPs, err := ctrl.GetOnlineUsersWithIPs()
 			if err != nil {
 				logger.Debugf("[OnlineUsers] Notice: %v", err)
 			} else {
 				for _, email := range onlineUsers {
 					if email != "" {
 						activeEmailsMap[email] = true
+					}
+				}
+				for email, ip := range userIPs {
+					if email != "" && ip != "" {
+						apiServer.RecordClientIP(email, ip)
 					}
 				}
 			}
@@ -228,7 +236,6 @@ func main() {
 
 	// Start HTTP REST API Server
 	webPort := db.GetSetting("web_port", "8443")
-	apiServer := api.NewServer(db, ctrl, pm)
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
 
