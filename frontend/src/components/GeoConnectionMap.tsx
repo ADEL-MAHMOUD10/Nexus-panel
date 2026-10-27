@@ -340,9 +340,9 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           <span>Location:</span>
           <span class="text-zinc-200 font-sans font-medium">${serverNode.city}, ${serverNode.country}</span>
         </div>
-        <div class="flex justify-between text-zinc-400">
+        <div class="flex justify-between items-center text-zinc-400">
           <span>IP Endpoint:</span>
-          <span class="text-zinc-300">${showPublicIP ? (serverNode.ip || '127.0.0.1') : '••••••••••••'}</span>
+          <span class="text-violet-300 font-mono font-medium tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
         </div>
         <div class="flex justify-between text-zinc-400">
           <span>Status:</span>
@@ -414,9 +414,9 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <span>Location:</span>
             <span class="text-zinc-200 font-sans font-medium">${client.city}, ${client.country}</span>
           </div>
-          <div class="flex justify-between text-zinc-400">
+          <div class="flex justify-between items-center text-zinc-400">
             <span>IP:</span>
-            <span class="text-zinc-300">${showPublicIP ? (client.ip || '127.0.0.1') : '••••••••••••'}</span>
+            <span class="text-emerald-400 font-mono font-medium tracking-wide">${client.ip || '127.0.0.1'}</span>
           </div>
           ${(client.up !== undefined || client.down !== undefined) ? `
             <div class="flex justify-between text-zinc-400">
