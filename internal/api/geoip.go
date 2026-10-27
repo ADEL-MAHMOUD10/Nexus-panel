@@ -6,6 +6,7 @@ import (
 	"hash/crc32"
 	"net"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -32,8 +33,13 @@ type GeoNode struct {
 	Lat         float64 `json:"lat"`
 	Lon         float64 `json:"lon"`
 	IsOnline    bool    `json:"isOnline"`
+	Port        int     `json:"port,omitempty"`
+	Protocol    string  `json:"protocol,omitempty"`
+	InboundTag  string  `json:"inboundTag,omitempty"`
 	Up          int64   `json:"up,omitempty"`
 	Down        int64   `json:"down,omitempty"`
+	Total       int64   `json:"total,omitempty"`
+	ExpiryTime  int64   `json:"expiryTime,omitempty"`
 	LastOnline  int64   `json:"lastOnline,omitempty"`
 }
 
@@ -172,7 +178,7 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 	return fb
 }
 
-// ResolveClientLocation resolves coordinates for a client, using their IP or a deterministic stable global location
+// ResolveClientLocation resolves coordinates for a client, using their real IP or a regional coordinate anchor
 func (g *GeoService) ResolveClientLocation(email, ip string) GeoLocation {
 	if ip != "" && !g.isPrivateIP(ip) {
 		return g.ResolveIP(ip)
@@ -190,7 +196,7 @@ func (g *GeoService) ResolveClientLocation(email, ip string) GeoLocation {
 	if ip != "" {
 		loc.IP = ip
 	} else {
-		loc.IP = fmt.Sprintf("197.%d.%d.%d", (idx*17+12)%250+1, (idx*31+45)%250+1, (idx*13+89)%250+1)
+		loc.IP = ""
 	}
 	return loc
 }
@@ -204,9 +210,18 @@ func (s *Server) handleGetGeoNodes(w http.ResponseWriter, r *http.Request) {
 	serverIP := s.getRealPublicIP(r)
 	serverGeo := s.geoService.ResolveIP(serverIP)
 
+	portVal := 8443
+	if s.db != nil {
+		if pStr := s.db.GetSetting("web_port", "8443"); pStr != "" {
+			if p, err := strconv.Atoi(pStr); err == nil && p > 0 {
+				portVal = p
+			}
+		}
+	}
+
 	serverNode := GeoNode{
 		ID:          0,
-		Email:       "Nexus Core Server",
+		Email:       "Nexus Core Host",
 		IP:          serverIP,
 		Country:     serverGeo.Country,
 		CountryCode: serverGeo.CountryCode,
@@ -214,6 +229,8 @@ func (s *Server) handleGetGeoNodes(w http.ResponseWriter, r *http.Request) {
 		Lat:         serverGeo.Lat,
 		Lon:         serverGeo.Lon,
 		IsOnline:    true,
+		Port:        portVal,
+		Protocol:    "HTTPS / CORE",
 	}
 
 	var clientNodes []GeoNode
@@ -260,20 +277,35 @@ func (s *Server) handleGetGeoNodes(w http.ResponseWriter, r *http.Request) {
 					}
 
 					clientIP := s.geoService.GetClientIP(c.Email)
-					clientGeo := s.geoService.ResolveClientLocation(c.Email, clientIP)
+					var clientGeo GeoLocation
+					if clientIP != "" && !s.geoService.isPrivateIP(clientIP) {
+						clientGeo = s.geoService.ResolveIP(clientIP)
+					} else {
+						clientGeo = s.geoService.ResolveClientLocation(c.Email, clientIP)
+					}
+
+					displayIP := clientIP
+					if displayIP == "" {
+						displayIP = "بانتظار الاتصال (No IP Yet)"
+					}
 
 					clientNodes = append(clientNodes, GeoNode{
 						ID:          c.ID,
 						Email:       c.Email,
-						IP:          clientGeo.IP,
+						IP:          displayIP,
 						Country:     clientGeo.Country,
 						CountryCode: clientGeo.CountryCode,
 						City:        clientGeo.City,
 						Lat:         clientGeo.Lat,
 						Lon:         clientGeo.Lon,
 						IsOnline:    isOnline,
+						Port:        in.Port,
+						Protocol:    strings.ToUpper(in.Protocol),
+						InboundTag:  in.Tag,
 						Up:          c.Up,
 						Down:        c.Down,
+						Total:       c.Total,
+						ExpiryTime:  c.ExpiryTime,
 						LastOnline:  c.LastOnline,
 					})
 				}

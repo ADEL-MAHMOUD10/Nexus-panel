@@ -197,8 +197,13 @@ export interface GeoNode {
   lat: number;
   lon: number;
   isOnline: boolean;
+  port?: number;
+  protocol?: string;
+  inboundTag?: string;
   up?: number;
   down?: number;
+  total?: number;
+  expiryTime?: number;
   lastOnline?: number;
 }
 

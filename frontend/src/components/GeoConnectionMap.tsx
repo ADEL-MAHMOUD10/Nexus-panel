@@ -115,7 +115,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     return () => clearInterval(interval);
   }, []);
 
-  // Server node (with fallback defaults)
+  // Server node directly from real backend API
   const serverNode: GeoNode = useMemo(() => {
     if (data?.server && data.server.lat && data.server.lon) {
       return data.server;
@@ -123,62 +123,21 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     return {
       id: 0,
       email: 'Nexus Core Host',
-      ip: '185.196.220.14',
-      country: 'Germany',
-      countryCode: 'DE',
-      city: 'Frankfurt',
-      lat: 50.1109,
-      lon: 8.6821,
+      ip: data?.server?.ip || 'جارِ الفحص...',
+      country: data?.server?.country || 'Host Location',
+      countryCode: data?.server?.countryCode || 'HOST',
+      city: data?.server?.city || 'Resolving...',
+      lat: data?.server?.lat || 25,
+      lon: data?.server?.lon || 45,
       isOnline: true,
+      port: 8443,
+      protocol: 'HTTPS / CORE',
     };
   }, [data]);
 
-  // Client nodes (with fallback defaults for preview)
+  // Real client nodes strictly from backend (Zero Demo / Zero Mockup data)
   const clientNodes: GeoNode[] = useMemo(() => {
-    if (data?.clients && data.clients.length > 0) {
-      return data.clients;
-    }
-    return [
-      {
-        id: 1,
-        email: 'user.cairo@nexus.net',
-        ip: '156.195.42.12',
-        country: 'Egypt',
-        countryCode: 'EG',
-        city: 'Cairo',
-        lat: 30.0444,
-        lon: 31.2357,
-        isOnline: true,
-        up: 45000000,
-        down: 620000000,
-      },
-      {
-        id: 2,
-        email: 'client.riyadh@nexus.net',
-        ip: '178.80.120.55',
-        country: 'Saudi Arabia',
-        countryCode: 'SA',
-        city: 'Riyadh',
-        lat: 24.7136,
-        lon: 46.6753,
-        isOnline: true,
-        up: 12000000,
-        down: 185000000,
-      },
-      {
-        id: 3,
-        email: 'node.dubai@nexus.net',
-        ip: '94.200.75.10',
-        country: 'United Arab Emirates',
-        countryCode: 'AE',
-        city: 'Dubai',
-        lat: 25.2048,
-        lon: 55.2708,
-        isOnline: false,
-        up: 3000000,
-        down: 45000000,
-      }
-    ];
+    return data?.clients || [];
   }, [data]);
 
   const visibleClients = useMemo(() => {
@@ -325,28 +284,34 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     
     // Server Popup Content
     const serverPopupContent = document.createElement('div');
-    serverPopupContent.className = 'p-3.5 text-xs font-sans';
+    serverPopupContent.className = 'p-3.5 text-xs font-sans min-w-[250px]';
     serverPopupContent.innerHTML = `
       <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1]">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-          <span class="popup-title tracking-tight">Nexus Core Host</span>
+          <span class="popup-title tracking-tight font-bold">Nexus Core Host</span>
         </div>
         <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 font-bold">
-          ${serverNode.countryCode || 'DE'}
+          ${serverNode.countryCode || 'HOST'}
         </span>
       </div>
       <div class="space-y-2 my-2.5 font-mono text-[11px]">
         <div class="flex justify-between items-center">
-          <span class="popup-label font-sans">Location:</span>
-          <span class="popup-value font-sans">${serverNode.city}, ${serverNode.country}</span>
+          <span class="popup-label font-sans font-medium">Location:</span>
+          <span class="popup-value font-sans font-semibold">${serverNode.city}, ${serverNode.country}</span>
         </div>
         <div class="flex justify-between items-center">
-          <span class="popup-label font-sans">IP Endpoint:</span>
-          <span class="popup-ip-server font-mono tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
+          <span class="popup-label font-sans font-medium">Server Public IP:</span>
+          <span class="popup-ip-server font-mono font-bold tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
         </div>
         <div class="flex justify-between items-center">
-          <span class="popup-label font-sans">Status:</span>
+          <span class="popup-label font-sans font-medium">Panel Port:</span>
+          <span class="font-mono font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/25">
+            Port ${serverNode.port || '8443'}
+          </span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="popup-label font-sans font-medium">Status:</span>
           <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             Active Listening
@@ -360,7 +325,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
     serverMarker.bindPopup(serverPopupContent, {
       className: 'nexus-map-popup',
-      maxWidth: 280,
+      maxWidth: 290,
     });
 
     serverMarker.on('popupopen', () => {
@@ -386,7 +351,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             </svg>
           </div>
           <div class="nexus-marker-badge ${isOnline ? 'is-online' : 'is-offline'} absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full text-[9px] font-mono pointer-events-none">
-            ${client.city || client.countryCode || 'Client'}
+            ${client.city || client.countryCode || client.email || 'Client'}
           </div>
         </div>
       `;
@@ -402,40 +367,80 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       const clientMarker = L.marker([client.lat, client.lon], { icon: clientIcon });
 
       const clientPopupContent = document.createElement('div');
-      clientPopupContent.className = 'p-3.5 text-xs font-sans';
+      clientPopupContent.className = 'p-3.5 text-xs font-sans min-w-[260px] max-w-[320px]';
       clientPopupContent.innerHTML = `
-        <div class="flex items-center justify-between gap-3 pb-2 border-b border-zinc-200 dark:border-white/[0.1]">
-          <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}"></span>
-            <span class="popup-title truncate max-w-[150px]">${client.email || 'Client Node'}</span>
+        <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1]">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class="w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}"></span>
+            <span class="popup-title truncate font-bold text-sm text-zinc-900 dark:text-white">${client.email || 'Client Node'}</span>
           </div>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded ${isOnline ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 font-bold'}">
-            ${client.countryCode || 'GL'}
-          </span>
-        </div>
-        <div class="space-y-2 my-2.5 font-mono text-[11px]">
-          <div class="flex justify-between items-center">
-            <span class="popup-label font-sans">Location:</span>
-            <span class="popup-value font-sans">${client.city}, ${client.country}</span>
-          </div>
-          <div class="flex justify-between items-center">
-            <span class="popup-label font-sans">IP:</span>
-            <span class="popup-ip-client font-mono tracking-wide">${client.ip || '127.0.0.1'}</span>
-          </div>
-          ${(client.up !== undefined || client.down !== undefined) ? `
-            <div class="flex justify-between items-center">
-              <span class="popup-label font-sans">Traffic:</span>
-              <span class="text-emerald-600 dark:text-emerald-400 font-bold">${formatBytes((client.up || 0) + (client.down || 0))}</span>
-            </div>
-          ` : ''}
-          <div class="flex justify-between items-center">
-            <span class="popup-label font-sans">Status:</span>
-            <span class="${isOnline ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 font-medium'} flex items-center gap-1">
-              <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}"></span>
-              ${isOnline ? 'Connected' : 'Offline'}
+          <div class="flex items-center gap-1.5 shrink-0">
+            ${client.protocol ? `
+              <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 uppercase">
+                ${client.protocol}
+              </span>
+            ` : ''}
+            <span class="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700">
+              ${client.countryCode || 'GL'}
             </span>
           </div>
         </div>
+
+        <div class="space-y-2 my-2.5 font-mono text-[11px]">
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans font-medium">Inbound Port:</span>
+            <span class="font-mono font-bold text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25">
+              Port ${client.port || '—'}
+            </span>
+          </div>
+
+          ${client.inboundTag ? `
+            <div class="flex justify-between items-center">
+              <span class="popup-label font-sans font-medium">Inbound Tag:</span>
+              <span class="popup-value font-mono text-zinc-700 dark:text-zinc-300 truncate max-w-[150px]">${client.inboundTag}</span>
+            </div>
+          ` : ''}
+
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans font-medium">Client IP:</span>
+            <span class="popup-ip-client font-mono font-bold tracking-wide">${client.ip || 'Waiting for connection'}</span>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans font-medium">Location:</span>
+            <span class="popup-value font-sans font-semibold">${client.city}, ${client.country}</span>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans font-medium">Status:</span>
+            <span class="${isOnline ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 font-medium'} flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}"></span>
+              ${isOnline ? 'Online • متصل الآن' : 'Offline • غير متصل'}
+            </span>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans font-medium">Traffic:</span>
+            <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+              ↑ ${formatBytes(client.up || 0)} / ↓ ${formatBytes(client.down || 0)}
+            </span>
+          </div>
+
+          ${client.total && client.total > 0 ? `
+            <div class="flex justify-between items-center">
+              <span class="popup-label font-sans font-medium">Data Limit:</span>
+              <span class="popup-value font-mono font-bold">${formatBytes(client.total)}</span>
+            </div>
+          ` : ''}
+
+          ${client.expiryTime && client.expiryTime > 0 ? `
+            <div class="flex justify-between items-center">
+              <span class="popup-label font-sans font-medium">Expiry:</span>
+              <span class="popup-value font-mono text-[10px]">${new Date(client.expiryTime).toLocaleDateString()}</span>
+            </div>
+          ` : ''}
+        </div>
+
         <button id="btn-fly-client-${client.id}" class="w-full mt-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 cursor-pointer">
           <span>📍 الذهاب للموقع الفعلي (Zoom In)</span>
         </button>
@@ -443,7 +448,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
       clientMarker.bindPopup(clientPopupContent, {
         className: 'nexus-map-popup',
-        maxWidth: 280,
+        maxWidth: 310,
       });
 
       clientMarker.on('popupopen', () => {
@@ -647,23 +652,29 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         </button>
 
         {/* Clients Quick Jump Pills */}
-        {clientNodes.map((c) => (
-          <button
-            key={`jump-${c.id}`}
-            type="button"
-            onClick={() => handleFlyTo(c, 13)}
-            className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
-              focusedNodeId === c.id
-                ? 'bg-emerald-600 text-white border-emerald-500 font-semibold shadow-md shadow-emerald-500/30'
-                : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
-            }`}
-            title={`Zoom directly to ${c.email} actual location in ${c.city}`}
-          >
-            <span className={`w-1.5 h-1.5 rounded-full ${c.isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
-            <span className="truncate max-w-[120px]">{c.city}</span>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400">({c.countryCode})</span>
-          </button>
-        ))}
+        {clientNodes.length === 0 ? (
+          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 italic px-2">لا يوجد عملاء مضافين حالياً</span>
+        ) : (
+          clientNodes.map((c) => (
+            <button
+              key={`jump-${c.id}`}
+              type="button"
+              onClick={() => handleFlyTo(c, 13)}
+              className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                focusedNodeId === c.id
+                  ? 'bg-emerald-600 text-white border-emerald-500 font-semibold shadow-md shadow-emerald-500/30'
+                  : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
+              }`}
+              title={`Zoom directly to ${c.email} (Port ${c.port || '—'})`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${c.isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
+              <span className="truncate max-w-[120px] font-semibold">{c.email || c.city}</span>
+              {c.port ? (
+                <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400">:{c.port}</span>
+              ) : null}
+            </button>
+          ))
+        )}
 
         {/* Reset World View Button */}
         <button
