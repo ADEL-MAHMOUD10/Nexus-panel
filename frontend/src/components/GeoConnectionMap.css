@@ -15,11 +15,150 @@
   border: none !important;
 }
 
-/* Marker Badges */
-.nexus-marker-badge {
-  background: #0c0d13 !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5) !important;
+/* =========================================================================
+   MARKER BADGES & CIRCLES - DETERMINISTIC LIGHT & DARK THEME
+   ========================================================================= */
+
+/* --- LIGHT MODE MARKER BADGES --- */
+html.light .nexus-marker-badge,
+html:not(.dark) .nexus-marker-badge {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.16) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18) !important;
   pointer-events: none !important;
+}
+
+html.light .nexus-marker-badge,
+html.light .nexus-marker-badge *,
+html:not(.dark) .nexus-marker-badge,
+html:not(.dark) .nexus-marker-badge * {
+  color: #09090b !important;
+  font-weight: 700 !important;
+}
+
+html.light .nexus-marker-badge.is-online,
+html:not(.dark) .nexus-marker-badge.is-online {
+  border-color: rgba(16, 185, 129, 0.6) !important;
+}
+
+html.light .nexus-marker-badge.is-online,
+html.light .nexus-marker-badge.is-online *,
+html:not(.dark) .nexus-marker-badge.is-online,
+html:not(.dark) .nexus-marker-badge.is-online * {
+  color: #065f46 !important;
+  font-weight: 700 !important;
+}
+
+html.light .nexus-marker-badge.is-server,
+html:not(.dark) .nexus-marker-badge.is-server {
+  border-color: rgba(37, 99, 235, 0.6) !important;
+}
+
+html.light .nexus-marker-badge.is-server,
+html.light .nexus-marker-badge.is-server *,
+html:not(.dark) .nexus-marker-badge.is-server,
+html:not(.dark) .nexus-marker-badge.is-server * {
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+
+/* --- DARK MODE MARKER BADGES --- */
+html.dark .nexus-marker-badge {
+  background: #161617 !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+  pointer-events: none !important;
+}
+
+html.dark .nexus-marker-badge,
+html.dark .nexus-marker-badge * {
+  color: #f4f4f5 !important;
+  font-weight: 600 !important;
+}
+
+html.dark .nexus-marker-badge.is-online,
+html.dark .nexus-marker-badge.is-online * {
+  color: #6ee7b7 !important;
+  border-color: rgba(52, 211, 153, 0.5) !important;
+  font-weight: 700 !important;
+}
+
+html.dark .nexus-marker-badge.is-server,
+html.dark .nexus-marker-badge.is-server * {
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.5) !important;
+  font-weight: 700 !important;
+}
+
+/* --- LIGHT MODE MARKER CIRCLES --- */
+html.light .nexus-marker-circle,
+html:not(.dark) .nexus-marker-circle {
+  background-color: #ffffff !important;
+}
+
+html.light .nexus-marker-circle.is-server,
+html:not(.dark) .nexus-marker-circle.is-server {
+  border: 2px solid #2563eb !important;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.35) !important;
+}
+
+html.light .nexus-marker-circle.is-server svg,
+html:not(.dark) .nexus-marker-circle.is-server svg {
+  stroke: #2563eb !important;
+}
+
+html.light .nexus-marker-circle.is-online,
+html:not(.dark) .nexus-marker-circle.is-online {
+  border: 2px solid #059669 !important;
+  box-shadow: 0 3px 12px rgba(16, 185, 129, 0.35) !important;
+}
+
+html.light .nexus-marker-circle.is-online svg,
+html:not(.dark) .nexus-marker-circle.is-online svg {
+  stroke: #059669 !important;
+}
+
+html.light .nexus-marker-circle.is-offline,
+html:not(.dark) .nexus-marker-circle.is-offline {
+  border: 1.5px solid #d4d4d8 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+}
+
+html.light .nexus-marker-circle.is-offline svg,
+html:not(.dark) .nexus-marker-circle.is-offline svg {
+  stroke: #52525b !important;
+}
+
+/* --- DARK MODE MARKER CIRCLES --- */
+html.dark .nexus-marker-circle {
+  background-color: #161617 !important;
+}
+
+html.dark .nexus-marker-circle.is-server {
+  border: 2px solid #60a5fa !important;
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.8) !important;
+}
+
+html.dark .nexus-marker-circle.is-server svg {
+  stroke: #60a5fa !important;
+}
+
+html.dark .nexus-marker-circle.is-online {
+  border: 2px solid #34d399 !important;
+  box-shadow: 0 0 16px rgba(16, 185, 129, 0.8) !important;
+}
+
+html.dark .nexus-marker-circle.is-online svg {
+  stroke: #34d399 !important;
+}
+
+html.dark .nexus-marker-circle.is-offline {
+  border: 1.5px solid #52525b !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+}
+
+html.dark .nexus-marker-circle.is-offline svg {
+  stroke: #a1a1aa !important;
 }
 
 /* =========================================================================
@@ -29,7 +168,7 @@
 /* Light Mode Popup */
 html.light .nexus-map-popup .leaflet-popup-content-wrapper,
 html:not(.dark) .nexus-map-popup .leaflet-popup-content-wrapper {
-  background: rgba(255, 255, 255, 0.98) !important;
+  background: #ffffff !important;
   backdrop-filter: blur(20px) !important;
   -webkit-backdrop-filter: blur(20px) !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
@@ -40,9 +179,39 @@ html:not(.dark) .nexus-map-popup .leaflet-popup-content-wrapper {
   overflow: hidden !important;
 }
 
+html.light .nexus-map-popup .popup-title,
+html:not(.dark) .nexus-map-popup .popup-title {
+  color: #09090b !important;
+  font-weight: 700 !important;
+}
+
+html.light .nexus-map-popup .popup-label,
+html:not(.dark) .nexus-map-popup .popup-label {
+  color: #52525b !important;
+  font-weight: 600 !important;
+}
+
+html.light .nexus-map-popup .popup-value,
+html:not(.dark) .nexus-map-popup .popup-value {
+  color: #18181b !important;
+  font-weight: 600 !important;
+}
+
+html.light .nexus-map-popup .popup-ip-server,
+html:not(.dark) .nexus-map-popup .popup-ip-server {
+  color: #1d4ed8 !important;
+  font-weight: 700 !important;
+}
+
+html.light .nexus-map-popup .popup-ip-client,
+html:not(.dark) .nexus-map-popup .popup-ip-client {
+  color: #059669 !important;
+  font-weight: 700 !important;
+}
+
 html.light .nexus-map-popup .leaflet-popup-tip,
 html:not(.dark) .nexus-map-popup .leaflet-popup-tip {
-  background: rgba(255, 255, 255, 0.98) !important;
+  background: #ffffff !important;
   border: 1px solid rgba(0, 0, 0, 0.12) !important;
   box-shadow: none !important;
 }
@@ -69,6 +238,31 @@ html.dark .nexus-map-popup .leaflet-popup-content-wrapper {
   box-shadow: 0 25px 30px -5px rgba(0, 0, 0, 0.8), 0 0 20px rgba(59, 130, 246, 0.15) !important;
   padding: 0 !important;
   overflow: hidden !important;
+}
+
+html.dark .nexus-map-popup .popup-title {
+  color: #ffffff !important;
+  font-weight: 700 !important;
+}
+
+html.dark .nexus-map-popup .popup-label {
+  color: #a1a1aa !important;
+  font-weight: 500 !important;
+}
+
+html.dark .nexus-map-popup .popup-value {
+  color: #f4f4f5 !important;
+  font-weight: 600 !important;
+}
+
+html.dark .nexus-map-popup .popup-ip-server {
+  color: #60a5fa !important;
+  font-weight: 700 !important;
+}
+
+html.dark .nexus-map-popup .popup-ip-client {
+  color: #34d399 !important;
+  font-weight: 700 !important;
 }
 
 html.dark .nexus-map-popup .leaflet-popup-tip {

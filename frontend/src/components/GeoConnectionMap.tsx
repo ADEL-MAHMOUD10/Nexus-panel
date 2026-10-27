@@ -298,16 +298,16 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     const serverHtml = `
       <div class="relative flex items-center justify-center w-10 h-10 cursor-pointer group">
         <span class="absolute w-12 h-12 rounded-full bg-blue-500/35 animate-ping pointer-events-none"></span>
-        <div class="relative w-10 h-10 rounded-full bg-[#0c0d13] border-2 border-blue-400 shadow-[0_0_16px_rgba(59,130,246,0.85)] flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <div class="nexus-marker-circle is-server relative w-10 h-10 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
             <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
             <line x1="6" x2="6.01" y1="6" y2="6"/>
             <line x1="6" x2="6.01" y1="18" y2="18"/>
           </svg>
         </div>
-        <div class="nexus-marker-badge absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-blue-300 border border-blue-500/50 shadow-lg pointer-events-none flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
+        <div class="nexus-marker-badge is-server absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full text-[10px] font-mono font-bold flex items-center gap-1 pointer-events-none">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
           <span>HOST • ${serverNode.countryCode || 'DE'}</span>
         </div>
       </div>
@@ -330,23 +330,23 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1]">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
-          <span class="font-bold text-zinc-900 dark:text-white tracking-tight">Nexus Core Host</span>
+          <span class="popup-title tracking-tight">Nexus Core Host</span>
         </div>
         <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 font-bold">
           ${serverNode.countryCode || 'DE'}
         </span>
       </div>
       <div class="space-y-2 my-2.5 font-mono text-[11px]">
-        <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-          <span class="font-sans font-medium">Location:</span>
-          <span class="text-zinc-900 dark:text-zinc-200 font-sans font-semibold">${serverNode.city}, ${serverNode.country}</span>
+        <div class="flex justify-between items-center">
+          <span class="popup-label font-sans">Location:</span>
+          <span class="popup-value font-sans">${serverNode.city}, ${serverNode.country}</span>
         </div>
-        <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-          <span class="font-sans font-medium">IP Endpoint:</span>
-          <span class="text-blue-600 dark:text-blue-300 font-mono font-bold tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
+        <div class="flex justify-between items-center">
+          <span class="popup-label font-sans">IP Endpoint:</span>
+          <span class="popup-ip-server font-mono tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
         </div>
-        <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-          <span class="font-sans font-medium">Status:</span>
+        <div class="flex justify-between items-center">
+          <span class="popup-label font-sans">Status:</span>
           <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             Active Listening
@@ -379,13 +379,13 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       const clientHtml = `
         <div class="relative flex items-center justify-center w-9 h-9 cursor-pointer group">
           ${isOnline ? '<span class="absolute w-10 h-10 rounded-full bg-emerald-500/35 animate-ping pointer-events-none"></span>' : ''}
-          <div class="relative w-9 h-9 rounded-full ${isOnline ? 'bg-[#0c0d13] border-2 border-emerald-400 shadow-[0_0_14px_rgba(16,185,129,0.85)]' : 'bg-[#0c0d13]/90 border border-zinc-600'} flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${isOnline ? '#34d399' : '#a1a1aa'}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <div class="nexus-marker-circle ${isOnline ? 'is-online' : 'is-offline'} relative w-9 h-9 rounded-full flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/>
               <circle cx="12" cy="7" r="4"/>
             </svg>
           </div>
-          <div class="nexus-marker-badge absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full text-[9px] font-mono font-medium ${isOnline ? 'text-emerald-300 border border-emerald-500/50' : 'text-zinc-300 border border-zinc-700'} shadow pointer-events-none">
+          <div class="nexus-marker-badge ${isOnline ? 'is-online' : 'is-offline'} absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full text-[9px] font-mono pointer-events-none">
             ${client.city || client.countryCode || 'Client'}
           </div>
         </div>
@@ -407,29 +407,29 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         <div class="flex items-center justify-between gap-3 pb-2 border-b border-zinc-200 dark:border-white/[0.1]">
           <div class="flex items-center gap-2">
             <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}"></span>
-            <span class="font-bold text-zinc-900 dark:text-white truncate max-w-[150px]">${client.email || 'Client Node'}</span>
+            <span class="popup-title truncate max-w-[150px]">${client.email || 'Client Node'}</span>
           </div>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded ${isOnline ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700'}">
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded ${isOnline ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700 font-bold'}">
             ${client.countryCode || 'GL'}
           </span>
         </div>
         <div class="space-y-2 my-2.5 font-mono text-[11px]">
-          <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-            <span class="font-sans font-medium">Location:</span>
-            <span class="text-zinc-900 dark:text-zinc-200 font-sans font-semibold">${client.city}, ${client.country}</span>
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans">Location:</span>
+            <span class="popup-value font-sans">${client.city}, ${client.country}</span>
           </div>
-          <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-            <span class="font-sans font-medium">IP:</span>
-            <span class="text-emerald-600 dark:text-emerald-400 font-mono font-bold tracking-wide">${client.ip || '127.0.0.1'}</span>
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans">IP:</span>
+            <span class="popup-ip-client font-mono tracking-wide">${client.ip || '127.0.0.1'}</span>
           </div>
           ${(client.up !== undefined || client.down !== undefined) ? `
-            <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-              <span class="font-sans font-medium">Traffic:</span>
+            <div class="flex justify-between items-center">
+              <span class="popup-label font-sans">Traffic:</span>
               <span class="text-emerald-600 dark:text-emerald-400 font-bold">${formatBytes((client.up || 0) + (client.down || 0))}</span>
             </div>
           ` : ''}
-          <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
-            <span class="font-sans font-medium">Status:</span>
+          <div class="flex justify-between items-center">
+            <span class="popup-label font-sans">Status:</span>
             <span class="${isOnline ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 font-medium'} flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}"></span>
               ${isOnline ? 'Connected' : 'Offline'}
