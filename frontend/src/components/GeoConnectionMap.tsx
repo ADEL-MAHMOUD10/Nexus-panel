@@ -20,7 +20,9 @@ import {
   Lock,
   ExternalLink,
   Zap,
-  Activity
+  Activity,
+  Moon,
+  Map
 } from 'lucide-react';
 import { GeoNode, GeoNetworkData } from '../types';
 import api from '../services/api';
@@ -32,21 +34,20 @@ interface GeoConnectionMapProps {
 
 type MapTheme = 'satellite' | 'dark' | 'streets';
 
-// Tile providers
+// Tile providers (100% Free, NO API Key required, NO watermarks)
 const TILE_SERVERS: Record<MapTheme, { url: string; maxZoom: number; subdomains?: string[] }> = {
   satellite: {
-    // Esri World Imagery (Satellite Earth photography)
+    // Esri World Imagery (Satellite Earth photography - 100% Free, No API Key, No watermark)
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 18,
   },
   dark: {
-    // CartoDB Dark Matter (Cyber obsidian aesthetic matching Nexus dark mode)
-    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-    subdomains: ['a', 'b', 'c', 'd'],
-    maxZoom: 19,
+    // Esri World Dark Gray Canvas (Official ArcGIS Dark - 100% Free, No API Key, No watermark)
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 16,
   },
   streets: {
-    // OpenStreetMap standard street map
+    // OpenStreetMap standard (100% Free, No API Key, No watermark)
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     subdomains: ['a', 'b', 'c'],
     maxZoom: 19,
@@ -293,20 +294,20 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       });
     };
 
-    // A. Draw Server Beacon Marker (With Real Server SVG Icon)
+    // A. Draw Server Beacon Marker (With Real Server SVG Icon - Sapphire Blue)
     const serverHtml = `
       <div class="relative flex items-center justify-center w-10 h-10 cursor-pointer group">
-        <span class="absolute w-12 h-12 rounded-full bg-violet-500/40 animate-ping pointer-events-none"></span>
-        <div class="relative w-10 h-10 rounded-full bg-[#0c0d13] border-2 border-violet-400 shadow-[0_0_16px_rgba(168,85,247,0.85)] flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="absolute w-12 h-12 rounded-full bg-blue-500/35 animate-ping pointer-events-none"></span>
+        <div class="relative w-10 h-10 rounded-full bg-[#0c0d13] border-2 border-blue-400 shadow-[0_0_16px_rgba(59,130,246,0.85)] flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <rect width="20" height="8" x="2" y="2" rx="2" ry="2"/>
             <rect width="20" height="8" x="2" y="14" rx="2" ry="2"/>
             <line x1="6" x2="6.01" y1="6" y2="6"/>
             <line x1="6" x2="6.01" y1="18" y2="18"/>
           </svg>
         </div>
-        <div class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#0c0d13]/95 text-[10px] font-mono font-bold text-violet-200 border border-violet-500/40 shadow-lg pointer-events-none flex items-center gap-1">
-          <span class="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse"></span>
+        <div class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#0c0d13]/95 text-[10px] font-mono font-bold text-blue-200 border border-blue-500/40 shadow-lg pointer-events-none flex items-center gap-1">
+          <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
           <span>HOST • ${serverNode.countryCode || 'DE'}</span>
         </div>
       </div>
@@ -328,10 +329,10 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     serverPopupContent.innerHTML = `
       <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-white/[0.1]">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></span>
           <span class="font-semibold text-white tracking-tight">Nexus Core Host</span>
         </div>
-        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
           ${serverNode.countryCode || 'DE'}
         </span>
       </div>
@@ -342,15 +343,15 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         </div>
         <div class="flex justify-between items-center text-zinc-400">
           <span>IP Endpoint:</span>
-          <span class="text-violet-300 font-mono font-medium tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
+          <span class="text-blue-300 font-mono font-medium tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
         </div>
         <div class="flex justify-between text-zinc-400">
           <span>Status:</span>
           <span class="text-emerald-400 font-semibold">Active Listening</span>
         </div>
       </div>
-      <button id="btn-fly-server" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-violet-500/25 cursor-pointer">
-        <span>🚀 تكبير إلى الموقع الفعلي (Zoom In)</span>
+      <button id="btn-fly-server" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 cursor-pointer">
+        <span>تكبير إلى الموقع الفعلي (Zoom In)</span>
       </button>
     `;
 
@@ -499,14 +500,14 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     <div className="bg-[#0c0d13]/85 dark:bg-[#0c0d13]/85 bg-white/95 backdrop-blur-xl border border-white/[0.08] dark:border-white/[0.08] border-zinc-200/80 shadow-2xl rounded-2xl p-5 relative overflow-hidden transition-all duration-300">
       {/* Background ambient lighting */}
       <div 
-        className="absolute w-[500px] h-[300px] rounded-full pointer-events-none blur-[100px] opacity-15 -top-24 -left-20 bg-gradient-to-r from-violet-600 via-emerald-600 to-cyan-500"
+        className="absolute w-[500px] h-[300px] rounded-full pointer-events-none blur-[100px] opacity-15 -top-24 -left-20 bg-gradient-to-r from-blue-600/20 via-emerald-600/15 to-cyan-500/20"
       />
 
       {/* 1. Header Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-200 dark:border-white/[0.08] relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-violet-500/10 dark:bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-500 dark:text-violet-400 shadow-inner">
-            <Globe className="w-5 h-5 animate-spin-slow" />
+          <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-300 shadow-inner">
+            <Globe className="w-4 h-4 text-zinc-300" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -533,36 +534,39 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               onClick={() => setSelectedTheme('satellite')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'satellite'
-                  ? 'bg-violet-600 text-white font-medium shadow-sm'
+                  ? 'bg-white/[0.12] text-white border border-white/[0.2] font-medium shadow-sm'
                   : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
               title="Real Earth Satellite Photography"
             >
-              <span>🌍 Earth</span>
+              <Globe className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Earth</span>
             </button>
             <button
               type="button"
               onClick={() => setSelectedTheme('dark')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'dark'
-                  ? 'bg-violet-600 text-white font-medium shadow-sm'
+                  ? 'bg-white/[0.12] text-white border border-white/[0.2] font-medium shadow-sm'
                   : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
-              title="Nexus Cyber Obsidian Dark Matter"
+              title="Nexus Dark Canvas"
             >
-              <span>🌌 Obsidian</span>
+              <Moon className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Dark Canvas</span>
             </button>
             <button
               type="button"
               onClick={() => setSelectedTheme('streets')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'streets'
-                  ? 'bg-violet-600 text-white font-medium shadow-sm'
+                  ? 'bg-white/[0.12] text-white border border-white/[0.2] font-medium shadow-sm'
                   : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
               title="OpenStreetMap Streets"
             >
-              <span>🗺️ Streets</span>
+              <Map className="w-3.5 h-3.5 text-zinc-300" />
+              <span>Streets</span>
             </button>
           </div>
 
@@ -619,7 +623,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       {/* 2. Quick Location Jump Bar (Click to fly/zoom to actual location) */}
       <div className="flex items-center gap-2 py-2.5 overflow-x-auto no-scrollbar text-xs font-mono border-b border-zinc-200 dark:border-white/[0.06]">
         <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans flex items-center gap-1 shrink-0">
-          <Navigation className="w-3.5 h-3.5 text-violet-400" />
+          <Navigation className="w-3.5 h-3.5 text-zinc-400" />
           <span>Zoom to Actual:</span>
         </span>
 
@@ -629,12 +633,12 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           onClick={() => handleFlyTo(serverNode, 13)}
           className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
             focusedNodeId === 'server'
-              ? 'bg-violet-600 text-white border-violet-500 font-medium shadow-md shadow-violet-500/30'
+              ? 'bg-blue-600 text-white border-blue-500 font-medium shadow-md shadow-blue-500/30'
               : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
           }`}
           title="Zoom directly to Core Server actual location"
         >
-          <Server className="w-3 h-3 text-violet-400" />
+          <Server className="w-3 h-3 text-blue-400" />
           <span>Server: {serverNode.city} ({serverNode.countryCode || 'DE'})</span>
         </button>
 
@@ -703,7 +707,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <button
               type="button"
               onClick={handleResetWorldView}
-              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-violet-400 hover:text-violet-300 flex items-center justify-center transition shadow-lg cursor-pointer"
+              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center transition shadow-lg cursor-pointer"
               title="Whole Planet Earth View"
             >
               <Maximize2 className="w-3.5 h-3.5" />
@@ -742,7 +746,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           onClick={() => handleFlyTo(serverNode, 13)}
           className="flex items-center gap-2.5 cursor-pointer group p-1.5 -m-1.5 rounded-lg hover:bg-white/[0.04] transition"
         >
-          <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500 group-hover:scale-105 transition">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition">
             <Server className="w-4 h-4" />
           </div>
           <div>
