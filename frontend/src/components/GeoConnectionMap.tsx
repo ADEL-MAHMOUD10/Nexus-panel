@@ -306,7 +306,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <line x1="6" x2="6.01" y1="18" y2="18"/>
           </svg>
         </div>
-        <div class="absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full bg-[#0c0d13]/95 text-[10px] font-mono font-bold text-blue-200 border border-blue-500/40 shadow-lg pointer-events-none flex items-center gap-1">
+        <div class="nexus-marker-badge absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap px-2 py-0.5 rounded-full text-[10px] font-mono font-bold text-blue-300 border border-blue-500/50 shadow-lg pointer-events-none flex items-center gap-1">
           <span class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
           <span>HOST • ${serverNode.countryCode || 'DE'}</span>
         </div>
@@ -318,39 +318,42 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       className: 'nexus-server-marker',
       iconSize: [40, 40],
       iconAnchor: [20, 20],
-      popupAnchor: [0, -22],
+      popupAnchor: [0, -42],
     });
 
     const serverMarker = L.marker([serverNode.lat, serverNode.lon], { icon: serverIcon });
     
     // Server Popup Content
     const serverPopupContent = document.createElement('div');
-    serverPopupContent.className = 'p-3.5 text-xs text-zinc-100 font-sans';
+    serverPopupContent.className = 'p-3.5 text-xs font-sans';
     serverPopupContent.innerHTML = `
-      <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-white/[0.1]">
+      <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1]">
         <div class="flex items-center gap-2">
-          <span class="w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse"></span>
-          <span class="font-semibold text-white tracking-tight">Nexus Core Host</span>
+          <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+          <span class="font-bold text-zinc-900 dark:text-white tracking-tight">Nexus Core Host</span>
         </div>
-        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30">
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30 font-bold">
           ${serverNode.countryCode || 'DE'}
         </span>
       </div>
-      <div class="space-y-1.5 my-2.5 font-mono text-[11px]">
-        <div class="flex justify-between text-zinc-400">
-          <span>Location:</span>
-          <span class="text-zinc-200 font-sans font-medium">${serverNode.city}, ${serverNode.country}</span>
+      <div class="space-y-2 my-2.5 font-mono text-[11px]">
+        <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+          <span class="font-sans font-medium">Location:</span>
+          <span class="text-zinc-900 dark:text-zinc-200 font-sans font-semibold">${serverNode.city}, ${serverNode.country}</span>
         </div>
-        <div class="flex justify-between items-center text-zinc-400">
-          <span>IP Endpoint:</span>
-          <span class="text-blue-300 font-mono font-medium tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
+        <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+          <span class="font-sans font-medium">IP Endpoint:</span>
+          <span class="text-blue-600 dark:text-blue-300 font-mono font-bold tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
         </div>
-        <div class="flex justify-between text-zinc-400">
-          <span>Status:</span>
-          <span class="text-emerald-400 font-semibold">Active Listening</span>
+        <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+          <span class="font-sans font-medium">Status:</span>
+          <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+            Active Listening
+          </span>
         </div>
       </div>
-      <button id="btn-fly-server" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 cursor-pointer">
+      <button id="btn-fly-server" class="w-full mt-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 cursor-pointer">
         <span>تكبير إلى الموقع الفعلي (Zoom In)</span>
       </button>
     `;
@@ -382,7 +385,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               <circle cx="12" cy="7" r="4"/>
             </svg>
           </div>
-          <div class="absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full bg-[#0c0d13]/90 text-[9px] font-mono font-medium ${isOnline ? 'text-emerald-300 border border-emerald-500/40' : 'text-zinc-400 border border-zinc-700'} shadow pointer-events-none">
+          <div class="nexus-marker-badge absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap px-1.5 py-0.5 rounded-full text-[9px] font-mono font-medium ${isOnline ? 'text-emerald-300 border border-emerald-500/50' : 'text-zinc-300 border border-zinc-700'} shadow pointer-events-none">
             ${client.city || client.countryCode || 'Client'}
           </div>
         </div>
@@ -393,46 +396,47 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         className: 'nexus-client-marker',
         iconSize: [36, 36],
         iconAnchor: [18, 18],
-        popupAnchor: [0, -20],
+        popupAnchor: [0, -38],
       });
 
       const clientMarker = L.marker([client.lat, client.lon], { icon: clientIcon });
 
       const clientPopupContent = document.createElement('div');
-      clientPopupContent.className = 'p-3.5 text-xs text-zinc-100 font-sans';
+      clientPopupContent.className = 'p-3.5 text-xs font-sans';
       clientPopupContent.innerHTML = `
-        <div class="flex items-center justify-between gap-3 pb-2 border-b border-white/[0.1]">
+        <div class="flex items-center justify-between gap-3 pb-2 border-b border-zinc-200 dark:border-white/[0.1]">
           <div class="flex items-center gap-2">
-            <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}"></span>
-            <span class="font-semibold text-white truncate max-w-[150px]">${client.email || 'Client Node'}</span>
+            <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}"></span>
+            <span class="font-bold text-zinc-900 dark:text-white truncate max-w-[150px]">${client.email || 'Client Node'}</span>
           </div>
-          <span class="text-[10px] font-mono px-2 py-0.5 rounded ${isOnline ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-400'}">
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded ${isOnline ? 'bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30 font-bold' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-300 dark:border-zinc-700'}">
             ${client.countryCode || 'GL'}
           </span>
         </div>
-        <div class="space-y-1.5 my-2.5 font-mono text-[11px]">
-          <div class="flex justify-between text-zinc-400">
-            <span>Location:</span>
-            <span class="text-zinc-200 font-sans font-medium">${client.city}, ${client.country}</span>
+        <div class="space-y-2 my-2.5 font-mono text-[11px]">
+          <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+            <span class="font-sans font-medium">Location:</span>
+            <span class="text-zinc-900 dark:text-zinc-200 font-sans font-semibold">${client.city}, ${client.country}</span>
           </div>
-          <div class="flex justify-between items-center text-zinc-400">
-            <span>IP:</span>
-            <span class="text-emerald-400 font-mono font-medium tracking-wide">${client.ip || '127.0.0.1'}</span>
+          <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+            <span class="font-sans font-medium">IP:</span>
+            <span class="text-emerald-600 dark:text-emerald-400 font-mono font-bold tracking-wide">${client.ip || '127.0.0.1'}</span>
           </div>
           ${(client.up !== undefined || client.down !== undefined) ? `
-            <div class="flex justify-between text-zinc-400">
-              <span>Traffic:</span>
-              <span class="text-emerald-400">${formatBytes((client.up || 0) + (client.down || 0))}</span>
+            <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+              <span class="font-sans font-medium">Traffic:</span>
+              <span class="text-emerald-600 dark:text-emerald-400 font-bold">${formatBytes((client.up || 0) + (client.down || 0))}</span>
             </div>
           ` : ''}
-          <div class="flex justify-between text-zinc-400">
-            <span>Status:</span>
-            <span class="${isOnline ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}">
+          <div class="flex justify-between items-center text-zinc-600 dark:text-zinc-400">
+            <span class="font-sans font-medium">Status:</span>
+            <span class="${isOnline ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 font-medium'} flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}"></span>
               ${isOnline ? 'Connected' : 'Offline'}
             </span>
           </div>
         </div>
-        <button id="btn-fly-client-${client.id}" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer">
+        <button id="btn-fly-client-${client.id}" class="w-full mt-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 cursor-pointer">
           <span>📍 الذهاب للموقع الفعلي (Zoom In)</span>
         </button>
       `;
@@ -497,7 +501,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
   };
 
   return (
-    <div className="bg-[#0c0d13]/85 dark:bg-[#0c0d13]/85 bg-white/95 backdrop-blur-xl border border-white/[0.08] dark:border-white/[0.08] border-zinc-200/80 shadow-2xl rounded-2xl p-5 relative overflow-hidden transition-all duration-300">
+    <div className="bg-white/95 dark:bg-[#161617] backdrop-blur-xl border border-zinc-200/80 dark:border-white/[0.08] shadow-xl rounded-2xl p-5 relative overflow-hidden transition-all duration-300">
       {/* Background ambient lighting */}
       <div 
         className="absolute w-[500px] h-[300px] rounded-full pointer-events-none blur-[100px] opacity-15 -top-24 -left-20 bg-gradient-to-r from-blue-600/20 via-emerald-600/15 to-cyan-500/20"
@@ -506,8 +510,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       {/* 1. Header Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-200 dark:border-white/[0.08] relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-white/[0.04] border border-white/[0.08] flex items-center justify-center text-zinc-300 shadow-inner">
-            <Globe className="w-4 h-4 text-zinc-300" />
+          <div className="w-9 h-9 rounded-xl bg-zinc-100 dark:bg-white/[0.04] border border-zinc-200 dark:border-white/[0.08] flex items-center justify-center text-zinc-700 dark:text-zinc-300 shadow-sm">
+            <Globe className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
           </div>
           <div>
             <div className="flex items-center gap-2">
@@ -519,7 +523,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
                 Live Satellite Orbit
               </span>
             </div>
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            <p className="text-[11px] text-zinc-600 dark:text-zinc-400 mt-0.5">
               Interactive high-resolution Earth map: Server ({serverNode.city}) and live active clients with instant zoom
             </p>
           </div>
@@ -534,12 +538,12 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               onClick={() => setSelectedTheme('satellite')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'satellite'
-                  ? 'bg-white/[0.12] text-white border border-white/[0.2] font-medium shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                  ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200'
               }`}
               title="Real Earth Satellite Photography"
             >
-              <Globe className="w-3.5 h-3.5 text-zinc-300" />
+              <Globe className={`w-3.5 h-3.5 ${selectedTheme === 'satellite' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
               <span>Earth</span>
             </button>
             <button
@@ -547,12 +551,12 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               onClick={() => setSelectedTheme('dark')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'dark'
-                  ? 'bg-white/[0.12] text-white border border-white/[0.2] font-medium shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                  ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200'
               }`}
               title="Nexus Dark Canvas"
             >
-              <Moon className="w-3.5 h-3.5 text-zinc-300" />
+              <Moon className={`w-3.5 h-3.5 ${selectedTheme === 'dark' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
               <span>Dark Canvas</span>
             </button>
             <button
@@ -560,12 +564,12 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               onClick={() => setSelectedTheme('streets')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'streets'
-                  ? 'bg-white/[0.12] text-white border border-white/[0.2] font-medium shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+                  ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200'
               }`}
               title="OpenStreetMap Streets"
             >
-              <Map className="w-3.5 h-3.5 text-zinc-300" />
+              <Map className={`w-3.5 h-3.5 ${selectedTheme === 'streets' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
               <span>Streets</span>
             </button>
           </div>
@@ -577,8 +581,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               onClick={() => setActiveFilter('all')}
               className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                 activeFilter === 'all'
-                  ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm font-medium'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  ? 'bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-100 shadow-sm font-semibold border border-zinc-200 dark:border-transparent'
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               All ({clientNodes.length + 1})
@@ -588,8 +592,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               onClick={() => setActiveFilter('online')}
               className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                 activeFilter === 'online'
-                  ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-medium'
-                  : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+                  ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-semibold border border-zinc-200 dark:border-transparent'
+                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200'
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -603,17 +607,17 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             onClick={toggleBlur}
             className={`px-3 py-1.5 rounded-xl border transition-all duration-200 flex items-center gap-2 cursor-pointer font-sans text-xs ${
               isBlurred
-                ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-300 shadow-sm hover:bg-amber-500/25'
-                : 'bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-white/[0.08]'
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300 shadow-sm hover:bg-amber-500/25'
+                : 'bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-800 dark:text-zinc-300 border-zinc-300 dark:border-white/[0.08]'
             }`}
             title={isBlurred ? "إظهار الخريطة (Reveal Map)" : "تعتيم الخريطة للخصوصية (Blur Map for Privacy)"}
           >
             {isBlurred ? (
-              <EyeOff className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
+              <EyeOff className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse" />
             ) : (
-              <Eye className="w-4 h-4 text-zinc-500 dark:text-zinc-400" />
+              <Eye className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
             )}
-            <span className="font-medium text-[11px] sm:text-xs">
+            <span className="font-semibold text-[11px] sm:text-xs">
               {isBlurred ? "الخريطة معتّمة" : "تعتيم الخريطة"}
             </span>
           </button>
@@ -622,8 +626,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
       {/* 2. Quick Location Jump Bar (Click to fly/zoom to actual location) */}
       <div className="flex items-center gap-2 py-2.5 overflow-x-auto no-scrollbar text-xs font-mono border-b border-zinc-200 dark:border-white/[0.06]">
-        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans flex items-center gap-1 shrink-0">
-          <Navigation className="w-3.5 h-3.5 text-zinc-400" />
+        <span className="text-[11px] text-zinc-600 dark:text-zinc-400 font-sans flex items-center gap-1 shrink-0 font-medium">
+          <Navigation className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
           <span>Zoom to Actual:</span>
         </span>
 
@@ -633,12 +637,12 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           onClick={() => handleFlyTo(serverNode, 13)}
           className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
             focusedNodeId === 'server'
-              ? 'bg-blue-600 text-white border-blue-500 font-medium shadow-md shadow-blue-500/30'
+              ? 'bg-blue-600 text-white border-blue-500 font-semibold shadow-md shadow-blue-500/30'
               : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
           }`}
           title="Zoom directly to Core Server actual location"
         >
-          <Server className="w-3 h-3 text-blue-400" />
+          <Server className="w-3 h-3 text-blue-500 dark:text-blue-400" />
           <span>Server: {serverNode.city} ({serverNode.countryCode || 'DE'})</span>
         </button>
 
@@ -650,14 +654,14 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             onClick={() => handleFlyTo(c, 13)}
             className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
               focusedNodeId === c.id
-                ? 'bg-emerald-600 text-white border-emerald-500 font-medium shadow-md shadow-emerald-500/30'
+                ? 'bg-emerald-600 text-white border-emerald-500 font-semibold shadow-md shadow-emerald-500/30'
                 : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
             }`}
             title={`Zoom directly to ${c.email} actual location in ${c.city}`}
           >
-            <span className={`w-1.5 h-1.5 rounded-full ${c.isOnline ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+            <span className={`w-1.5 h-1.5 rounded-full ${c.isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}`} />
             <span className="truncate max-w-[120px]">{c.city}</span>
-            <span className="text-[10px] text-zinc-400">({c.countryCode})</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400">({c.countryCode})</span>
           </button>
         ))}
 
@@ -665,7 +669,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         <button
           type="button"
           onClick={handleResetWorldView}
-          className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 shrink-0 ml-auto transition flex items-center gap-1 cursor-pointer"
+          className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-200 dark:border-zinc-800 shrink-0 ml-auto transition flex items-center gap-1 cursor-pointer font-medium"
           title="Reset to whole Earth overview"
         >
           <Compass className="w-3 h-3" />
@@ -674,69 +678,71 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       </div>
 
       {/* 3. Interactive Leaflet Map Container */}
-      <div className="relative my-3 w-full h-[450px] rounded-xl overflow-hidden bg-[#07080c] border border-white/[0.08] shadow-inner select-none nexus-map-container">
-        {/* Map Canvas with smooth filter blur transition without transform matrix collision */}
+      <div className="relative my-3 w-full h-[450px] rounded-xl overflow-hidden bg-[#07080c] border border-zinc-200 dark:border-white/[0.08] shadow-inner select-none nexus-map-container">
+        {/* Map Canvas - Clean mount without CSS filter mutations so Leaflet never drops hardware textures */}
         <div 
           ref={mapContainerRef} 
-          className={`w-full h-full transition-[filter,opacity] duration-300 ease-out ${
-            isBlurred 
-              ? 'filter blur-xl opacity-35 pointer-events-none' 
-              : 'filter-none opacity-100'
-          }`}
+          className="w-full h-full relative z-0"
         />
 
-        {/* On-Map Floating Glassmorphism Zoom & Control Overlay */}
-        {!isBlurred && (
-          <div className="absolute top-4 right-4 z-[400] flex flex-col gap-1.5">
-            <button
-              type="button"
-              onClick={() => mapInstanceRef.current?.zoomIn()}
-              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-zinc-200 hover:text-white flex items-center justify-center transition shadow-lg cursor-pointer"
-              title="Zoom In (+)"
-            >
-              <Plus className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => mapInstanceRef.current?.zoomOut()}
-              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-zinc-200 hover:text-white flex items-center justify-center transition shadow-lg cursor-pointer"
-              title="Zoom Out (-)"
-            >
-              <Minus className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleResetWorldView}
-              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-zinc-300 hover:text-white flex items-center justify-center transition shadow-lg cursor-pointer"
-              title="Whole Planet Earth View"
-            >
-              <Maximize2 className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        )}
+        {/* On-Map Floating Glassmorphism Zoom & Control Overlay (Image 2 Fix) */}
+        <div 
+          className={`absolute top-4 right-4 z-[400] flex flex-col gap-1.5 transition-opacity duration-200 ${
+            isBlurred ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <button
+            type="button"
+            onClick={() => mapInstanceRef.current?.zoomIn()}
+            className="w-8 h-8 rounded-lg bg-white/95 hover:bg-white text-zinc-800 hover:text-zinc-950 border border-zinc-300/80 shadow-md backdrop-blur-md dark:bg-[#161617]/90 dark:hover:bg-[#161617] dark:border-white/[0.15] dark:text-zinc-100 dark:hover:text-white dark:shadow-xl flex items-center justify-center transition-all cursor-pointer active:scale-95"
+            title="Zoom In (+)"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => mapInstanceRef.current?.zoomOut()}
+            className="w-8 h-8 rounded-lg bg-white/95 hover:bg-white text-zinc-800 hover:text-zinc-950 border border-zinc-300/80 shadow-md backdrop-blur-md dark:bg-[#161617]/90 dark:hover:bg-[#161617] dark:border-white/[0.15] dark:text-zinc-100 dark:hover:text-white dark:shadow-xl flex items-center justify-center transition-all cursor-pointer active:scale-95"
+            title="Zoom Out (-)"
+          >
+            <Minus className="w-4 h-4 stroke-[2.5]" />
+          </button>
+          <button
+            type="button"
+            onClick={handleResetWorldView}
+            className="w-8 h-8 rounded-lg bg-white/95 hover:bg-white text-zinc-800 hover:text-zinc-950 border border-zinc-300/80 shadow-md backdrop-blur-md dark:bg-[#161617]/90 dark:hover:bg-[#161617] dark:border-white/[0.15] dark:text-zinc-100 dark:hover:text-white dark:shadow-xl flex items-center justify-center transition-all cursor-pointer active:scale-95"
+            title="Whole Planet Earth View"
+          >
+            <Maximize2 className="w-3.5 h-3.5 stroke-[2.2]" />
+          </button>
+        </div>
 
-        {/* Privacy Shield Overlay (When Blurred) */}
-        {isBlurred && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-[500] backdrop-blur-md bg-black/45 transition-all duration-500 animate-in fade-in">
-            <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 shadow-lg shadow-amber-500/10">
-              <ShieldCheck className="w-6 h-6 animate-pulse" />
-            </div>
-            <h4 className="text-sm font-semibold text-white tracking-tight">
-              Geospatial Privacy Shield Active
-            </h4>
-            <p className="text-xs text-zinc-300 max-w-sm mt-1 mb-4 leading-relaxed font-sans">
-              Geographic coordinates, server host location, and connected client pins are obfuscated for privacy and screen protection.
-            </p>
-            <button
-              type="button"
-              onClick={toggleBlur}
-              className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-semibold text-xs transition-transform active:scale-95 shadow-lg shadow-amber-500/20 flex items-center gap-2 cursor-pointer"
-            >
-              <Eye className="w-4 h-4 text-zinc-950" />
-              <span>إلغاء التعتيم وإظهار الخريطة</span>
-            </button>
+        {/* Privacy Shield Overlay (When Blurred) - Overlaid on top via backdrop-blur, preserving Leaflet in memory */}
+        <div 
+          className={`absolute inset-0 z-[450] flex flex-col items-center justify-center p-6 text-center backdrop-blur-2xl bg-black/60 transition-all duration-300 select-none ${
+            isBlurred 
+              ? 'opacity-100 pointer-events-auto' 
+              : 'opacity-0 pointer-events-none'
+          }`}
+        >
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 mb-3 shadow-lg shadow-amber-500/20">
+            <ShieldCheck className="w-6 h-6 animate-pulse text-amber-400" />
           </div>
-        )}
+          <h4 className="text-sm font-bold text-white tracking-tight">
+            Geospatial Privacy Shield Active
+          </h4>
+          <p className="text-xs text-zinc-200 max-w-sm mt-1.5 mb-4 leading-relaxed font-sans">
+            تم تعتيم الإحداثيات الجغرافية ومواقع الخوادم والعملاء بنجاح لحماية الخصوصية ومشاركة الشاشة بأمان.
+          </p>
+          <button
+            type="button"
+            onClick={toggleBlur}
+            className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition-transform active:scale-95 shadow-lg shadow-amber-500/25 flex items-center gap-2 cursor-pointer"
+          >
+            <Eye className="w-4 h-4 text-zinc-950" />
+            <span>إلغاء التعتيم وإظهار الخريطة (Reveal Map)</span>
+          </button>
+        </div>
       </div>
 
       {/* 4. Bottom Telemetry Summary Strip */}
@@ -744,13 +750,13 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         {/* Core Host Node */}
         <div 
           onClick={() => handleFlyTo(serverNode, 13)}
-          className="flex items-center gap-2.5 cursor-pointer group p-1.5 -m-1.5 rounded-lg hover:bg-white/[0.04] transition"
+          className="flex items-center gap-2.5 cursor-pointer group p-1.5 -m-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition"
         >
-          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500 group-hover:scale-105 transition">
             <Server className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Core Host Node</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans font-medium">Core Host Node</span>
             <span className="font-semibold text-zinc-900 dark:text-zinc-200 truncate block">
               {serverNode.city}, {serverNode.countryCode || 'DE'}
             </span>
@@ -763,7 +769,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <Radio className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Active Clients</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans font-medium">Active Clients</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400 block font-mono">
               {onlineCount} Connected Nodes
             </span>
@@ -776,7 +782,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <Layers className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Visual Matrix</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans font-medium">Visual Matrix</span>
             <span className="font-semibold text-zinc-900 dark:text-zinc-200 capitalize block">
               {selectedTheme} Imagery
             </span>
@@ -786,18 +792,18 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         {/* Privacy Guard Indicator */}
         <div 
           onClick={toggleBlur}
-          className="flex items-center gap-2.5 cursor-pointer p-1.5 -m-1.5 rounded-lg hover:bg-white/[0.04] transition"
+          className="flex items-center gap-2.5 cursor-pointer p-1.5 -m-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition"
         >
           <div className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
             isBlurred 
               ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' 
-              : 'bg-zinc-100 dark:bg-white/[0.04] border-zinc-200 dark:border-white/[0.08] text-zinc-400'
+              : 'bg-zinc-100 dark:bg-white/[0.04] border-zinc-200 dark:border-white/[0.08] text-zinc-500 dark:text-zinc-400'
           }`}>
             {isBlurred ? <Lock className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Privacy Guard</span>
-            <span className={`font-semibold block ${isBlurred ? 'text-amber-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans font-medium">Privacy Guard</span>
+            <span className={`font-semibold block ${isBlurred ? 'text-amber-600 dark:text-amber-500' : 'text-zinc-800 dark:text-zinc-300'}`}>
               {isBlurred ? 'Obfuscated' : 'Clear View'}
             </span>
           </div>
