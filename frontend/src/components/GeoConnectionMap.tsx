@@ -1,4 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import './GeoConnectionMap.css';
 import { 
   Globe, 
   Eye, 
@@ -8,13 +11,18 @@ import {
   Server, 
   Users, 
   MapPin, 
-  Sparkles,
-  Wifi,
+  Plus, 
+  Minus, 
+  Maximize2, 
+  Compass, 
+  Navigation, 
+  Layers, 
+  Lock,
   ExternalLink,
-  Lock
+  Zap,
+  Activity
 } from 'lucide-react';
 import { GeoNode, GeoNetworkData } from '../types';
-import { WORLD_DOTS } from '../data/worldDots';
 import api from '../services/api';
 
 interface GeoConnectionMapProps {
@@ -22,19 +30,41 @@ interface GeoConnectionMapProps {
   showPublicIP?: boolean;
 }
 
-// Convert Lat/Lon to SVG coordinate on a 960x480 canvas
-export function coordsToSvg(lat: number, lon: number, width = 960, height = 480): { x: number; y: number } {
-  const clampedLat = Math.max(-56, Math.min(80, lat));
-  let normalizedLon = lon;
-  while (normalizedLon < -180) normalizedLon += 360;
-  while (normalizedLon > 180) normalizedLon -= 360;
+type MapTheme = 'satellite' | 'dark' | 'streets';
 
-  const x = ((normalizedLon + 180) / 360) * width;
-  const y = ((80 - clampedLat) / 136) * height;
-  return { 
-    x: Math.round(x * 10) / 10, 
-    y: Math.round(y * 10) / 10 
-  };
+// Tile providers
+const TILE_SERVERS: Record<MapTheme, { url: string; maxZoom: number; subdomains?: string[] }> = {
+  satellite: {
+    // Esri World Imagery (Satellite Earth photography)
+    url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    maxZoom: 18,
+  },
+  dark: {
+    // CartoDB Dark Matter (Cyber obsidian aesthetic matching Nexus dark mode)
+    url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    subdomains: ['a', 'b', 'c', 'd'],
+    maxZoom: 19,
+  },
+  streets: {
+    // OpenStreetMap standard street map
+    url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+    subdomains: ['a', 'b', 'c'],
+    maxZoom: 19,
+  },
+};
+
+// Generates smooth curved quadratic bezier points between two coordinates
+function getCurvedArcPoints(from: [number, number], to: [number, number], curvature = 0.22): [number, number][] {
+  const points: [number, number][] = [];
+  const midLat = (from[0] + to[0]) / 2 + Math.abs(to[1] - from[1]) * curvature * 0.15;
+  const midLon = (from[1] + to[1]) / 2;
+
+  for (let t = 0; t <= 1; t += 0.04) {
+    const lat = (1 - t) * (1 - t) * from[0] + 2 * (1 - t) * t * midLat + t * t * to[0];
+    const lon = (1 - t) * (1 - t) * from[1] + 2 * (1 - t) * t * midLon + t * t * to[1];
+    points.push([lat, lon]);
+  }
+  return points;
 }
 
 export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({ 
@@ -42,15 +72,21 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
   showPublicIP = false,
 }) => {
   const [data, setData] = useState<GeoNetworkData | null>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [hoveredNode, setHoveredNode] = useState<GeoNode | null>(null);
+  const [selectedTheme, setSelectedTheme] = useState<MapTheme>('satellite');
   const [activeFilter, setActiveFilter] = useState<'all' | 'online' | 'server'>('all');
+  const [focusedNodeId, setFocusedNodeId] = useState<number | 'server' | null>(null);
 
   // Eye blur privacy toggle (persisted in localStorage)
   const [isBlurred, setIsBlurred] = useState<boolean>(() => {
     const saved = localStorage.getItem('nexus_map_blurred');
     return saved !== null ? saved === 'true' : false;
   });
+
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const linesLayerRef = useRef<L.LayerGroup | null>(null);
 
   const toggleBlur = () => {
     setIsBlurred((prev) => {
@@ -60,7 +96,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     });
   };
 
-  // Fetch geospatial nodes from backend
+  // Fetch geospatial node data from backend
   const fetchGeoData = async () => {
     try {
       const res = await api.get('/api/server/geo');
@@ -68,19 +104,17 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         setData(res.data);
       }
     } catch {
-      // Graceful fallback for offline / dev preview
-    } finally {
-      setIsLoading(false);
+      // Fallback
     }
   };
 
   useEffect(() => {
     fetchGeoData();
-    const interval = setInterval(fetchGeoData, 20000); // 20s telemetry poll
+    const interval = setInterval(fetchGeoData, 20000);
     return () => clearInterval(interval);
   }, []);
 
-  // Default server node if backend data not yet loaded
+  // Server node (with fallback defaults)
   const serverNode: GeoNode = useMemo(() => {
     if (data?.server && data.server.lat && data.server.lon) {
       return data.server;
@@ -98,11 +132,11 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     };
   }, [data]);
 
+  // Client nodes (with fallback defaults for preview)
   const clientNodes: GeoNode[] = useMemo(() => {
     if (data?.clients && data.clients.length > 0) {
       return data.clients;
     }
-    // Fallback demonstration nodes if no clients exist yet
     return [
       {
         id: 1,
@@ -146,130 +180,379 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     ];
   }, [data]);
 
-  const serverSvg = useMemo(() => coordsToSvg(serverNode.lat, serverNode.lon), [serverNode]);
-
-  // Filter clients based on user toggle
   const visibleClients = useMemo(() => {
     if (activeFilter === 'server') return [];
     if (activeFilter === 'online') return clientNodes.filter((c) => c.isOnline);
     return clientNodes;
   }, [clientNodes, activeFilter]);
 
-  const onlineClientsCount = useMemo(() => clientNodes.filter((c) => c.isOnline).length, [clientNodes]);
-  const totalCountriesCount = useMemo(() => {
-    const countries = new Set<string>();
-    if (serverNode.countryCode) countries.add(serverNode.countryCode);
-    clientNodes.forEach((c) => {
-      if (c.countryCode) countries.add(c.countryCode);
+  const onlineCount = useMemo(() => clientNodes.filter((c) => c.isOnline).length, [clientNodes]);
+
+  // 1. Initialize Leaflet Map
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    if (!mapInstanceRef.current) {
+      const map = L.map(mapContainerRef.current, {
+        center: [30, 20], // Global centered Earth view
+        zoom: 3,
+        minZoom: 2,
+        maxZoom: 18,
+        zoomControl: false,
+        attributionControl: false,
+        worldCopyJump: true,
+      });
+
+      // Layer groups for markers & animated arcs
+      const linesGroup = L.layerGroup().addTo(map);
+      const markersGroup = L.layerGroup().addTo(map);
+
+      linesLayerRef.current = linesGroup;
+      markersLayerRef.current = markersGroup;
+      mapInstanceRef.current = map;
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // 2. Manage Tile Layer switching (Satellite Earth vs Dark Matter vs Streets)
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    if (tileLayerRef.current) {
+      map.removeLayer(tileLayerRef.current);
+    }
+
+    const conf = TILE_SERVERS[selectedTheme];
+    const newLayer = L.tileLayer(conf.url, {
+      maxZoom: conf.maxZoom,
+      subdomains: conf.subdomains || [],
     });
-    return countries.size;
-  }, [serverNode, clientNodes]);
 
-  // Pre-calculate dot illuminations to achieve the exact luminous aesthetics in user's image
-  const illuminatedDots = useMemo(() => {
-    const activeNodes = [
-      { x: serverSvg.x, y: serverSvg.y, type: 'server' },
-      ...clientNodes.filter((c) => c.isOnline).map((c) => {
-        const pt = coordsToSvg(c.lat, c.lon);
-        return { x: pt.x, y: pt.y, type: 'client' };
-      })
-    ];
+    newLayer.addTo(map);
+    tileLayerRef.current = newLayer;
+  }, [selectedTheme]);
 
-    return WORLD_DOTS.map(([x, y]) => {
-      // Find distance to closest active node
-      let minServerDist = Infinity;
-      let minClientDist = Infinity;
+  // 3. Render Markers & Connection Arcs
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const markersGroup = markersLayerRef.current;
+    const linesGroup = linesLayerRef.current;
+    if (!map || !markersGroup || !linesGroup) return;
 
-      for (const node of activeNodes) {
-        const d = Math.hypot(x - node.x, y - node.y);
-        if (node.type === 'server') {
-          if (d < minServerDist) minServerDist = d;
-        } else {
-          if (d < minClientDist) minClientDist = d;
+    markersGroup.clearLayers();
+    linesGroup.clearLayers();
+
+    // Fly to actual location helper
+    const flyToLocation = (lat: number, lon: number, zoom = 14) => {
+      map.flyTo([lat, lon], zoom, {
+        duration: 1.8,
+        easeLinearity: 0.25,
+      });
+    };
+
+    // A. Draw Server Beacon Marker
+    const serverHtml = `
+      <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+        <span class="absolute w-12 h-12 rounded-full bg-violet-500/40 animate-ping"></span>
+        <span class="relative flex items-center justify-center w-8 h-8 rounded-full bg-[#0c0d13] border-2 border-violet-400 shadow-[0_0_16px_rgba(168,85,247,0.8)]">
+          <span class="w-3.5 h-3.5 rounded-full bg-violet-400 shadow-[0_0_8px_#ffffff]"></span>
+        </span>
+        <div class="absolute -top-7 whitespace-nowrap px-2 py-0.5 rounded bg-[#0c0d13]/90 text-[10px] font-mono font-bold text-violet-200 border border-violet-500/40 shadow-lg pointer-events-none">
+          HOST • ${serverNode.countryCode || 'SERVER'}
+        </div>
+      </div>
+    `;
+
+    const serverIcon = L.divIcon({
+      html: serverHtml,
+      className: 'nexus-server-marker',
+      iconSize: [0, 0],
+    });
+
+    const serverMarker = L.marker([serverNode.lat, serverNode.lon], { icon: serverIcon });
+    
+    // Server Popup Content
+    const serverPopupContent = document.createElement('div');
+    serverPopupContent.className = 'p-3.5 text-xs text-zinc-100 font-sans';
+    serverPopupContent.innerHTML = `
+      <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-white/[0.1]">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-violet-400 animate-pulse"></span>
+          <span class="font-semibold text-white tracking-tight">Nexus Core Host</span>
+        </div>
+        <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+          ${serverNode.countryCode || 'DE'}
+        </span>
+      </div>
+      <div class="space-y-1.5 my-2.5 font-mono text-[11px]">
+        <div class="flex justify-between text-zinc-400">
+          <span>Location:</span>
+          <span class="text-zinc-200 font-sans font-medium">${serverNode.city}, ${serverNode.country}</span>
+        </div>
+        <div class="flex justify-between text-zinc-400">
+          <span>IP Endpoint:</span>
+          <span class="text-zinc-300">${showPublicIP ? (serverNode.ip || '127.0.0.1') : '••••••••••••'}</span>
+        </div>
+        <div class="flex justify-between text-zinc-400">
+          <span>Status:</span>
+          <span class="text-emerald-400 font-semibold">Active Listening</span>
+        </div>
+      </div>
+      <button id="btn-fly-server" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-violet-500/25 cursor-pointer">
+        <span>🚀 تكبير إلى الموقع الفعلي (Zoom In)</span>
+      </button>
+    `;
+
+    serverMarker.bindPopup(serverPopupContent, {
+      className: 'nexus-map-popup',
+      maxWidth: 280,
+    });
+
+    serverMarker.on('popupopen', () => {
+      const btn = document.getElementById('btn-fly-server');
+      if (btn) {
+        btn.onclick = () => flyToLocation(serverNode.lat, serverNode.lon, 14);
+      }
+    });
+
+    serverMarker.addTo(markersGroup);
+
+    // B. Draw Client Markers and Connection Arcs
+    visibleClients.forEach((client) => {
+      const isOnline = client.isOnline;
+
+      const clientHtml = isOnline
+        ? `
+          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+            <span class="absolute w-8 h-8 rounded-full bg-emerald-500/40 animate-ping"></span>
+            <span class="relative flex items-center justify-center w-6 h-6 rounded-full bg-[#0c0d13] border-2 border-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.8)]">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-300 shadow-[0_0_6px_#ffffff]"></span>
+            </span>
+            <div class="absolute -top-6 opacity-0 group-hover:opacity-100 transition whitespace-nowrap px-1.5 py-0.5 rounded bg-[#0c0d13]/90 text-[9px] font-mono font-medium text-emerald-300 border border-emerald-500/30 pointer-events-none">
+              ${client.city}
+            </div>
+          </div>
+        `
+        : `
+          <div class="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2 cursor-pointer group">
+            <span class="w-5 h-5 rounded-full bg-zinc-900 border-2 border-zinc-500 flex items-center justify-center shadow">
+              <span class="w-1.5 h-1.5 rounded-full bg-zinc-400"></span>
+            </span>
+          </div>
+        `;
+
+      const clientIcon = L.divIcon({
+        html: clientHtml,
+        className: 'nexus-client-marker',
+        iconSize: [0, 0],
+      });
+
+      const clientMarker = L.marker([client.lat, client.lon], { icon: clientIcon });
+
+      const clientPopupContent = document.createElement('div');
+      clientPopupContent.className = 'p-3.5 text-xs text-zinc-100 font-sans';
+      clientPopupContent.innerHTML = `
+        <div class="flex items-center justify-between gap-3 pb-2 border-b border-white/[0.1]">
+          <div class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}"></span>
+            <span class="font-semibold text-white truncate max-w-[150px]">${client.email || 'Client Node'}</span>
+          </div>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded ${isOnline ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-zinc-800 text-zinc-400'}">
+            ${client.countryCode || 'GL'}
+          </span>
+        </div>
+        <div class="space-y-1.5 my-2.5 font-mono text-[11px]">
+          <div class="flex justify-between text-zinc-400">
+            <span>Location:</span>
+            <span class="text-zinc-200 font-sans font-medium">${client.city}, ${client.country}</span>
+          </div>
+          <div class="flex justify-between text-zinc-400">
+            <span>IP:</span>
+            <span class="text-zinc-300">${showPublicIP ? (client.ip || '127.0.0.1') : '••••••••••••'}</span>
+          </div>
+          ${(client.up !== undefined || client.down !== undefined) ? `
+            <div class="flex justify-between text-zinc-400">
+              <span>Traffic:</span>
+              <span class="text-emerald-400">${formatBytes((client.up || 0) + (client.down || 0))}</span>
+            </div>
+          ` : ''}
+          <div class="flex justify-between text-zinc-400">
+            <span>Status:</span>
+            <span class="${isOnline ? 'text-emerald-400 font-semibold' : 'text-zinc-500'}">
+              ${isOnline ? 'Connected' : 'Offline'}
+            </span>
+          </div>
+        </div>
+        <button id="btn-fly-client-${client.id}" class="w-full mt-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 cursor-pointer">
+          <span>📍 الذهاب للموقع الفعلي (Zoom In)</span>
+        </button>
+      `;
+
+      clientMarker.bindPopup(clientPopupContent, {
+        className: 'nexus-map-popup',
+        maxWidth: 280,
+      });
+
+      clientMarker.on('popupopen', () => {
+        const btn = document.getElementById(`btn-fly-client-${client.id}`);
+        if (btn) {
+          btn.onclick = () => flyToLocation(client.lat, client.lon, 14);
         }
-      }
+      });
 
-      // Proximity glow levels matching reference design
-      if (minServerDist < 45) {
-        return { x, y, fill: '#e9d5ff', opacity: 0.95, r: 2.2 }; // Core server halo
-      }
-      if (minServerDist < 85) {
-        return { x, y, fill: '#c084fc', opacity: 0.70, r: 2.0 }; // Server regional halo
-      }
-      if (minClientDist < 35) {
-        return { x, y, fill: '#6ee7b7', opacity: 0.95, r: 2.2 }; // Client node halo
-      }
-      if (minClientDist < 70) {
-        return { x, y, fill: '#34d399', opacity: 0.65, r: 2.0 }; // Client regional halo
-      }
-      if (minServerDist < 140) {
-        return { x, y, fill: '#7c3aed', opacity: 0.35, r: 1.8 }; // Faint purple ambient
-      }
+      clientMarker.addTo(markersGroup);
 
-      // Default continental land dot
-      return { x, y, fill: 'currentColor', opacity: 0.22, r: 1.7 };
+      // C. Draw Curved Connection Arc for Online Clients
+      if (isOnline) {
+        const arcCoords = getCurvedArcPoints(
+          [client.lat, client.lon],
+          [serverNode.lat, serverNode.lon]
+        );
+
+        // Background luminous line
+        L.polyline(arcCoords, {
+          color: '#818cf8',
+          weight: 1.5,
+          opacity: 0.35,
+        }).addTo(linesGroup);
+
+        // Animated dashed streaming line
+        L.polyline(arcCoords, {
+          color: '#34d399',
+          weight: 2,
+          opacity: 0.85,
+          dashArray: '8, 8',
+          className: 'nexus-animated-arc',
+        }).addTo(linesGroup);
+      }
     });
-  }, [serverSvg, clientNodes]);
+  }, [serverNode, visibleClients, showPublicIP, formatBytes]);
+
+  // Handler to smoothly fly to specific node coordinates
+  const handleFlyTo = (node: GeoNode, zoom = 13) => {
+    if (!mapInstanceRef.current) return;
+    setFocusedNodeId(node.id === 0 ? 'server' : node.id);
+    mapInstanceRef.current.flyTo([node.lat, node.lon], zoom, {
+      duration: 1.8,
+      easeLinearity: 0.25,
+    });
+  };
+
+  // Handler to reset map to whole-planet Earth view
+  const handleResetWorldView = () => {
+    if (!mapInstanceRef.current) return;
+    setFocusedNodeId(null);
+    mapInstanceRef.current.flyTo([25, 20], 3, {
+      duration: 1.5,
+    });
+  };
 
   return (
     <div className="bg-[#0c0d13]/85 dark:bg-[#0c0d13]/85 bg-white/95 backdrop-blur-xl border border-white/[0.08] dark:border-white/[0.08] border-zinc-200/80 shadow-2xl rounded-2xl p-5 relative overflow-hidden transition-all duration-300">
-      {/* Background ambient radial glow */}
+      {/* Background ambient lighting */}
       <div 
-        className="absolute w-[450px] h-[300px] rounded-full pointer-events-none blur-[90px] opacity-20 -top-20 -left-20 bg-gradient-to-br from-violet-600 via-fuchsia-600 to-cyan-500"
+        className="absolute w-[500px] h-[300px] rounded-full pointer-events-none blur-[100px] opacity-15 -top-24 -left-20 bg-gradient-to-r from-violet-600 via-emerald-600 to-cyan-500"
       />
 
       {/* 1. Header Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-zinc-200 dark:border-white/[0.08] relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-violet-500/10 dark:bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-inner">
+          <div className="w-10 h-10 rounded-xl bg-violet-500/10 dark:bg-violet-500/15 border border-violet-500/25 flex items-center justify-center text-violet-500 dark:text-violet-400 shadow-inner">
             <Globe className="w-5 h-5 animate-spin-slow" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">
-                Nexus Global Mesh
+                Nexus Global Mesh • Earth Telemetry
               </h3>
               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-medium flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Matrix
+                Live Satellite Orbit
               </span>
             </div>
             <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Geospatial telemetry: Core Host ({serverNode.city || 'Server'}) and active client endpoints
+              Interactive high-resolution Earth map: Server ({serverNode.city}) and live active clients with instant zoom
             </p>
           </div>
         </div>
 
-        {/* Action Controls & Filters */}
-        <div className="flex items-center gap-2">
-          {/* Quick Node View Filters */}
-          <div className="hidden sm:flex items-center p-1 rounded-lg bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
+        {/* Toolbar Controls */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Map Layer Switcher (Satellite Earth vs Obsidian Dark vs Streets) */}
+          <div className="flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => setSelectedTheme('satellite')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedTheme === 'satellite'
+                  ? 'bg-violet-600 text-white font-medium shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+              title="Real Earth Satellite Photography"
+            >
+              <span>🌍 Earth</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTheme('dark')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedTheme === 'dark'
+                  ? 'bg-violet-600 text-white font-medium shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+              title="Nexus Cyber Obsidian Dark Matter"
+            >
+              <span>🌌 Obsidian</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedTheme('streets')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedTheme === 'streets'
+                  ? 'bg-violet-600 text-white font-medium shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200'
+              }`}
+              title="OpenStreetMap Streets"
+            >
+              <span>🗺️ Streets</span>
+            </button>
+          </div>
+
+          {/* Quick Node View Filter */}
+          <div className="hidden md:flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
             <button
               type="button"
               onClick={() => setActiveFilter('all')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer ${
+              className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
                 activeFilter === 'all'
                   ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 shadow-sm font-medium'
                   : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
               }`}
             >
-              All Nodes ({clientNodes.length + 1})
+              All ({clientNodes.length + 1})
             </button>
             <button
               type="button"
               onClick={() => setActiveFilter('online')}
-              className={`px-2.5 py-1 rounded-md transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-2.5 py-1 rounded-lg transition cursor-pointer flex items-center gap-1.5 ${
                 activeFilter === 'online'
                   ? 'bg-white dark:bg-zinc-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-medium'
                   : 'text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
               }`}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              Online ({onlineClientsCount})
+              Online ({onlineCount})
             </button>
           </div>
 
-          {/* Eye Privacy Blur Toggle Button */}
+          {/* Eye Privacy Blur Toggle */}
           <button
             type="button"
             onClick={toggleBlur}
@@ -278,7 +561,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
                 ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-300 shadow-sm hover:bg-amber-500/25'
                 : 'bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-700 dark:text-zinc-300 border-zinc-300 dark:border-white/[0.08]'
             }`}
-            title={isBlurred ? "إظهار الخريطة (Reveal Map)" : "تعتيم الخريطة لحماية الخصوصية (Blur Map for Privacy)"}
+            title={isBlurred ? "إظهار الخريطة (Reveal Map)" : "تعتيم الخريطة للخصوصية (Blur Map for Privacy)"}
           >
             {isBlurred ? (
               <EyeOff className="w-4 h-4 text-amber-500 dark:text-amber-400 animate-pulse" />
@@ -292,208 +575,104 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         </div>
       </div>
 
-      {/* 2. Interactive SVG Map Canvas */}
-      <div className="relative my-3 w-full aspect-[2/1] rounded-xl overflow-hidden bg-[#07080c] border border-white/[0.05] shadow-inner select-none flex items-center justify-center">
-        {/* Subtle Map Grid Overlay */}
-        <div 
-          className="absolute inset-0 pointer-events-none opacity-[0.03]"
-          style={{
-            backgroundImage: `radial-gradient(circle, #ffffff 1px, transparent 1px)`,
-            backgroundSize: '24px 24px'
-          }}
-        />
+      {/* 2. Quick Location Jump Bar (Click to fly/zoom to actual location) */}
+      <div className="flex items-center gap-2 py-2.5 overflow-x-auto no-scrollbar text-xs font-mono border-b border-zinc-200 dark:border-white/[0.06]">
+        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-sans flex items-center gap-1 shrink-0">
+          <Navigation className="w-3.5 h-3.5 text-violet-400" />
+          <span>Zoom to Actual:</span>
+        </span>
 
-        {/* Primary World Dot Matrix SVG */}
-        <svg
-          viewBox="0 0 960 480"
+        {/* Server Quick Jump Pill */}
+        <button
+          type="button"
+          onClick={() => handleFlyTo(serverNode, 13)}
+          className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+            focusedNodeId === 'server'
+              ? 'bg-violet-600 text-white border-violet-500 font-medium shadow-md shadow-violet-500/30'
+              : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
+          }`}
+          title="Zoom directly to Core Server actual location"
+        >
+          <Server className="w-3 h-3 text-violet-400" />
+          <span>Server: {serverNode.city} ({serverNode.countryCode || 'DE'})</span>
+        </button>
+
+        {/* Clients Quick Jump Pills */}
+        {clientNodes.map((c) => (
+          <button
+            key={`jump-${c.id}`}
+            type="button"
+            onClick={() => handleFlyTo(c, 13)}
+            className={`px-2.5 py-1 rounded-lg border transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+              focusedNodeId === c.id
+                ? 'bg-emerald-600 text-white border-emerald-500 font-medium shadow-md shadow-emerald-500/30'
+                : 'bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border-zinc-200 dark:border-zinc-800'
+            }`}
+            title={`Zoom directly to ${c.email} actual location in ${c.city}`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${c.isOnline ? 'bg-emerald-400' : 'bg-zinc-500'}`} />
+            <span className="truncate max-w-[120px]">{c.city}</span>
+            <span className="text-[10px] text-zinc-400">({c.countryCode})</span>
+          </button>
+        ))}
+
+        {/* Reset World View Button */}
+        <button
+          type="button"
+          onClick={handleResetWorldView}
+          className="px-2.5 py-1 rounded-lg bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 shrink-0 ml-auto transition flex items-center gap-1 cursor-pointer"
+          title="Reset to whole Earth overview"
+        >
+          <Compass className="w-3 h-3" />
+          <span>Reset World</span>
+        </button>
+      </div>
+
+      {/* 3. Interactive Leaflet Map Container */}
+      <div className="relative my-3 w-full h-[450px] rounded-xl overflow-hidden bg-[#07080c] border border-white/[0.08] shadow-inner select-none nexus-map-container">
+        {/* Map Canvas with smooth blur transition */}
+        <div 
+          ref={mapContainerRef} 
           className={`w-full h-full transition-all duration-700 ease-out ${
-            isBlurred
-              ? 'filter blur-xl scale-[1.03] opacity-30 pointer-events-none'
+            isBlurred 
+              ? 'filter blur-xl scale-[1.02] opacity-30 pointer-events-none' 
               : 'filter-none scale-100 opacity-100'
           }`}
-        >
-          <defs>
-            {/* Animated linear gradient for connection arcs */}
-            <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#34d399" stopOpacity="0.8" />
-              <stop offset="60%" stopColor="#818cf8" stopOpacity="0.9" />
-              <stop offset="100%" stopColor="#c084fc" stopOpacity="1" />
-            </linearGradient>
+        />
 
-            {/* Radiant core filter */}
-            <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-              <feGaussianBlur stdDeviation="3" result="blur" />
-              <feComposite in="SourceGraphic" in2="blur" operator="over" />
-            </filter>
-          </defs>
+        {/* On-Map Floating Glassmorphism Zoom & Control Overlay */}
+        {!isBlurred && (
+          <div className="absolute top-4 right-4 z-[400] flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={() => mapInstanceRef.current?.zoomIn()}
+              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-zinc-200 hover:text-white flex items-center justify-center transition shadow-lg cursor-pointer"
+              title="Zoom In (+)"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => mapInstanceRef.current?.zoomOut()}
+              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-zinc-200 hover:text-white flex items-center justify-center transition shadow-lg cursor-pointer"
+              title="Zoom Out (-)"
+            >
+              <Minus className="w-4 h-4" />
+            </button>
+            <button
+              type="button"
+              onClick={handleResetWorldView}
+              className="w-8 h-8 rounded-lg bg-[#0c0d13]/80 hover:bg-[#0c0d13] backdrop-blur-md border border-white/[0.12] text-violet-400 hover:text-violet-300 flex items-center justify-center transition shadow-lg cursor-pointer"
+              title="Whole Planet Earth View"
+            >
+              <Maximize2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
-          {/* 1. All Continental Dot Matrix Points */}
-          <g className="text-zinc-700 dark:text-[#383354]">
-            {illuminatedDots.map((dot, idx) => (
-              <circle
-                key={`dot-${idx}`}
-                cx={dot.x}
-                cy={dot.y}
-                r={dot.r}
-                fill={dot.fill}
-                opacity={dot.opacity}
-                className="transition-colors duration-300"
-              />
-            ))}
-          </g>
-
-          {/* 2. Connection Arcs between Online Clients and Server */}
-          <g className="pointer-events-none">
-            {visibleClients
-              .filter((c) => c.isOnline)
-              .map((client) => {
-                const clientSvg = coordsToSvg(client.lat, client.lon);
-                // Quadratic bezier arc calculation
-                const midX = (clientSvg.x + serverSvg.x) / 2;
-                const midY = (clientSvg.y + serverSvg.y) / 2;
-                const dist = Math.hypot(clientSvg.x - serverSvg.x, clientSvg.y - serverSvg.y);
-                const arcHeight = Math.min(80, Math.max(25, dist * 0.25));
-                const controlY = midY - arcHeight;
-
-                const pathData = `M ${clientSvg.x} ${clientSvg.y} Q ${midX} ${controlY} ${serverSvg.x} ${serverSvg.y}`;
-
-                return (
-                  <g key={`arc-${client.id}`}>
-                    {/* Background faint track */}
-                    <path
-                      d={pathData}
-                      fill="none"
-                      stroke="#818cf8"
-                      strokeWidth={1}
-                      strokeOpacity={0.2}
-                    />
-                    {/* Animated luminous pulse line */}
-                    <path
-                      d={pathData}
-                      fill="none"
-                      stroke="url(#arcGradient)"
-                      strokeWidth={1.4}
-                      strokeDasharray="6 4"
-                      strokeOpacity={0.85}
-                      className="animate-pulse"
-                    />
-                  </g>
-                );
-              })}
-          </g>
-
-          {/* 3. Server Node Marker (Pulsing Radar Beacon) */}
-          <g
-            className="cursor-pointer"
-            onClick={() => setHoveredNode(serverNode)}
-            onMouseEnter={() => setHoveredNode(serverNode)}
-          >
-            {/* Pulsing radar waves */}
-            <circle
-              cx={serverSvg.x}
-              cy={serverSvg.y}
-              r={18}
-              fill="none"
-              stroke="#a855f7"
-              strokeWidth={1.5}
-              className="animate-ping origin-center opacity-40"
-            />
-            <circle
-              cx={serverSvg.x}
-              cy={serverSvg.y}
-              r={9}
-              fill="#8b5cf6"
-              fillOpacity={0.3}
-              stroke="#c084fc"
-              strokeWidth={1.5}
-            />
-            <circle
-              cx={serverSvg.x}
-              cy={serverSvg.y}
-              r={4}
-              fill="#f5d0fe"
-              filter="url(#glow)"
-            />
-            <circle
-              cx={serverSvg.x}
-              cy={serverSvg.y}
-              r={1.5}
-              fill="#ffffff"
-            />
-
-            {/* Server Floating Tag */}
-            <g transform={`translate(${serverSvg.x}, ${serverSvg.y - 14})`}>
-              <rect
-                x="-36"
-                y="-15"
-                width="72"
-                height="15"
-                rx="4"
-                fill="#0f0f18"
-                fillOpacity="0.85"
-                stroke="#a855f7"
-                strokeWidth="0.8"
-              />
-              <text
-                x="0"
-                y="-4"
-                textAnchor="middle"
-                fontSize="8"
-                fontFamily="sans-serif"
-                fontWeight="bold"
-                fill="#e9d5ff"
-              >
-                HOST • {serverNode.countryCode || 'DE'}
-              </text>
-            </g>
-          </g>
-
-          {/* 4. Client Node Markers */}
-          {visibleClients.map((client) => {
-            const clientSvg = coordsToSvg(client.lat, client.lon);
-            const isOnline = client.isOnline;
-
-            return (
-              <g
-                key={`client-${client.id}`}
-                className="cursor-pointer"
-                onClick={() => setHoveredNode(client)}
-                onMouseEnter={() => setHoveredNode(client)}
-              >
-                {isOnline && (
-                  <circle
-                    cx={clientSvg.x}
-                    cy={clientSvg.y}
-                    r={12}
-                    fill="none"
-                    stroke="#10b981"
-                    strokeWidth={1.2}
-                    className="animate-ping origin-center opacity-30"
-                  />
-                )}
-                <circle
-                  cx={clientSvg.x}
-                  cy={clientSvg.y}
-                  r={isOnline ? 6 : 4}
-                  fill={isOnline ? '#059669' : '#475569'}
-                  fillOpacity={isOnline ? 0.4 : 0.3}
-                  stroke={isOnline ? '#34d399' : '#64748b'}
-                  strokeWidth={1.2}
-                />
-                <circle
-                  cx={clientSvg.x}
-                  cy={clientSvg.y}
-                  r={isOnline ? 2.5 : 2}
-                  fill={isOnline ? '#a7f3d0' : '#cbd5e1'}
-                />
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* 3. Privacy Shield Center Overlay (When Blurred) */}
+        {/* Privacy Shield Overlay (When Blurred) */}
         {isBlurred && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-20 backdrop-blur-md bg-black/40 transition-all duration-500 animate-in fade-in">
+          <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-[500] backdrop-blur-md bg-black/45 transition-all duration-500 animate-in fade-in">
             <div className="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 mb-3 shadow-lg shadow-amber-500/10">
               <ShieldCheck className="w-6 h-6 animate-pulse" />
             </div>
@@ -501,7 +680,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               Geospatial Privacy Shield Active
             </h4>
             <p className="text-xs text-zinc-300 max-w-sm mt-1 mb-4 leading-relaxed font-sans">
-              Geographic coordinates, host location, and connected client vectors are obfuscated for privacy and screen security.
+              Geographic coordinates, server host location, and connected client pins are obfuscated for privacy and screen protection.
             </p>
             <button
               type="button"
@@ -513,105 +692,68 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             </button>
           </div>
         )}
-
-        {/* 4. Floating Node Detail Tooltip Card */}
-        {hoveredNode && !isBlurred && (
-          <div 
-            className="absolute bottom-3 left-3 z-30 bg-[#0f1017]/95 backdrop-blur-xl border border-white/[0.12] shadow-2xl rounded-xl p-3.5 text-xs text-zinc-200 max-w-xs animate-in fade-in slide-in-from-bottom-2 duration-150"
-            onMouseLeave={() => setHoveredNode(null)}
-          >
-            <div className="flex items-center justify-between gap-3 pb-2 border-b border-white/[0.08]">
-              <div className="flex items-center gap-2">
-                <span className={`w-2 h-2 rounded-full ${hoveredNode.isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-500'}`} />
-                <span className="font-semibold text-zinc-100 truncate max-w-[150px]">
-                  {hoveredNode.id === 0 ? 'Nexus Core Server' : (hoveredNode.email || 'Client Node')}
-                </span>
-              </div>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.06] text-zinc-400 border border-white/[0.08]">
-                {hoveredNode.countryCode || 'GL'}
-              </span>
-            </div>
-
-            <div className="space-y-1.5 mt-2 font-mono text-[11px]">
-              <div className="flex items-center justify-between text-zinc-400">
-                <span>Location:</span>
-                <span className="text-zinc-200 font-sans font-medium">
-                  {hoveredNode.city}, {hoveredNode.country}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-zinc-400">
-                <span>IP Endpoint:</span>
-                <span className="text-zinc-300">
-                  {showPublicIP ? (hoveredNode.ip || '127.0.0.1') : '••••••••••••'}
-                </span>
-              </div>
-              {hoveredNode.id !== 0 && (hoveredNode.up !== undefined || hoveredNode.down !== undefined) && (
-                <div className="flex items-center justify-between text-zinc-400">
-                  <span>Transfer:</span>
-                  <span className="text-emerald-400">
-                    {formatBytes((hoveredNode.up || 0) + (hoveredNode.down || 0))}
-                  </span>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
       </div>
 
-      {/* 3. Footer Telemetry Strip */}
+      {/* 4. Bottom Telemetry Summary Strip */}
       <div className="pt-3 border-t border-zinc-200 dark:border-white/[0.08] grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
         {/* Core Host Node */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500">
-            <Server className="w-3.5 h-3.5" />
+        <div 
+          onClick={() => handleFlyTo(serverNode, 13)}
+          className="flex items-center gap-2.5 cursor-pointer group p-1.5 -m-1.5 rounded-lg hover:bg-white/[0.04] transition"
+        >
+          <div className="w-8 h-8 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center text-violet-500 group-hover:scale-105 transition">
+            <Server className="w-4 h-4" />
           </div>
           <div>
             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Core Host Node</span>
-            <span className="font-medium text-zinc-800 dark:text-zinc-200 truncate block">
+            <span className="font-semibold text-zinc-900 dark:text-zinc-200 truncate block">
               {serverNode.city}, {serverNode.countryCode || 'DE'}
             </span>
           </div>
         </div>
 
-        {/* Active Connected Clients */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
-            <Radio className="w-3.5 h-3.5" />
+        {/* Connected Clients */}
+        <div className="flex items-center gap-2.5 p-1.5 -m-1.5 rounded-lg">
+          <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500">
+            <Radio className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Connected Clients</span>
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Active Clients</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400 block font-mono">
-              {onlineClientsCount} Active Nodes
+              {onlineCount} Connected Nodes
             </span>
           </div>
         </div>
 
-        {/* Global Regions Count */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
-            <MapPin className="w-3.5 h-3.5" />
+        {/* Zoom Resolution / Mode */}
+        <div className="flex items-center gap-2.5 p-1.5 -m-1.5 rounded-lg">
+          <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-500">
+            <Layers className="w-4 h-4" />
           </div>
           <div>
-            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Mesh Coverage</span>
-            <span className="font-medium text-zinc-800 dark:text-zinc-200 block">
-              {totalCountriesCount} Regions Mapped
+            <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Visual Matrix</span>
+            <span className="font-semibold text-zinc-900 dark:text-zinc-200 capitalize block">
+              {selectedTheme} Imagery
             </span>
           </div>
         </div>
 
         {/* Privacy Guard Indicator */}
-        <div className="flex items-center gap-2.5">
-          <div className={`w-7 h-7 rounded-lg border flex items-center justify-center ${
+        <div 
+          onClick={toggleBlur}
+          className="flex items-center gap-2.5 cursor-pointer p-1.5 -m-1.5 rounded-lg hover:bg-white/[0.04] transition"
+        >
+          <div className={`w-8 h-8 rounded-lg border flex items-center justify-center ${
             isBlurred 
               ? 'bg-amber-500/10 border-amber-500/30 text-amber-500' 
               : 'bg-zinc-100 dark:bg-white/[0.04] border-zinc-200 dark:border-white/[0.08] text-zinc-400'
           }`}>
-            {isBlurred ? <Lock className="w-3.5 h-3.5 text-amber-500" /> : <Eye className="w-3.5 h-3.5" />}
+            {isBlurred ? <Lock className="w-4 h-4 text-amber-500" /> : <Eye className="w-4 h-4" />}
           </div>
           <div>
             <span className="text-[10px] text-zinc-500 dark:text-zinc-400 block font-sans">Privacy Guard</span>
-            <span className={`font-medium block ${isBlurred ? 'text-amber-500 font-semibold' : 'text-zinc-600 dark:text-zinc-300'}`}>
-              {isBlurred ? 'Obfuscated' : 'Public Display'}
+            <span className={`font-semibold block ${isBlurred ? 'text-amber-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
+              {isBlurred ? 'Obfuscated' : 'Clear View'}
             </span>
           </div>
         </div>
