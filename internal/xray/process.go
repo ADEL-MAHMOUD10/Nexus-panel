@@ -18,7 +18,54 @@ import (
 )
 
 var xrayLogRegex = regexp.MustCompile(`^(\d{4}/\d{2}/\d{2} \d{2}:\d{2}:\d{2}(\.\d+)?) \[([^\]]+)\] (.+)$`)
-var xrayAccessRegex = regexp.MustCompile(`(?i)(?:^|\s)([\d\.:a-fA-F]+)\s+accepted\s+.*email:\s*([^\s,\]]+)`)
+var xrayAccessRegex = regexp.MustCompile(`(?i)(?:from\s+)?([\[\]0-9a-fA-F:.]+?)(?::\d+)?\s+accepted\s+.*email:\s*([^\s,\]]+)`)
+
+func extractAccessEmailAndIP(line string) (string, string) {
+	// 1. Regex check
+	if accessMatches := xrayAccessRegex.FindStringSubmatch(line); len(accessMatches) >= 3 {
+		rawIP := accessMatches[1]
+		clientEmail := strings.TrimSpace(accessMatches[2])
+		cleanIP := rawIP
+		if h, _, err := net.SplitHostPort(rawIP); err == nil {
+			cleanIP = h
+		}
+		cleanIP = strings.Trim(cleanIP, "[]")
+		if clientEmail != "" {
+			if cleanIP == "127.0.0.1" || cleanIP == "::1" {
+				return clientEmail, ""
+			}
+			return clientEmail, cleanIP
+		}
+	}
+
+	// 2. Token-by-token field scanner (identical to 3x-ui parseAccessLogFields)
+	parts := strings.Fields(line)
+	var fromAddr, foundEmail string
+	for i, part := range parts {
+		if part == "from" && i+1 < len(parts) {
+			fromAddr = strings.TrimLeft(parts[i+1], "/")
+		} else if part == "email:" && i+1 < len(parts) {
+			foundEmail = parts[i+1]
+		} else if strings.HasPrefix(part, "email:") && len(part) > 6 {
+			foundEmail = strings.TrimPrefix(part, "email:")
+		}
+	}
+
+	if foundEmail != "" {
+		foundEmail = strings.Trim(foundEmail, "[],\"'")
+		cleanIP := fromAddr
+		if h, _, err := net.SplitHostPort(fromAddr); err == nil {
+			cleanIP = h
+		}
+		cleanIP = strings.Trim(cleanIP, "[]")
+		if cleanIP == "127.0.0.1" || cleanIP == "::1" {
+			cleanIP = ""
+		}
+		return foundEmail, cleanIP
+	}
+
+	return "", ""
+}
 
 
 // XrayLogItem represents a structured log entry captured from Xray-core
@@ -242,22 +289,13 @@ func (m *ProcessManager) appendLog(s string) {
 			continue
 		}
 
-		// Check for Xray access log pattern to capture client IP in real time
-		if accessMatches := xrayAccessRegex.FindStringSubmatch(trimmed); len(accessMatches) >= 3 {
-			rawIP := accessMatches[1]
-			clientEmail := strings.TrimSpace(accessMatches[2])
-			cleanIP := rawIP
-			if h, _, err := net.SplitHostPort(rawIP); err == nil {
-				cleanIP = h
-			}
-			cleanIP = strings.Trim(cleanIP, "[]")
-			if clientEmail != "" && cleanIP != "" && cleanIP != "127.0.0.1" && cleanIP != "::1" {
-				m.mu.RLock()
-				cb := m.onClientAccess
-				m.mu.RUnlock()
-				if cb != nil {
-					go cb(clientEmail, cleanIP)
-				}
+		// Check for Xray access log pattern to capture client handshake/connection in real time
+		if clientEmail, cleanIP := extractAccessEmailAndIP(trimmed); clientEmail != "" {
+			m.mu.RLock()
+			cb := m.onClientAccess
+			m.mu.RUnlock()
+			if cb != nil {
+				go cb(clientEmail, cleanIP)
 			}
 		}
 

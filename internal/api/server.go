@@ -75,7 +75,22 @@ func NewServer(db *database.DB, controller *xray.Controller, pm *xray.ProcessMan
 
 	if pm != nil {
 		pm.SetOnClientAccess(func(email, ip string) {
-			geo.RecordClientIP(email, ip)
+			now := time.Now().Unix()
+			cleanEmail := strings.TrimSpace(email)
+			cleanIP := strings.TrimSpace(ip)
+
+			if cleanIP != "" && geo != nil {
+				geo.RecordClientIP(cleanEmail, cleanIP)
+			}
+			if controller != nil && cleanEmail != "" {
+				controller.RefreshOnline([]string{cleanEmail}, now, 90)
+			}
+			if db != nil && cleanEmail != "" {
+				_ = db.UpdateClientsLastOnline([]string{cleanEmail}, now)
+				if cleanIP != "" {
+					_ = db.UpdateClientLastIP(cleanEmail, cleanIP)
+				}
+			}
 		})
 	}
 
@@ -84,8 +99,20 @@ func NewServer(db *database.DB, controller *xray.Controller, pm *xray.ProcessMan
 
 // RecordClientIP records and persists a client IP address
 func (s *Server) RecordClientIP(email, ip string) {
-	if s.geoService != nil {
-		s.geoService.RecordClientIP(email, ip)
+	cleanEmail := strings.TrimSpace(email)
+	cleanIP := strings.TrimSpace(ip)
+	if s.geoService != nil && cleanIP != "" {
+		s.geoService.RecordClientIP(cleanEmail, cleanIP)
+	}
+	now := time.Now().Unix()
+	if s.xrayController != nil && cleanEmail != "" {
+		s.xrayController.RefreshOnline([]string{cleanEmail}, now, 90)
+	}
+	if s.db != nil && cleanEmail != "" {
+		_ = s.db.UpdateClientsLastOnline([]string{cleanEmail}, now)
+		if cleanIP != "" {
+			_ = s.db.UpdateClientLastIP(cleanEmail, cleanIP)
+		}
 	}
 }
 
@@ -419,6 +446,9 @@ func (s *Server) handleListInbounds(w http.ResponseWriter, r *http.Request) {
 			}
 			now := time.Now().Unix()
 			isOnline := (c.LastOnline > 0 && (now-c.LastOnline <= 90)) || (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
+			if isOnline && (c.LastOnline == 0 || now-c.LastOnline > 90) {
+				c.LastOnline = now
+			}
 			clientUpSum += upSpd
 			clientDownSum += downSpd
 
@@ -496,6 +526,9 @@ func (s *Server) handleListClients(w http.ResponseWriter, r *http.Request) {
 			}
 			now := time.Now().Unix()
 			isOnline := (c.LastOnline > 0 && (now-c.LastOnline <= 90)) || (s.xrayController != nil && s.xrayController.IsClientOnline(c.Email)) || upSpd > 0 || downSpd > 0
+			if isOnline && (c.LastOnline == 0 || now-c.LastOnline > 90) {
+				c.LastOnline = now
+			}
 			allClients = append(allClients, ClientItem{
 				Client:          c,
 				Link:            link,

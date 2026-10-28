@@ -584,10 +584,12 @@ func (db *DB) SaveClient(c *Client) error {
 }
 
 func (db *DB) UpdateClientLastIP(email, ip string) error {
-	if email == "" || ip == "" {
+	cleanEmail := strings.TrimSpace(email)
+	cleanIP := strings.TrimSpace(ip)
+	if cleanEmail == "" || cleanIP == "" {
 		return nil
 	}
-	_, err := db.conn.Exec("UPDATE clients SET last_ip = ? WHERE email = ?", ip, email)
+	_, err := db.conn.Exec("UPDATE clients SET last_ip = ? WHERE email = ? COLLATE NOCASE", cleanIP, cleanEmail)
 	return err
 }
 
@@ -634,10 +636,11 @@ func (db *DB) AddInboundTraffic(tag string, up, down int64) error {
 }
 
 func (db *DB) AddClientTraffic(email string, up, down int64, now int64) error {
-	if up <= 0 && down <= 0 {
+	cleanEmail := strings.TrimSpace(email)
+	if up <= 0 && down <= 0 || cleanEmail == "" {
 		return nil
 	}
-	_, err := db.conn.Exec("UPDATE clients SET up = up + ?, down = down + ?, last_online = ? WHERE email = ?", up, down, now, email)
+	_, err := db.conn.Exec("UPDATE clients SET up = up + ?, down = down + ?, last_online = ? WHERE email = ? COLLATE NOCASE", up, down, now, cleanEmail)
 	return err
 }
 
@@ -649,7 +652,7 @@ func (db *DB) UpdateClientsLastOnline(emails []string, now int64) error {
 	if err != nil {
 		return err
 	}
-	stmt, err := tx.Prepare("UPDATE clients SET last_online = ? WHERE email = ?")
+	stmt, err := tx.Prepare("UPDATE clients SET last_online = ? WHERE email = ? COLLATE NOCASE")
 	if err != nil {
 		_ = tx.Rollback()
 		return err
@@ -657,7 +660,10 @@ func (db *DB) UpdateClientsLastOnline(emails []string, now int64) error {
 	defer stmt.Close()
 
 	for _, email := range emails {
-		_, _ = stmt.Exec(now, email)
+		cleanEmail := strings.TrimSpace(email)
+		if cleanEmail != "" {
+			_, _ = stmt.Exec(now, cleanEmail)
+		}
 	}
 	return tx.Commit()
 }

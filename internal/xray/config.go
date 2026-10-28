@@ -82,7 +82,7 @@ func DefaultBaseConfig(apiPort int) *Config {
 	return &Config{
 		Log: &LogConfig{
 			LogLevel: "warning",
-			Access:   "none",
+			Access:   "",
 		},
 		API: &APIConfig{
 			Tag: "api",

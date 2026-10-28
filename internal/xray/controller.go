@@ -339,7 +339,6 @@ func (c *Controller) GetOnlineUsersWithIPs() ([]string, map[string]string, error
 		return nil, nil, fmt.Errorf("users stats not supported or failed: %w", err)
 	}
 
-	now := time.Now().Unix()
 	var users []string
 	userIPs := make(map[string]string)
 
@@ -349,34 +348,24 @@ func (c *Controller) GetOnlineUsersWithIPs() ([]string, map[string]string, error
 		}
 
 		email := strings.TrimSpace(u.GetEmail())
-		hasLiveConnection := false
+		users = append(users, email)
 
-		if len(u.GetIps()) == 0 {
-			hasLiveConnection = true
-		} else {
-			for _, entry := range u.GetIps() {
-				if entry == nil {
-					continue
+		for _, entry := range u.GetIps() {
+			if entry == nil {
+				continue
+			}
+			rawIP := strings.TrimSpace(entry.GetIp())
+			if rawIP != "" {
+				cleanIP := rawIP
+				if h, _, err := net.SplitHostPort(rawIP); err == nil {
+					cleanIP = h
 				}
-				rawIP := strings.TrimSpace(entry.GetIp())
-				if rawIP != "" {
-					cleanIP := rawIP
-					if h, _, err := net.SplitHostPort(rawIP); err == nil {
-						cleanIP = h
-					}
-					cleanIP = strings.Trim(cleanIP, "[]")
-					if cleanIP != "" && cleanIP != "127.0.0.1" && cleanIP != "::1" {
-						userIPs[email] = cleanIP
-					}
-				}
-				if entry.GetLastSeen() == 0 || (now-entry.GetLastSeen() <= 90) {
-					hasLiveConnection = true
+				cleanIP = strings.Trim(cleanIP, "[]")
+				if cleanIP != "" && cleanIP != "127.0.0.1" && cleanIP != "::1" {
+					userIPs[email] = cleanIP
+					userIPs[strings.ToLower(email)] = cleanIP
 				}
 			}
-		}
-
-		if hasLiveConnection {
-			users = append(users, email)
 		}
 	}
 
@@ -412,20 +401,22 @@ func (c *Controller) RefreshOnline(activeEmails []string, now int64, gracePeriod
 
 // IsClientOnline returns whether the given email has been active, connected, or had transfer rate
 func (c *Controller) IsClientOnline(email string) bool {
-	if email == "" {
+	cleanEmail := strings.TrimSpace(email)
+	if cleanEmail == "" {
 		return false
 	}
+	lowerEmail := strings.ToLower(cleanEmail)
 
 	// 1. If client currently has positive speed, they are actively online right now
 	c.speedMu.RLock()
 	if c.clientSpeeds != nil {
-		if spd, ok := c.clientSpeeds[email]; ok && spd != nil {
+		if spd, ok := c.clientSpeeds[cleanEmail]; ok && spd != nil {
 			if time.Now().Unix()-spd.LastSeen <= 15 && (spd.UpSpeed > 0 || spd.DownSpeed > 0) {
 				c.speedMu.RUnlock()
 				return true
 			}
 		}
-		if spd, ok := c.clientSpeeds[strings.ToLower(email)]; ok && spd != nil {
+		if spd, ok := c.clientSpeeds[lowerEmail]; ok && spd != nil {
 			if time.Now().Unix()-spd.LastSeen <= 15 && (spd.UpSpeed > 0 || spd.DownSpeed > 0) {
 				c.speedMu.RUnlock()
 				return true
@@ -442,12 +433,12 @@ func (c *Controller) IsClientOnline(email string) bool {
 		return false
 	}
 	now := time.Now().Unix()
-	if seen, ok := c.lastSeenMap[email]; ok {
+	if seen, ok := c.lastSeenMap[cleanEmail]; ok {
 		if now-seen <= 90 {
 			return true
 		}
 	}
-	if seen, ok := c.lastSeenMap[strings.ToLower(email)]; ok {
+	if seen, ok := c.lastSeenMap[lowerEmail]; ok {
 		if now-seen <= 90 {
 			return true
 		}
