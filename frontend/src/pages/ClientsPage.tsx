@@ -1055,7 +1055,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between py-1.5 border-b border-neutral-850">
-                  <span className="text-neutral-500">Source IP (IP الاتصال):</span>
+                  <span className="text-neutral-500">Source IP:</span>
                   <div className="flex items-center gap-2">
                     {inspectClient.client.lastIp ? (
                       <>
@@ -1072,7 +1072,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                       </>
                     ) : (
                       <span className="text-neutral-500 text-[11px] italic font-sans">
-                        لم يتم تسجيل اتصال بعد (No IP Yet)
+                        Awaiting Connection (No IP Yet)
                       </span>
                     )}
                   </div>
@@ -1083,14 +1083,14 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({
                   <div className="flex items-center gap-1.5 font-semibold text-[11px]">
                     <span className={`w-2 h-2 rounded-full ${inspectClient.client.isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-neutral-600'}`} />
                     <span className={inspectClient.client.isOnline ? 'text-emerald-400' : 'text-neutral-400 font-normal'}>
-                      {inspectClient.client.isOnline ? 'Online • متصل حالياً' : 'Offline • غير متصل'}
+                      {inspectClient.client.isOnline ? 'Online' : 'Offline'}
                     </span>
                   </div>
                 </div>
 
                 {inspectClient.client.lastOnline && inspectClient.client.lastOnline > 0 ? (
                   <div className="flex items-center justify-between py-1">
-                    <span className="text-neutral-500">Last Seen (آخر ظهور):</span>
+                    <span className="text-neutral-500">Last Seen:</span>
                     <span className="text-neutral-300 font-mono text-[11px]">
                       {new Date(inspectClient.client.lastOnline * 1000).toLocaleString()}
                     </span>

@@ -126,7 +126,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     return {
       id: 0,
       email: 'Nexus Core Host',
-      ip: data?.server?.ip || 'جارِ الفحص...',
+      ip: data?.server?.ip || 'Resolving...',
       country: data?.server?.country || 'Host Location',
       countryCode: data?.server?.countryCode || 'HOST',
       city: data?.server?.city || 'Resolving...',
@@ -314,7 +314,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           <div class="flex items-center gap-1.5 font-mono">
             <span class="popup-ip-server font-bold tracking-wide text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">${serverNode.ip || '127.0.0.1'}</span>
             ${serverNode.ip ? `
-              <button id="btn-copy-server-ip" class="p-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-blue-500 transition cursor-pointer active:scale-90" title="نسخ IP">
+              <button id="btn-copy-server-ip" class="p-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-blue-500 transition cursor-pointer active:scale-90" title="Copy IP">
                 <svg id="icon-copy-server" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
                   <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -338,7 +338,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         </div>
       </div>
       <button id="btn-fly-server" class="w-full mt-2 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/25 cursor-pointer">
-        <span>تكبير إلى الموقع الفعلي (Zoom In)</span>
+        <span>Zoom to Actual Location</span>
       </button>
     `;
 
@@ -455,7 +455,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <div class="flex items-center gap-1.5 font-mono">
               <span class="popup-ip-client font-bold tracking-wide text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">${client.ip || 'Waiting for connection'}</span>
               ${client.ip ? `
-                <button id="btn-copy-client-ip-${client.id}" class="p-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 transition cursor-pointer active:scale-90" title="نسخ IP">
+                <button id="btn-copy-client-ip-${client.id}" class="p-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 transition cursor-pointer active:scale-90" title="Copy IP">
                   <svg id="icon-copy-client-${client.id}" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
                     <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
@@ -474,7 +474,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Status:</span>
             <span class="${isOnline ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 font-medium'} flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}"></span>
-              ${isOnline ? 'Online • متصل الآن' : 'Offline • غير متصل'}
+              ${isOnline ? 'Online' : 'Offline'}
             </span>
           </div>
 
@@ -501,7 +501,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         </div>
 
         <button id="btn-fly-client-${client.id}" class="w-full mt-2 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/25 cursor-pointer">
-          <span>📍 الذهاب للموقع الفعلي (Zoom In)</span>
+          <span>📍 Zoom to Actual Location</span>
         </button>
       `;
 
@@ -713,7 +713,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
                 ? 'bg-amber-500/15 border-amber-500/40 text-amber-700 dark:text-amber-300 shadow-sm hover:bg-amber-500/25'
                 : 'bg-zinc-100 dark:bg-white/[0.04] hover:bg-zinc-200 dark:hover:bg-white/[0.08] text-zinc-800 dark:text-zinc-300 border-zinc-300 dark:border-white/[0.08]'
             }`}
-            title={isBlurred ? "إظهار الخريطة (Reveal Map)" : "تعتيم الخريطة للخصوصية (Blur Map for Privacy)"}
+            title={isBlurred ? "Reveal Map" : "Blur Map for Privacy"}
           >
             {isBlurred ? (
               <EyeOff className="w-4 h-4 text-amber-600 dark:text-amber-400 animate-pulse" />
@@ -721,7 +721,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
               <Eye className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
             )}
             <span className="font-semibold text-[11px] sm:text-xs">
-              {isBlurred ? "الخريطة معتّمة" : "تعتيم الخريطة"}
+              {isBlurred ? "Map Blurred" : "Blur Map"}
             </span>
           </button>
         </div>
@@ -751,7 +751,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
         {/* Clients Quick Jump Pills */}
         {clientNodes.length === 0 ? (
-          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 italic px-2">لا يوجد عملاء مضافين حالياً</span>
+          <span className="text-[11px] text-zinc-500 dark:text-zinc-400 italic px-2">No active clients recorded yet</span>
         ) : (
           clientNodes.map((c) => (
             <button
@@ -841,7 +841,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             Geospatial Privacy Shield Active
           </h4>
           <p className="text-xs text-zinc-200 max-w-sm mt-1.5 mb-4 leading-relaxed font-sans">
-            تم تعتيم الإحداثيات الجغرافية ومواقع الخوادم والعملاء بنجاح لحماية الخصوصية ومشاركة الشاشة بأمان.
+            Geographical coordinates and location markers have been blurred to protect privacy during screen sharing.
           </p>
           <button
             type="button"
@@ -849,7 +849,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs transition-transform active:scale-95 shadow-lg shadow-amber-500/25 flex items-center gap-2 cursor-pointer"
           >
             <Eye className="w-4 h-4 text-zinc-950" />
-            <span>إلغاء التعتيم وإظهار الخريطة (Reveal Map)</span>
+            <span>Reveal Map</span>
           </button>
         </div>
       </div>

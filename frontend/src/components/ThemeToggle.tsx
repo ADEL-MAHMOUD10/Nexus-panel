@@ -15,7 +15,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({ className = '', showLa
       type="button"
       onClick={toggleTheme}
       aria-label={isDark ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-      title={isDark ? 'Switch to Light Mode (الوضع الفاتح) • Alt+T' : 'Switch to Dark Mode (الوضع الداكن) • Alt+T'}
+      title={isDark ? 'Switch to Light Mode • Alt+T' : 'Switch to Dark Mode • Alt+T'}
       className={`
         theme-toggle-btn group relative flex items-center gap-2 px-2.5 py-1.5 rounded-xl transition-all duration-200 select-none cursor-pointer
         border text-xs font-medium active:scale-95

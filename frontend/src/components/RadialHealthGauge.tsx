@@ -105,7 +105,7 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
             </filter>
           </defs>
 
-          {/* Botanical Connecting Branch Vine Arc (غصن الشجرة الرابط لقواعد الأوراق) */}
+          {/* Botanical Connecting Branch Vine Arc (connecting bases of leaves) */}
           <path
             d={`M ${cx - rBranch},${cy} A ${rBranch} ${rBranch} 0 0 1 ${cx + rBranch},${cy}`}
             fill="none"
@@ -130,7 +130,7 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
             />
           )}
 
-          {/* Array of Individual Botanical Leaves (أوراق الشجر ذات العروق والانحناء الطبيعي) */}
+          {/* Array of Individual Botanical Leaves (curved leaves with organic veins) */}
           {Array.from({ length: barsCount }).map((_, i) => {
             const angleStep = 180 / (barsCount - 1);
             const rotDeg = i * angleStep - 90;
@@ -161,7 +161,7 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
                 filter={isActive ? 'url(#foliageGlow)' : undefined}
                 className="transition-all duration-300 cursor-default group/leaf"
               >
-                {/* 1. Leaf Petiole / Stem (ساق الورقة الواصل بالغصن) */}
+                {/* 1. Leaf Petiole / Stem */}
                 <line
                   x1="0"
                   y1={-rBranch}
@@ -172,14 +172,14 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
                   strokeLinecap="round"
                 />
 
-                {/* 2. Organic Leaf Blade (جسم ورقة الشجر الطبيعي المنحني ذو القمة المدببة) */}
+                {/* 2. Organic Leaf Blade */}
                 <path
                   d={`M 0,${-rInner} C ${-leafHalfWidth},${-rInner - 8.5} ${-leafHalfWidth * 0.8},${-rOuter + 6} 0,${-rOuter} C ${leafHalfWidth * 0.8},${-rOuter + 6} ${leafHalfWidth},${-rInner - 8.5} 0,${-rInner} Z`}
                   fill={leafFill}
                   className="transition-all duration-300 group-hover/leaf:brightness-110"
                 />
 
-                {/* 3. Central Midrib Vein (عرق الورقة الرئيسي الممتد من القاعدة إلى القمة) */}
+                {/* 3. Central Midrib Vein */}
                 <line
                   x1="0"
                   y1={-rInner - 1}
@@ -191,7 +191,7 @@ export const RadialHealthGauge: React.FC<RadialHealthGaugeProps> = ({ score, tit
                   strokeLinecap="round"
                 />
 
-                {/* 4. Fine Lateral Secondary Veins (عروق جانبية رقيقة تحاكي التفرع الطبيعي لورقة الشجر) */}
+                {/* 4. Fine Lateral Secondary Veins */}
                 <line
                   x1="0"
                   y1={-rInner - 8}
