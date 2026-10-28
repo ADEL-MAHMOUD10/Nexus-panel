@@ -167,7 +167,7 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 	}
 	g.mu.RUnlock()
 
-	// Query ip-api.com
+	// 1. Primary GeoIP Provider: ip-api.com
 	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country,countryCode,city,lat,lon", cleanIP)
 	resp, err := g.httpClient.Get(url)
 	if err == nil && resp.StatusCode == http.StatusOK {
@@ -179,7 +179,7 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 			Lat         float64 `json:"lat"`
 			Lon         float64 `json:"lon"`
 		}
-		if err := json.NewDecoder(resp.Body).Decode(&apiRes); err == nil && apiRes.Status == "success" {
+		if err := json.NewDecoder(resp.Body).Decode(&apiRes); err == nil && apiRes.Status == "success" && apiRes.CountryCode != "" {
 			_ = resp.Body.Close()
 			loc := GeoLocation{
 				Country:     apiRes.Country,
@@ -195,6 +195,36 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 			return loc
 		}
 		_ = resp.Body.Close()
+	}
+
+	// 2. Secondary GeoIP Provider: ipwho.is (HTTPS, fast, exact geolocation)
+	url2 := fmt.Sprintf("https://ipwho.is/%s", cleanIP)
+	resp2, err2 := g.httpClient.Get(url2)
+	if err2 == nil && resp2.StatusCode == http.StatusOK {
+		var whoRes struct {
+			Success     bool    `json:"success"`
+			Country     string  `json:"country"`
+			CountryCode string  `json:"country_code"`
+			City        string  `json:"city"`
+			Latitude    float64 `json:"latitude"`
+			Longitude   float64 `json:"longitude"`
+		}
+		if err := json.NewDecoder(resp2.Body).Decode(&whoRes); err == nil && whoRes.Success && whoRes.CountryCode != "" {
+			_ = resp2.Body.Close()
+			loc := GeoLocation{
+				Country:     whoRes.Country,
+				CountryCode: whoRes.CountryCode,
+				City:        whoRes.City,
+				Lat:         whoRes.Latitude,
+				Lon:         whoRes.Longitude,
+				IP:          cleanIP,
+			}
+			g.mu.Lock()
+			g.ipCache[cleanIP] = loc
+			g.mu.Unlock()
+			return loc
+		}
+		_ = resp2.Body.Close()
 	}
 
 	// Deterministic fallback based on IP hash

@@ -2600,7 +2600,9 @@ func writeJSON(w http.ResponseWriter, statusCode int, data any) {
 // extractClientIP retrieves the real client IP from connection headers or remote address
 func (s *Server) extractClientIP(r *http.Request) string {
 	clientIP := r.RemoteAddr
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+	if cfIP := r.Header.Get("CF-Connecting-IP"); cfIP != "" {
+		clientIP = strings.TrimSpace(cfIP)
+	} else if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
 		clientIP = strings.TrimSpace(strings.Split(fwd, ",")[0])
 	} else if realIP := r.Header.Get("X-Real-IP"); realIP != "" {
 		clientIP = strings.TrimSpace(realIP)
@@ -2608,7 +2610,8 @@ func (s *Server) extractClientIP(r *http.Request) string {
 	if h, _, err := net.SplitHostPort(clientIP); err == nil {
 		clientIP = h
 	}
-	return clientIP
+	clientIP = strings.Trim(clientIP, "[]")
+	return strings.TrimSpace(clientIP)
 }
 
 // getRealPublicIP returns the true public IPv4 address of the VPS host (without port or domain name)

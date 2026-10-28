@@ -88,6 +88,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const markersLayerRef = useRef<L.LayerGroup | null>(null);
   const linesLayerRef = useRef<L.LayerGroup | null>(null);
+  const activePopupIdRef = useRef<number | 'server' | null>(null);
+  const isRefreshingRef = useRef<boolean>(false);
 
   const toggleBlur = () => {
     setIsBlurred((prev) => {
@@ -168,6 +170,11 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       const linesGroup = L.layerGroup().addTo(map);
       const markersGroup = L.layerGroup().addTo(map);
 
+      // Dismiss active popup when user explicitly clicks on map background
+      map.on('click', () => {
+        activePopupIdRef.current = null;
+      });
+
       linesLayerRef.current = linesGroup;
       markersLayerRef.current = markersGroup;
       mapInstanceRef.current = map;
@@ -243,6 +250,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     const linesGroup = linesLayerRef.current;
     if (!map || !markersGroup || !linesGroup) return;
 
+    isRefreshingRef.current = true;
     markersGroup.clearLayers();
     linesGroup.clearLayers();
 
@@ -285,9 +293,9 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     
     // Server Popup Content
     const serverPopupContent = document.createElement('div');
-    serverPopupContent.className = 'p-3.5 text-xs font-sans min-w-[250px]';
+    serverPopupContent.className = 'p-3.5 text-xs font-sans min-w-[270px]';
     serverPopupContent.innerHTML = `
-      <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1]">
+      <div class="flex items-center justify-between gap-3 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1] pr-8">
         <div class="flex items-center gap-2">
           <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
           <span class="popup-title tracking-tight font-bold">Nexus Core Host</span>
@@ -298,21 +306,31 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       </div>
       <div class="space-y-2 my-2.5 font-mono text-[11px]">
         <div class="flex justify-between items-center">
-          <span class="popup-label font-sans font-medium">Location:</span>
+          <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Location:</span>
           <span class="popup-value font-sans font-semibold">${serverNode.city}, ${serverNode.country}</span>
         </div>
-        <div class="flex justify-between items-center">
-          <span class="popup-label font-sans font-medium">Server Public IP:</span>
-          <span class="popup-ip-server font-mono font-bold tracking-wide">${serverNode.ip || '127.0.0.1'}</span>
+        <div class="flex justify-between items-center py-0.5">
+          <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Server Public IP:</span>
+          <div class="flex items-center gap-1.5 font-mono">
+            <span class="popup-ip-server font-bold tracking-wide text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/25">${serverNode.ip || '127.0.0.1'}</span>
+            ${serverNode.ip ? `
+              <button id="btn-copy-server-ip" class="p-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-blue-500 transition cursor-pointer active:scale-90" title="نسخ IP">
+                <svg id="icon-copy-server" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                  <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                </svg>
+              </button>
+            ` : ''}
+          </div>
         </div>
         <div class="flex justify-between items-center">
-          <span class="popup-label font-sans font-medium">Panel Port:</span>
+          <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Panel Port:</span>
           <span class="font-mono font-bold text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded bg-blue-500/10 border border-blue-500/25">
             Port ${serverNode.port || '8443'}
           </span>
         </div>
         <div class="flex justify-between items-center">
-          <span class="popup-label font-sans font-medium">Status:</span>
+          <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Status:</span>
           <span class="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1">
             <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             Active Listening
@@ -326,17 +344,47 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
     serverMarker.bindPopup(serverPopupContent, {
       className: 'nexus-map-popup',
-      maxWidth: 290,
+      maxWidth: 300,
+      autoClose: false,
+      closeOnClick: true,
+      closeOnEscapeKey: true,
+      autoPan: activePopupIdRef.current !== 'server',
     });
 
     serverMarker.on('popupopen', () => {
+      activePopupIdRef.current = 'server';
       const btn = document.getElementById('btn-fly-server');
       if (btn) {
         btn.onclick = () => flyToLocation(serverNode.lat, serverNode.lon, 14);
       }
+      const copyBtn = document.getElementById('btn-copy-server-ip');
+      if (copyBtn && serverNode.ip) {
+        copyBtn.onclick = async (e) => {
+          e.stopPropagation();
+          try {
+            await navigator.clipboard.writeText(serverNode.ip);
+            copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+            setTimeout(() => {
+              copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+            }, 1500);
+          } catch {
+            // fallback
+          }
+        };
+      }
+    });
+
+    serverMarker.on('popupclose', () => {
+      if (!isRefreshingRef.current && activePopupIdRef.current === 'server') {
+        activePopupIdRef.current = null;
+      }
     });
 
     serverMarker.addTo(markersGroup);
+
+    if (activePopupIdRef.current === 'server') {
+      serverMarker.openPopup();
+    }
 
     // B. Draw Client Markers (With Real User SVG Icon) and Connection Arcs
     visibleClients.forEach((client) => {
@@ -368,9 +416,9 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       const clientMarker = L.marker([client.lat, client.lon], { icon: clientIcon });
 
       const clientPopupContent = document.createElement('div');
-      clientPopupContent.className = 'p-3.5 text-xs font-sans min-w-[260px] max-w-[320px]';
+      clientPopupContent.className = 'p-3.5 text-xs font-sans min-w-[270px] max-w-[330px]';
       clientPopupContent.innerHTML = `
-        <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1]">
+        <div class="flex items-center justify-between gap-2 pb-2.5 border-b border-zinc-200 dark:border-white/[0.1] pr-8">
           <div class="flex items-center gap-2 min-w-0">
             <span class="w-2.5 h-2.5 rounded-full shrink-0 ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-400'}"></span>
             <span class="popup-title truncate font-bold text-sm text-zinc-900 dark:text-white">${client.email || 'Client Node'}</span>
@@ -389,7 +437,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
         <div class="space-y-2 my-2.5 font-mono text-[11px]">
           <div class="flex justify-between items-center">
-            <span class="popup-label font-sans font-medium">Inbound Port:</span>
+            <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Inbound Port:</span>
             <span class="font-mono font-bold text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/25">
               Port ${client.port || '—'}
             </span>
@@ -397,23 +445,33 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
           ${client.inboundTag ? `
             <div class="flex justify-between items-center">
-              <span class="popup-label font-sans font-medium">Inbound Tag:</span>
+              <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Inbound Tag:</span>
               <span class="popup-value font-mono text-zinc-700 dark:text-zinc-300 truncate max-w-[150px]">${client.inboundTag}</span>
             </div>
           ` : ''}
 
-          <div class="flex justify-between items-center">
-            <span class="popup-label font-sans font-medium">Client IP:</span>
-            <span class="popup-ip-client font-mono font-bold tracking-wide">${client.ip || 'Waiting for connection'}</span>
+          <div class="flex justify-between items-center py-0.5">
+            <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Client IP:</span>
+            <div class="flex items-center gap-1.5 font-mono">
+              <span class="popup-ip-client font-bold tracking-wide text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/25">${client.ip || 'Waiting for connection'}</span>
+              ${client.ip ? `
+                <button id="btn-copy-client-ip-${client.id}" class="p-1 rounded bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 transition cursor-pointer active:scale-90" title="نسخ IP">
+                  <svg id="icon-copy-client-${client.id}" xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="14" height="14" x="8" y="8" rx="2" ry="2"/>
+                    <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>
+                  </svg>
+                </button>
+              ` : ''}
+            </div>
           </div>
 
           <div class="flex justify-between items-center">
-            <span class="popup-label font-sans font-medium">Location:</span>
+            <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Location:</span>
             <span class="popup-value font-sans font-semibold">${client.city}, ${client.country}</span>
           </div>
 
           <div class="flex justify-between items-center">
-            <span class="popup-label font-sans font-medium">Status:</span>
+            <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Status:</span>
             <span class="${isOnline ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-zinc-500 font-medium'} flex items-center gap-1">
               <span class="w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500' : 'bg-zinc-400'}"></span>
               ${isOnline ? 'Online • متصل الآن' : 'Offline • غير متصل'}
@@ -421,7 +479,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           </div>
 
           <div class="flex justify-between items-center">
-            <span class="popup-label font-sans font-medium">Traffic:</span>
+            <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Traffic:</span>
             <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">
               ↑ ${formatBytes(client.up || 0)} / ↓ ${formatBytes(client.down || 0)}
             </span>
@@ -429,14 +487,14 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
           ${client.total && client.total > 0 ? `
             <div class="flex justify-between items-center">
-              <span class="popup-label font-sans font-medium">Data Limit:</span>
+              <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Data Limit:</span>
               <span class="popup-value font-mono font-bold">${formatBytes(client.total)}</span>
             </div>
           ` : ''}
 
           ${client.expiryTime && client.expiryTime > 0 ? `
             <div class="flex justify-between items-center">
-              <span class="popup-label font-sans font-medium">Expiry:</span>
+              <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Expiry:</span>
               <span class="popup-value font-mono text-[10px]">${new Date(client.expiryTime).toLocaleDateString()}</span>
             </div>
           ` : ''}
@@ -449,17 +507,47 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
       clientMarker.bindPopup(clientPopupContent, {
         className: 'nexus-map-popup',
-        maxWidth: 310,
+        maxWidth: 320,
+        autoClose: false,
+        closeOnClick: true,
+        closeOnEscapeKey: true,
+        autoPan: activePopupIdRef.current !== client.id,
       });
 
       clientMarker.on('popupopen', () => {
+        activePopupIdRef.current = client.id;
         const btn = document.getElementById(`btn-fly-client-${client.id}`);
         if (btn) {
           btn.onclick = () => flyToLocation(client.lat, client.lon, 14);
         }
+        const copyBtn = document.getElementById(`btn-copy-client-ip-${client.id}`);
+        if (copyBtn && client.ip) {
+          copyBtn.onclick = async (e) => {
+            e.stopPropagation();
+            try {
+              await navigator.clipboard.writeText(client.ip);
+              copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+              setTimeout(() => {
+                copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+              }, 1500);
+            } catch {
+              // fallback
+            }
+          };
+        }
+      });
+
+      clientMarker.on('popupclose', () => {
+        if (!isRefreshingRef.current && activePopupIdRef.current === client.id) {
+          activePopupIdRef.current = null;
+        }
       });
 
       clientMarker.addTo(markersGroup);
+
+      if (activePopupIdRef.current === client.id) {
+        clientMarker.openPopup();
+      }
 
       // C. Draw Curved Connection Arc from Client to Server
       const arcCoords = getCurvedArcPoints(
@@ -492,6 +580,8 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
         }).addTo(linesGroup);
       }
     });
+
+    isRefreshingRef.current = false;
   }, [serverNode, visibleClients, showPublicIP, formatBytes]);
 
   // Handler to smoothly fly to specific node coordinates

@@ -288,7 +288,6 @@ func (db *DB) migrate() error {
 	_, _ = db.conn.Exec("CREATE INDEX IF NOT EXISTS idx_clients_last_online ON clients(last_online)")
 	_, _ = db.conn.Exec("CREATE INDEX IF NOT EXISTS idx_clients_last_ip ON clients(last_ip)")
 	return nil
-	return nil
 }
 
 // -----------------------------------------------------------------------------
