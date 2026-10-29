@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -28,6 +29,7 @@ func main() {
 	showVersionLong := flag.Bool("version", false, "Display Nexus Panel version")
 	isCLI := flag.Bool("cli", false, "Execute CLI command and exit")
 	setPort := flag.Int("set-port", 0, "Set web panel port")
+	daemonPort := flag.Int("port", 0, "Web panel listening port (overrides database setting)")
 	resetAdmin := flag.Bool("reset-admin", false, "Reset admin username and password")
 	username := flag.String("username", "", "Admin username")
 	password := flag.String("password", "", "Admin password")
@@ -234,8 +236,15 @@ func main() {
 		}
 	}()
 
-	// Start HTTP REST API Server
+	// Determine Web Panel listening port with priority: CLI flag > ENV > Database > Default
 	webPort := db.GetSetting("web_port", "8443")
+	if *daemonPort > 0 {
+		webPort = fmt.Sprintf("%d", *daemonPort)
+	} else if envPort := os.Getenv("NEXUS_PORT"); envPort != "" {
+		webPort = envPort
+	} else if envPort := os.Getenv("PORT"); envPort != "" {
+		webPort = envPort
+	}
 	mux := http.NewServeMux()
 	apiServer.RegisterRoutes(mux)
 
@@ -317,16 +326,39 @@ func main() {
 	// Wrap with enterprise security headers, panic recovery, and request telemetry
 	productionHandler := api.PanicRecovery(api.SecurityHeaders(api.RequestLogger(mux)))
 
+	// Bind TCP Listener with intelligent collision & OS permission guard (handles Windows excluded port ranges)
+	listener, err := net.Listen("tcp", ":"+webPort)
+	if err != nil {
+		logger.Warningf("NEXUS: Configured web port %s is unavailable (%v). Scanning for free fallback port...", webPort, err)
+		fallbackPorts := []string{"8000", "2054", "54321", "2083", "8088", "8888"}
+		for _, fb := range fallbackPorts {
+			l, fbErr := net.Listen("tcp", ":"+fb)
+			if fbErr == nil {
+				listener = l
+				logger.Infof("NEXUS: Web panel successfully bound to available port %s (port %s was blocked by OS permissions/conflict)", fb, webPort)
+				log.Printf("[Info] Notice: Port %s was blocked by OS permissions. Fell back to http://0.0.0.0:%s", webPort, fb)
+				webPort = fb
+				_ = db.SetSetting("web_port", fb)
+				break
+			}
+		}
+		if listener == nil {
+			logger.Errorf("NEXUS: Failed to bind web panel to any TCP port: %v", err)
+			_ = pm.Stop()
+			log.Fatalf("HTTP server error: %v", err)
+		}
+	}
+
 	srv := &http.Server{
-		Addr:    ":" + webPort,
 		Handler: productionHandler,
 	}
 
 	go func() {
 		logger.Infof("NEXUS: web panel listening on http://0.0.0.0:%s", webPort)
 		log.Printf("[Info] Nexus Web Panel listening on http://0.0.0.0:%s", webPort)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 			logger.Errorf("NEXUS: HTTP server error: %v", err)
+			_ = pm.Stop()
 			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
@@ -338,4 +370,5 @@ func main() {
 
 	log.Println("[Info] Shutting down Nexus Panel gracefully...")
 	_ = srv.Close()
+	_ = pm.Stop()
 }

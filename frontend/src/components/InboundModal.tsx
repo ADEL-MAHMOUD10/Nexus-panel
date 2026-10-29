@@ -867,11 +867,11 @@ export const InboundModal: React.FC<InboundModalProps> = ({
       {/* Modal Dialog Window */}
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white dark:bg-[#161617] border border-neutral-200/80 dark:border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col my-auto max-h-[92vh] relative animate-in zoom-in-95 duration-200 cursor-default"
+        className="bg-white dark:bg-[#161617] border border-neutral-200/80 dark:border-neutral-800 rounded-2xl w-full max-w-3xl shadow-2xl overflow-hidden flex flex-col my-auto h-[90vh] sm:h-[86vh] max-h-[860px] min-h-[580px] relative animate-in zoom-in-95 duration-200 cursor-default"
       >
 
         {/* Modal Top Header Bar */}
-        <div className="px-6 py-4 border-b border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between bg-white dark:bg-[#161617] relative z-10">
+        <div className="px-6 py-4 border-b border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between bg-white dark:bg-[#161617] relative z-10 shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 flex items-center justify-center text-neutral-800 dark:text-neutral-300">
               <Server className="w-4 h-4" />
@@ -910,7 +910,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         </div>
 
         {/* Segmented Pill Tabs Navigation */}
-        <div className="p-2 bg-neutral-50/80 dark:bg-[#161617] border-b border-neutral-200/80 dark:border-neutral-800 relative z-10">
+        <div className="p-2 bg-neutral-50/80 dark:bg-[#161617] border-b border-neutral-200/80 dark:border-neutral-800 relative z-10 shrink-0">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-neutral-200/60 dark:bg-neutral-950 rounded-xl border border-neutral-300/50 dark:border-neutral-850">
             {[
               { id: 'basics', label: '1. Basics & Port', icon: Server },
@@ -941,7 +941,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
         </div>
 
         {/* Modal Scrollable Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 relative z-10">
+        <form id="inbound-form" onSubmit={handleSubmit} className="p-5 sm:p-6 overflow-y-auto space-y-6 flex-1 min-h-0 relative z-10">
           {errorMessage && (
             <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-rose-300 text-xs font-mono flex items-center gap-3 shadow-lg">
               <AlertCircle className="w-5 h-5 shrink-0 text-rose-400" />
@@ -1165,24 +1165,29 @@ export const InboundModal: React.FC<InboundModalProps> = ({
 
                   {/* Quick Preset Port Pills */}
                   <div className="flex flex-wrap gap-1.5 pt-1">
-                    {[443, 8443, 2053, 2083, 2087, 2096].map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => handleUpdatePort(p)}
-                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border cursor-pointer active:scale-95 ${
-                          port === p
-                            ? 'bg-white text-black font-semibold border-white'
-                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
+                    {[443, 8443, 2053, 2083, 2087, 2096].map((p) => {
+                      const isActive = port === p;
+                      return (
+                        <button
+                          key={p}
+                          type="button"
+                          data-no-invert="true"
+                          data-active={isActive ? "true" : "false"}
+                          onClick={() => handleUpdatePort(p)}
+                          className={`preset-pill text-[10px] px-2.5 py-0.5 rounded-lg font-mono border transition cursor-pointer ${
+                            isActive ? 'active' : ''
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      );
+                    })}
                     <button
                       type="button"
+                      data-no-invert="true"
+                      data-active="false"
                       onClick={handlePickNextAvailablePort}
-                      className="text-[10px] px-2 py-0.5 rounded-lg font-mono bg-neutral-900 hover:bg-neutral-800 text-neutral-300 border border-neutral-800 flex items-center gap-1 transition cursor-pointer active:scale-95"
+                      className="preset-pill text-[10px] px-2.5 py-0.5 rounded-lg font-mono flex items-center gap-1 transition cursor-pointer"
                     >
                       <RefreshCw className="w-2.5 h-2.5" />
                       <span>Suggest Free</span>
@@ -1287,20 +1292,23 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 transition"
                   />
                   <div className="flex gap-1.5 pt-1">
-                    {['0.0.0.0', '127.0.0.1', '::'].map((ip) => (
-                      <button
-                        key={ip}
-                        type="button"
-                        onClick={() => setListen(ip)}
-                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
-                          listen === ip
-                            ? 'bg-white text-black font-semibold border-white'
-                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                        }`}
-                      >
-                        {ip === '0.0.0.0' ? 'All (0.0.0.0)' : ip === '127.0.0.1' ? 'Local Only' : 'IPv6 (::)'}
-                      </button>
-                    ))}
+                    {['0.0.0.0', '127.0.0.1', '::'].map((ip) => {
+                      const isActive = listen === ip;
+                      return (
+                        <button
+                          key={ip}
+                          type="button"
+                          data-no-invert="true"
+                          data-active={isActive ? "true" : "false"}
+                          onClick={() => setListen(ip)}
+                          className={`preset-pill text-[10px] px-2.5 py-0.5 rounded-lg font-mono border transition cursor-pointer ${
+                            isActive ? 'active' : ''
+                          }`}
+                        >
+                          {ip === '0.0.0.0' ? 'All (0.0.0.0)' : ip === '127.0.0.1' ? 'Local Only' : 'IPv6 (::)'}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -1315,7 +1323,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                         <Database className="w-3 h-3" />
                       </div>
-                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider mb-0">
                         Total Inbound Quota (GB)
                       </label>
                     </div>
@@ -1332,20 +1340,23 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 transition"
                   />
                   <div className="flex gap-1.5 pt-1">
-                    {[0, 50, 100, 500, 1000].map((q) => (
-                      <button
-                        key={q}
-                        type="button"
-                        onClick={() => setTotalGB(q)}
-                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
-                          totalGB === q
-                            ? 'bg-white text-black font-semibold border-white'
-                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                        }`}
-                      >
-                        {q === 0 ? 'Unlimited' : `${q}GB`}
-                      </button>
-                    ))}
+                    {[0, 50, 100, 500, 1000].map((q) => {
+                      const isActive = totalGB === q;
+                      return (
+                        <button
+                          key={q}
+                          type="button"
+                          data-no-invert="true"
+                          data-active={isActive ? "true" : "false"}
+                          onClick={() => setTotalGB(q)}
+                          className={`preset-pill text-[10px] px-2.5 py-0.5 rounded-lg font-mono border transition cursor-pointer ${
+                            isActive ? 'active' : ''
+                          }`}
+                        >
+                          {q === 0 ? 'Unlimited' : `${q}GB`}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1356,7 +1367,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                       <div className="w-5 h-5 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-300">
                         <Calendar className="w-3 h-3" />
                       </div>
-                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider">
+                      <label className="text-xs font-semibold text-neutral-200 uppercase tracking-wider mb-0">
                         Lifespan Duration (Days)
                       </label>
                     </div>
@@ -1373,20 +1384,23 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                     className="w-full px-3.5 py-2 bg-[#0e0e12] border border-neutral-800 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-neutral-600 transition"
                   />
                   <div className="flex gap-1.5 pt-1">
-                    {[0, 30, 90, 180, 365].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setExpiryDays(d)}
-                        className={`text-[10px] px-2 py-0.5 rounded-lg font-mono transition border ${
-                          expiryDays === d
-                            ? 'bg-white text-black font-semibold border-white'
-                            : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                        }`}
-                      >
-                        {d === 0 ? 'Forever' : `${d}d`}
-                      </button>
-                    ))}
+                    {[0, 30, 90, 180, 365].map((d) => {
+                      const isActive = expiryDays === d;
+                      return (
+                        <button
+                          key={d}
+                          type="button"
+                          data-no-invert="true"
+                          data-active={isActive ? "true" : "false"}
+                          onClick={() => setExpiryDays(d)}
+                          className={`preset-pill text-[10px] px-2.5 py-0.5 rounded-lg font-mono border transition cursor-pointer ${
+                            isActive ? 'active' : ''
+                          }`}
+                        >
+                          {d === 0 ? 'Forever' : `${d}d`}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -2033,19 +2047,26 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                           { name: 'Microsoft', dest: 'www.microsoft.com:443', sni: 'www.microsoft.com' },
                           { name: 'Apple', dest: 'www.apple.com:443', sni: 'www.apple.com' },
                           { name: 'Yahoo', dest: 'www.yahoo.com:443', sni: 'www.yahoo.com' },
-                        ].map((d) => (
-                          <button
-                            key={d.name}
-                            type="button"
-                            onClick={() => {
-                              setRealityDest(d.dest);
-                              setRealityServerNames(d.sni);
-                            }}
-                            className="text-[10px] px-2 py-0.5 rounded-md bg-neutral-900 hover:bg-neutral-800 text-neutral-300 hover:text-white font-mono border border-neutral-800 transition"
-                          >
-                            {d.name}
-                          </button>
-                        ))}
+                        ].map((d) => {
+                          const isActive = realityDest === d.dest;
+                          return (
+                            <button
+                              key={d.name}
+                              type="button"
+                              data-no-invert="true"
+                              data-active={isActive ? "true" : "false"}
+                              onClick={() => {
+                                setRealityDest(d.dest);
+                                setRealityServerNames(d.sni);
+                              }}
+                              className={`preset-pill text-[10px] px-2.5 py-0.5 rounded-md font-mono border transition cursor-pointer ${
+                                isActive ? 'active' : ''
+                              }`}
+                            >
+                              {d.name}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -2463,58 +2484,59 @@ export const InboundModal: React.FC<InboundModalProps> = ({
               )}
             </div>
           )}
+        </form>
 
-          {/* Modal Footer with Status Indicator & Submit Action */}
-          <div className="sticky bottom-0 -mx-5 -mb-5 sm:-mx-6 sm:-mb-6 p-4 sm:px-6 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between z-20 bg-white/95 dark:bg-[#161617]/95 backdrop-blur-md rounded-b-3xl">
-            <div className="flex items-center gap-2">
-              <div className={`w-2.5 h-2.5 rounded-full ${portConflict ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
-              <span className={`text-xs font-mono font-bold ${portConflict ? 'text-rose-500' : 'text-emerald-500'}`}>
-                {portConflict ? 'Port Conflict' : 'Port Ready'}
-              </span>
-              {portConflict && (
-                <button
-                  type="button"
-                  onClick={handlePickNextAvailablePort}
-                  className="ml-1.5 px-2 py-0.5 rounded-lg text-[10px] font-mono font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 hover:border-rose-500/50 transition-all cursor-pointer active:scale-95"
-                  title="Automatically suggest and assign a free port"
-                >
-                  Auto-Resolve
-                </button>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2.5">
+        {/* Modal Footer with Status Indicator & Submit Action (Pinned to Bottom) */}
+        <div className="p-4 sm:px-6 border-t border-neutral-200/80 dark:border-neutral-800 flex items-center justify-between z-20 bg-white dark:bg-[#161617] shrink-0 min-h-[64px]">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className={`w-2.5 h-2.5 rounded-full shrink-0 ${portConflict ? 'bg-rose-500 animate-pulse' : 'bg-emerald-500'}`} />
+            <span className={`text-xs font-mono font-bold shrink-0 ${portConflict ? 'text-rose-500' : 'text-emerald-500'}`}>
+              {portConflict ? 'Port Conflict' : 'Port Ready'}
+            </span>
+            {portConflict && (
               <button
                 type="button"
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-transparent dark:hover:bg-neutral-800 transition-all duration-150 border border-neutral-200 dark:border-neutral-800 active:scale-95 cursor-pointer"
+                onClick={handlePickNextAvailablePort}
+                className="ml-1.5 px-2.5 py-1 rounded-lg text-[10px] font-mono font-bold bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 border border-rose-500/30 hover:border-rose-500/50 transition-colors cursor-pointer shrink-0"
+                title="Automatically suggest and assign a free port"
               >
-                Cancel
+                Auto-Resolve
               </button>
-              <button
-                type="submit"
-                disabled={Boolean(portConflict) || isSubmitting}
-                className={`px-5 py-2 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2 ${
-                  portConflict
-                    ? 'opacity-40 cursor-not-allowed bg-neutral-300/80 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-500 border border-neutral-300 dark:border-neutral-800 pointer-events-none'
-                    : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 active:scale-98 cursor-pointer'
-                }`}
-              >
-                {isSubmitting ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    <span>Saving Inbound...</span>
-                  </>
-                ) : (
-                  <>
-                    <Check className="w-4 h-4 stroke-[2.5]" />
-                    <span>{inboundToEdit ? 'Update Inbound' : 'Create Inbound'}</span>
-                  </>
-                )}
-              </button>
-            </div>
+            )}
           </div>
-        </form>
+
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white bg-neutral-100 hover:bg-neutral-200 dark:bg-transparent dark:hover:bg-neutral-800 transition-colors border border-neutral-200 dark:border-neutral-800 cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              form="inbound-form"
+              type="submit"
+              disabled={Boolean(portConflict) || isSubmitting}
+              className={`min-w-[145px] h-[38px] px-5 py-2 rounded-xl text-xs font-semibold transition-colors shadow-sm flex items-center justify-center gap-2 border select-none shrink-0 ${
+                portConflict
+                  ? 'opacity-40 cursor-not-allowed bg-neutral-300/80 dark:bg-neutral-800 text-neutral-500 dark:text-neutral-500 border-neutral-300 dark:border-neutral-800 pointer-events-none'
+                  : 'bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-200 text-white dark:text-neutral-950 border-neutral-900 dark:border-white cursor-pointer'
+              }`}
+            >
+              {isSubmitting ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />
+                  <span>Saving Inbound...</span>
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 stroke-[2.5] shrink-0" />
+                  <span>{inboundToEdit ? 'Update Inbound' : 'Create Inbound'}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

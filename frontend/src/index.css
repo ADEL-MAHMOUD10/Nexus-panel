@@ -375,6 +375,14 @@ label:not(.checkbox-label):not(.switch-label):not(.cursor-pointer):not([class*="
   transform: scale(1.4) !important;
 }
 
+/* Ensure labels in flex align containers do not have bottom margins */
+.flex.items-center label,
+.items-center > label,
+label.mb-0,
+label[class*="mb-0"] {
+  margin-bottom: 0 !important;
+}
+
 /* =========================================================================
    LIGHT MODE HIGH-CONTRAST TYPOGRAPHY SYSTEM
    Ensures ALL texts across the entire application are rich, deep, and clearly legible
@@ -439,7 +447,7 @@ html.light .text-gray-600 {
 }
 
 /* Monospace Values, IPs, Ports, Commands, Keys in Light Mode */
-html.light .font-mono:not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-amber"]):not([class*="text-purple"]):not([class*="text-indigo"]),
+html.light .font-mono:not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-amber"]):not([class*="text-purple"]):not([class*="text-indigo"]):not(.preset-pill):not([data-active="true"]):not(.active),
 html.light code,
 html.light kbd,
 html.light pre {
@@ -606,8 +614,8 @@ html.dark .protocol-count-unselected {
 }
 
 /* Primary Action Buttons (Inverted in Light Mode to Obsidian Luxury #18181b) */
-html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn),
-html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) {
+html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn):not(.preset-pill),
+html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill) {
   background-color: #18181b !important;
   color: #ffffff !important;
   border: none !important;
@@ -615,14 +623,87 @@ html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-ta
   font-weight: 700 !important;
 }
 
-html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn) *,
-html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) * {
+html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn):not(.preset-pill) *,
+html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill) * {
   color: #ffffff !important;
 }
 
-html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn):hover,
-html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):hover {
+html.light button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.inbound-card-btn):not(.preset-pill):hover,
+html.light a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill):hover {
   background-color: #27272a !important;
+}
+
+/* =========================================================================
+   PRESET SELECTION PILLS (High-Contrast in Light & Dark Mode)
+   Eliminates black-on-black or illegible active/inactive states permanently
+   ========================================================================= */
+.preset-pill {
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease !important;
+  cursor: pointer !important;
+  user-select: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Active Preset Pill - Obsidian Dark in Light Mode, Crisp Pure White in Dark Mode */
+html.light .preset-pill[data-active="true"],
+html.light .preset-pill.active {
+  background-color: #18181b !important;
+  color: #ffffff !important;
+  border: 1px solid #18181b !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18) !important;
+}
+
+html.light .preset-pill[data-active="true"] *,
+html.light .preset-pill.active * {
+  color: #ffffff !important;
+}
+
+html.dark .preset-pill[data-active="true"],
+html.dark .preset-pill.active {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 1px 3px rgba(255, 255, 255, 0.25) !important;
+}
+
+html.dark .preset-pill[data-active="true"] *,
+html.dark .preset-pill.active * {
+  color: #000000 !important;
+}
+
+/* Inactive Preset Pill - High-Contrast Muted Neutral */
+html.light .preset-pill[data-active="false"],
+html.light .preset-pill:not(.active):not([data-active="true"]) {
+  background-color: #f2eeeb !important;
+  color: #3f3f46 !important;
+  border: 1px solid #dcd4cc !important;
+  font-weight: 600 !important;
+}
+
+html.light .preset-pill[data-active="false"]:hover,
+html.light .preset-pill:not(.active):not([data-active="true"]):hover {
+  background-color: #e5dfd7 !important;
+  color: #09090b !important;
+  border-color: #c4b9ad !important;
+}
+
+html.dark .preset-pill[data-active="false"],
+html.dark .preset-pill:not(.active):not([data-active="true"]) {
+  background-color: #18181b !important;
+  color: #a1a1a6 !important;
+  border: 1px solid #27272a !important;
+  font-weight: 500 !important;
+}
+
+html.dark .preset-pill[data-active="false"]:hover,
+html.dark .preset-pill:not(.active):not([data-active="true"]):hover {
+  background-color: #27272a !important;
+  color: #ffffff !important;
+  border-color: #3f3f46 !important;
 }
 
 /* Modal Tab Navigation & Segmented Controls */
@@ -671,33 +752,33 @@ html.dark [role="tab"][aria-selected="true"] {
 }
 
 /* Dark Mode Primary Button - Bold Pure White */
-html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]),
-html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) {
+html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill),
+html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill) {
   background-color: #ffffff !important;
   color: #000000 !important;
   font-weight: 700 !important;
 }
 
-html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) *,
-html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]) * {
+html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill) *,
+html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill) * {
   color: #000000 !important;
 }
 
-html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):hover,
-html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):hover {
+html.dark button.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill):hover,
+html.dark a.bg-white:not(.theme-toggle-btn):not([data-no-invert]):not(.modal-tab-btn):not([role="tab"]):not(.preset-pill):hover {
   background-color: #e5e5ea !important;
 }
 
 /* Secondary Button Overrides in Light Mode */
-html.light button.bg-neutral-900:not(.theme-toggle-btn):not(.inbound-power-btn),
-html.light a.bg-neutral-900:not(.theme-toggle-btn) {
+html.light button.bg-neutral-900:not(.theme-toggle-btn):not(.inbound-power-btn):not(.preset-pill),
+html.light a.bg-neutral-900:not(.theme-toggle-btn):not(.preset-pill) {
   background-color: #ffffff !important;
   color: #27272a !important;
   border: 1px solid #dcd6d0 !important;
 }
 
-html.light button.bg-neutral-900:not(.theme-toggle-btn):not(.inbound-power-btn):hover,
-html.light a.bg-neutral-900:not(.theme-toggle-btn):hover {
+html.light button.bg-neutral-900:not(.theme-toggle-btn):not(.inbound-power-btn):not(.preset-pill):hover,
+html.light a.bg-neutral-900:not(.theme-toggle-btn):not(.preset-pill):hover {
   background-color: #f7f4f1 !important;
   color: #18181b !important;
 }

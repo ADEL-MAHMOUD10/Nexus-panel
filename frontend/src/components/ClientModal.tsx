@@ -536,20 +536,23 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
               {/* Quota Presets */}
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-850">
-                {quotaPresets.map((qp) => (
-                  <button
-                    key={qp.val}
-                    type="button"
-                    onClick={() => setQuotaGB(qp.val)}
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${
-                      quotaGB === qp.val
-                        ? 'bg-white text-black font-semibold border-white'
-                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                    }`}
-                  >
-                    {qp.label}
-                  </button>
-                ))}
+                {quotaPresets.map((qp) => {
+                  const isActive = quotaGB === qp.val;
+                  return (
+                    <button
+                      key={qp.val}
+                      type="button"
+                      data-no-invert="true"
+                      data-active={isActive ? "true" : "false"}
+                      onClick={() => setQuotaGB(qp.val)}
+                      className={`preset-pill text-[10px] font-mono px-2.5 py-0.5 rounded-lg border transition cursor-pointer ${
+                        isActive ? 'active' : ''
+                      }`}
+                    >
+                      {qp.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
@@ -590,20 +593,23 @@ export const ClientModal: React.FC<ClientModalProps> = ({
 
               {/* Duration Presets */}
               <div className="flex flex-wrap gap-1.5 pt-2 border-t border-neutral-850">
-                {durationPresets.map((dp) => (
-                  <button
-                    key={dp.val}
-                    type="button"
-                    onClick={() => setExpiryDays(dp.val)}
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition ${
-                      expiryDays === dp.val
-                        ? 'bg-white text-black font-semibold border-white'
-                        : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                    }`}
-                  >
-                    {dp.label}
-                  </button>
-                ))}
+                {durationPresets.map((dp) => {
+                  const isActive = expiryDays === dp.val;
+                  return (
+                    <button
+                      key={dp.val}
+                      type="button"
+                      data-no-invert="true"
+                      data-active={isActive ? "true" : "false"}
+                      onClick={() => setExpiryDays(dp.val)}
+                      className={`preset-pill text-[10px] font-mono px-2.5 py-0.5 rounded-lg border transition cursor-pointer ${
+                        isActive ? 'active' : ''
+                      }`}
+                    >
+                      {dp.label}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
