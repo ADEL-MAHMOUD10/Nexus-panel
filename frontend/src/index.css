@@ -447,7 +447,7 @@ html.light .text-gray-600 {
 }
 
 /* Monospace Values, IPs, Ports, Commands, Keys in Light Mode */
-html.light .font-mono:not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-amber"]):not([class*="text-purple"]):not([class*="text-indigo"]):not(.preset-pill):not([data-active="true"]):not(.active),
+html.light .font-mono:not([class*="text-rose"]):not([class*="text-red"]):not([class*="text-emerald"]):not([class*="text-green"]):not([class*="text-blue"]):not([class*="text-amber"]):not([class*="text-purple"]):not([class*="text-indigo"]):not(.preset-pill):not([data-active="true"]):not(.active):not(.card-title):not(.inbound-select-card-selected *),
 html.light code,
 html.light kbd,
 html.light pre {
@@ -1046,4 +1046,185 @@ html.light .login-page input {
 .login-page button[type="submit"] {
   border-radius: 0.5rem !important;
   font-weight: 500 !important;
+}
+
+/* =========================================================================
+   PREMIUM PROTOCOL / TRANSPORT / SECURITY SELECTION CARDS
+   Borderless, high-contrast, illuminated active state with hand pointer cursor
+   ========================================================================= */
+
+.inbound-select-card {
+  cursor: pointer !important;
+  user-select: none !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.inbound-select-card * {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+/* Selected State - Apple Signature Blue (#0071e3), Zero Border, Minimal Subtle Glow */
+html.light .inbound-select-card-selected,
+html.dark .inbound-select-card-selected,
+.inbound-select-card-selected {
+  background: #0071e3 !important;
+  background-image: linear-gradient(180deg, #0077ed 0%, #006edb 100%) !important;
+  border: none !important;
+  border-width: 0 !important;
+  outline: none !important;
+  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.22), 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+  transform: translateY(-1px);
+  color: #ffffff !important;
+}
+
+html.light .inbound-select-card-selected *,
+html.dark .inbound-select-card-selected *,
+.inbound-select-card-selected * {
+  color: #ffffff !important;
+}
+
+html.light .inbound-select-card-selected .card-title,
+html.dark .inbound-select-card-selected .card-title,
+.inbound-select-card-selected .card-title,
+.inbound-select-card-selected span.card-title {
+  color: #ffffff !important;
+}
+
+.inbound-select-card-selected .card-desc {
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.inbound-select-card-selected .card-divider {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+}
+
+.inbound-select-card-selected .card-shield-icon {
+  color: #6ee7b7 !important; /* emerald-300 */
+}
+
+.inbound-select-card-selected .card-radio-icon {
+  color: #93c5fd !important; /* blue-300 */
+}
+
+.inbound-select-card-selected .card-spec-text {
+  color: rgba(255, 255, 255, 0.92) !important;
+}
+
+.inbound-select-card-selected .card-check-badge {
+  background-color: #ffffff !important;
+}
+
+.inbound-select-card-selected .card-check-badge *,
+.inbound-select-card-selected .card-check-badge svg,
+.inbound-select-card-selected .card-check-badge svg path {
+  color: #0071e3 !important;
+  stroke: #0071e3 !important;
+}
+
+/* Unselected State - Light Mode */
+html.light .inbound-select-card-unselected {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03) !important;
+}
+
+html.light .inbound-select-card-unselected:hover {
+  background-color: #faf8f5 !important;
+  border-color: rgba(0, 0, 0, 0.16) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+}
+
+html.light .inbound-select-card-unselected .card-title {
+  color: #09090b !important;
+}
+
+html.light .inbound-select-card-unselected .card-desc {
+  color: #71717a !important;
+}
+
+html.light .inbound-select-card-unselected .card-divider {
+  border-color: rgba(0, 0, 0, 0.06) !important;
+}
+
+html.light .inbound-select-card-unselected .card-spec-text {
+  color: #52525b !important;
+}
+
+/* Unselected State - Dark Mode */
+html.dark .inbound-select-card-unselected {
+  background-color: #0e0f13 !important;
+  color: #d4d4d8 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+}
+
+html.dark .inbound-select-card-unselected:hover {
+  background-color: #16171d !important;
+  border-color: rgba(255, 255, 255, 0.16) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+html.dark .inbound-select-card-unselected .card-title {
+  color: #f4f4f5 !important;
+}
+
+html.dark .inbound-select-card-unselected .card-desc {
+  color: #a1a1aa !important;
+}
+
+html.dark .inbound-select-card-unselected .card-divider {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .inbound-select-card-unselected .card-spec-text {
+  color: #a1a1aa !important;
+}
+
+/* =========================================================================
+   GLOBAL CLICKABLE CURSOR ENFORCEMENT
+   Ensures hand pointer cursor everywhere clickable (buttons, actions, cards)
+   Never shows text caret or default arrow when hovering interactive items
+   ========================================================================= */
+button,
+[role="button"],
+.inbound-action-btn,
+.cursor-pointer {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+button:disabled,
+button[disabled],
+[role="button"][aria-disabled="true"] {
+  cursor: not-allowed !important;
+}
+
+button:not(:disabled) *,
+[role="button"]:not([aria-disabled="true"]) *,
+.inbound-action-btn *,
+.cursor-pointer * {
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+/* Allow text selection only in actual text inputs, textareas, and code blocks */
+input,
+textarea,
+pre,
+code {
+  user-select: text !important;
+  cursor: text !important;
+}
+
+input[type="button"],
+input[type="submit"],
+input[type="reset"],
+input[type="checkbox"],
+input[type="radio"] {
+  cursor: pointer !important;
+  user-select: none !important;
 }

@@ -970,7 +970,7 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                 </div>
                 
                 {/* Protocol Grid Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   {PROTOCOLS.map((p) => {
                     const isSelected = protocol === p.id;
                     return (
@@ -978,35 +978,38 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                         key={p.id}
                         type="button"
                         onClick={() => handleSelectProtocol(p.id)}
-                        className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between ${
+                        className={`inbound-select-card p-3 rounded-xl text-left relative flex flex-col justify-between cursor-pointer select-none ${
                           isSelected
-                            ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10 text-white'
-                            : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-300'
+                            ? 'inbound-select-card-selected'
+                            : 'inbound-select-card-unselected'
                         }`}
                       >
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
+                            <span 
+                              className={`card-title text-xs font-bold font-mono tracking-tight ${isSelected ? 'text-white' : ''}`}
+                              style={isSelected ? { color: '#ffffff' } : undefined}
+                            >
                               {p.name}
                             </span>
                             {isSelected && (
-                              <div className="w-4 h-4 rounded-full bg-white flex items-center justify-center text-black">
-                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              <div className="card-check-badge w-4 h-4 rounded-full flex items-center justify-center shrink-0 shadow-sm bg-white">
+                                <Check className="w-2.5 h-2.5 stroke-[3]" style={{ stroke: '#0071e3', color: '#0071e3' }} />
                               </div>
                             )}
                           </div>
-                          <p className="text-[10px] text-neutral-400 leading-tight mb-2 line-clamp-1">{p.desc}</p>
+                          <p className="card-desc text-[10px] leading-tight mb-2 line-clamp-1">{p.desc}</p>
                         </div>
 
                         {/* Visual Security & Transport capability indicators */}
-                        <div className="space-y-1 pt-1.5 border-t border-neutral-800/60">
-                          <div className="flex items-center gap-1.5 text-[9px] font-mono text-neutral-400">
-                            <Shield className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
-                            <span className="truncate">{p.securitySummary}</span>
+                        <div className="card-divider space-y-1 pt-1.5 border-t">
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono">
+                            <Shield className={`w-2.5 h-2.5 shrink-0 ${isSelected ? 'card-shield-icon' : 'text-emerald-500 dark:text-emerald-400'}`} />
+                            <span className="card-spec-text truncate">{p.securitySummary}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-[9px] font-mono text-neutral-500">
-                            <Radio className="w-2.5 h-2.5 text-blue-400 shrink-0" />
-                            <span className="truncate">{p.transportSummary}</span>
+                          <div className="flex items-center gap-1.5 text-[9px] font-mono">
+                            <Radio className={`w-2.5 h-2.5 shrink-0 ${isSelected ? 'card-radio-icon' : 'text-blue-500 dark:text-blue-400'}`} />
+                            <span className="card-spec-text truncate">{p.transportSummary}</span>
                           </div>
                         </div>
                       </button>
@@ -1582,26 +1585,29 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                               key={t.id}
                               type="button"
                               onClick={() => setNetwork(t.id)}
-                              className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                              className={`inbound-select-card p-3 rounded-xl text-left relative flex flex-col justify-between cursor-pointer select-none ${
                                 isSelected
-                                  ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10 text-white'
-                                  : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-300'
+                                  ? 'inbound-select-card-selected'
+                                  : 'inbound-select-card-unselected'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
-                                  <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-400' : 'text-neutral-500'}`} />
-                                  <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
+                                  <Icon className={`w-3.5 h-3.5 ${isSelected ? 'card-radio-icon' : 'text-blue-500 dark:text-blue-400'}`} />
+                                  <span 
+                                    className={`card-title text-xs font-bold font-mono ${isSelected ? 'text-white' : ''}`}
+                                    style={isSelected ? { color: '#ffffff' } : undefined}
+                                  >
                                     {t.name}
                                   </span>
                                 </div>
                                 {isSelected && (
-                                  <div className="w-3.5 h-3.5 rounded-full bg-white flex items-center justify-center text-black">
-                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  <div className="card-check-badge w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 shadow-sm bg-white">
+                                    <Check className="w-2.5 h-2.5 stroke-[3]" style={{ stroke: '#0071e3', color: '#0071e3' }} />
                                   </div>
                                 )}
                               </div>
-                              <p className="text-[10px] text-neutral-400 leading-tight">{t.desc}</p>
+                              <p className="card-desc text-[10px] leading-tight">{t.desc}</p>
                             </button>
                           );
                         })}
@@ -1980,26 +1986,29 @@ export const InboundModal: React.FC<InboundModalProps> = ({
                                   setRemark(getSuggestedRemark(protocol, s.id, port));
                                 }
                               }}
-                              className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between ${
+                              className={`inbound-select-card p-3 rounded-xl text-left relative flex flex-col justify-between cursor-pointer select-none ${
                                 isSelected
-                                  ? 'bg-neutral-850 border-neutral-600 ring-1 ring-white/10 text-white'
-                                  : 'bg-[#0c0d10] border-neutral-800/80 hover:border-neutral-700 hover:bg-neutral-900 text-neutral-300'
+                                  ? 'inbound-select-card-selected'
+                                  : 'inbound-select-card-unselected'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
-                                  <Icon className={`w-4 h-4 ${isSelected ? 'text-emerald-400' : 'text-neutral-500'}`} />
-                                  <span className={`text-xs font-bold font-mono ${isSelected ? 'text-white' : 'text-neutral-200'}`}>
+                                  <Icon className={`w-4 h-4 ${isSelected ? 'card-shield-icon' : 'text-emerald-500 dark:text-emerald-400'}`} />
+                                  <span 
+                                    className={`card-title text-xs font-bold font-mono ${isSelected ? 'text-white' : ''}`}
+                                    style={isSelected ? { color: '#ffffff' } : undefined}
+                                  >
                                     {s.title}
                                   </span>
                                 </div>
                                 {isSelected && (
-                                  <div className="w-3.5 h-3.5 rounded-full bg-emerald-500 flex items-center justify-center text-black">
-                                    <Check className="w-2.5 h-2.5 stroke-[3]" />
+                                  <div className="card-check-badge w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 shadow-sm bg-white">
+                                    <Check className="w-2.5 h-2.5 stroke-[3]" style={{ stroke: '#0071e3', color: '#0071e3' }} />
                                   </div>
                                 )}
                               </div>
-                              <p className="text-[10px] text-neutral-400 leading-tight">{s.desc}</p>
+                              <p className="card-desc text-[10px] leading-tight">{s.desc}</p>
                             </button>
                           );
                         })}

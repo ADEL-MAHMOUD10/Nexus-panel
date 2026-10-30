@@ -26,6 +26,8 @@ import {
 } from 'lucide-react';
 import { GeoNode, GeoNetworkData } from '../types';
 import api from '../services/api';
+import { copyToClipboard } from '../utils/clipboard';
+import { useNotification } from '../context/NotificationContext';
 
 interface GeoConnectionMapProps {
   formatBytes: (bytes: number) => string;
@@ -72,6 +74,10 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = React.memo(({
   formatBytes,
   showPublicIP = false,
 }) => {
+  const { notify } = useNotification();
+  const notifyRef = useRef(notify);
+  notifyRef.current = notify;
+
   const [data, setData] = useState<GeoNetworkData | null>(null);
   const [selectedTheme, setSelectedTheme] = useState<MapTheme>(() => {
     return (localStorage.getItem('nexus_map_theme') as MapTheme) || 'dark';
@@ -379,20 +385,31 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = React.memo(({
       activePopupIdRef.current = 'server';
       const btn = document.getElementById('btn-fly-server');
       if (btn) {
-        btn.onclick = () => flyToLocation(serverNode.lat, serverNode.lon, 14);
+        L.DomEvent.disableClickPropagation(btn);
+        btn.onclick = (e) => {
+          e.stopPropagation();
+          flyToLocation(serverNode.lat, serverNode.lon, 14);
+        };
       }
       const copyBtn = document.getElementById('btn-copy-server-ip');
       if (copyBtn && serverNode.ip) {
-        copyBtn.onclick = async (e) => {
+        L.DomEvent.disableClickPropagation(copyBtn);
+        L.DomEvent.disableScrollPropagation(copyBtn);
+        copyBtn.onclick = async (e: MouseEvent) => {
           e.stopPropagation();
-          try {
-            await navigator.clipboard.writeText(serverNode.ip);
+          e.preventDefault();
+          const ipToCopy = serverNode.ip;
+          const success = await copyToClipboard(ipToCopy);
+          if (success) {
             copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+            notifyRef.current?.success('Copied to Clipboard', `Server IP ${ipToCopy} copied to clipboard`);
             setTimeout(() => {
-              copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+              if (document.body.contains(copyBtn)) {
+                copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+              }
             }, 1500);
-          } catch {
-            // fallback
+          } else {
+            notifyRef.current?.error('Copy Failed', 'Unable to copy IP to clipboard');
           }
         };
       }
@@ -542,20 +559,31 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = React.memo(({
         activePopupIdRef.current = client.id;
         const btn = document.getElementById(`btn-fly-client-${client.id}`);
         if (btn) {
-          btn.onclick = () => flyToLocation(client.lat, client.lon, 14);
+          L.DomEvent.disableClickPropagation(btn);
+          btn.onclick = (e) => {
+            e.stopPropagation();
+            flyToLocation(client.lat, client.lon, 14);
+          };
         }
         const copyBtn = document.getElementById(`btn-copy-client-ip-${client.id}`);
         if (copyBtn && client.ip) {
-          copyBtn.onclick = async (e) => {
+          L.DomEvent.disableClickPropagation(copyBtn);
+          L.DomEvent.disableScrollPropagation(copyBtn);
+          copyBtn.onclick = async (e: MouseEvent) => {
             e.stopPropagation();
-            try {
-              await navigator.clipboard.writeText(client.ip);
+            e.preventDefault();
+            const ipToCopy = client.ip;
+            const success = await copyToClipboard(ipToCopy);
+            if (success) {
               copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>`;
+              notifyRef.current?.success('Copied to Clipboard', `Client IP ${ipToCopy} copied to clipboard`);
               setTimeout(() => {
-                copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+                if (document.body.contains(copyBtn)) {
+                  copyBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>`;
+                }
               }, 1500);
-            } catch {
-              // fallback
+            } else {
+              notifyRef.current?.error('Copy Failed', 'Unable to copy IP to clipboard');
             }
           };
         }

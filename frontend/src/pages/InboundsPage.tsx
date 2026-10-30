@@ -878,41 +878,41 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
                       type="button"
                       onClick={() => onShareInbound(inb)}
                       title="Share Inbound / QR"
-                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-150 active:scale-90"
+                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-150 active:scale-90 cursor-pointer select-none"
                     >
-                      <QrCode className="w-4 h-4" />
+                      <QrCode className="w-4 h-4 pointer-events-none" />
                     </button>
                     <button
                       type="button"
                       onClick={() => onCloneInbound(inb.id)}
                       title="Clone Inbound"
-                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-150 active:scale-90"
+                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-150 active:scale-90 cursor-pointer select-none"
                     >
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-4 h-4 pointer-events-none" />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleConfirmReset(inb)}
                       title="Reset Traffic"
-                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all duration-150 active:scale-90"
+                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition-all duration-150 active:scale-90 cursor-pointer select-none"
                     >
-                      <RotateCcw className="w-4 h-4" />
+                      <RotateCcw className="w-4 h-4 pointer-events-none" />
                     </button>
                     <button
                       type="button"
                       onClick={() => onOpenEditModal(inb)}
                       title="Edit Settings"
-                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-150 active:scale-90"
+                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition-all duration-150 active:scale-90 cursor-pointer select-none"
                     >
-                      <Edit className="w-4 h-4" />
+                      <Edit className="w-4 h-4 pointer-events-none" />
                     </button>
                     <button
                       type="button"
                       onClick={() => handleConfirmDelete(inb)}
                       title="Delete Inbound"
-                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 active:scale-90"
+                      className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-150 active:scale-90 cursor-pointer select-none"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4 pointer-events-none" />
                     </button>
                   </div>
                 </div>
@@ -1107,41 +1107,41 @@ export const InboundsPage: React.FC<InboundsPageProps> = ({
                             type="button"
                             onClick={() => onShareInbound(inb)}
                             title="Share Inbound"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                            className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer select-none"
                           >
-                            <QrCode className="w-3.5 h-3.5" />
+                            <QrCode className="w-3.5 h-3.5 pointer-events-none" />
                           </button>
                           <button
                             type="button"
                             onClick={() => onCloneInbound(inb.id)}
                             title="Clone"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                            className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer select-none"
                           >
-                            <Copy className="w-3.5 h-3.5" />
+                            <Copy className="w-3.5 h-3.5 pointer-events-none" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleConfirmReset(inb)}
                             title="Reset Traffic"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition"
+                            className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-amber-400 hover:bg-amber-500/10 transition cursor-pointer select-none"
                           >
-                            <RotateCcw className="w-3.5 h-3.5" />
+                            <RotateCcw className="w-3.5 h-3.5 pointer-events-none" />
                           </button>
                           <button
                             type="button"
                             onClick={() => onOpenEditModal(inb)}
                             title="Edit"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition"
+                            className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800 transition cursor-pointer select-none"
                           >
-                            <Edit className="w-3.5 h-3.5" />
+                            <Edit className="w-3.5 h-3.5 pointer-events-none" />
                           </button>
                           <button
                             type="button"
                             onClick={() => handleConfirmDelete(inb)}
                             title="Delete"
-                            className="p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition"
+                            className="inbound-action-btn p-1.5 rounded-lg text-neutral-400 hover:text-red-400 hover:bg-red-500/10 transition cursor-pointer select-none"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-3.5 h-3.5 pointer-events-none" />
                           </button>
                         </div>
                       </td>
