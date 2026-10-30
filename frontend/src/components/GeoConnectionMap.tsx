@@ -68,14 +68,24 @@ function getCurvedArcPoints(from: [number, number], to: [number, number], curvat
   return points;
 }
 
-export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({ 
+export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = React.memo(({ 
   formatBytes,
   showPublicIP = false,
 }) => {
   const [data, setData] = useState<GeoNetworkData | null>(null);
-  const [selectedTheme, setSelectedTheme] = useState<MapTheme>('satellite');
+  const [selectedTheme, setSelectedTheme] = useState<MapTheme>(() => {
+    return (localStorage.getItem('nexus_map_theme') as MapTheme) || 'dark';
+  });
   const [activeFilter, setActiveFilter] = useState<'all' | 'online' | 'server'>('all');
   const [focusedNodeId, setFocusedNodeId] = useState<number | 'server' | null>(null);
+
+  const handleSelectTheme = (theme: MapTheme) => {
+    setSelectedTheme(theme);
+    localStorage.setItem('nexus_map_theme', theme);
+  };
+
+  const formatBytesRef = useRef(formatBytes);
+  formatBytesRef.current = formatBytes;
 
   // Eye blur privacy toggle (persisted in localStorage)
   const [isBlurred, setIsBlurred] = useState<boolean>(() => {
@@ -243,12 +253,26 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     };
   }, [isBlurred]);
 
-  // 3. Render Markers & Connection Arcs
+  // 3. Render Markers & Connection Arcs with Memoized Fingerprint Guard
+  const dataFingerprint = useMemo(() => {
+    const s = `${serverNode.ip}:${serverNode.lat}:${serverNode.lon}:${serverNode.city}:${serverNode.country}`;
+    const c = visibleClients.map((cl) => `${cl.id}:${cl.ip}:${cl.lat}:${cl.lon}:${cl.isOnline ? 1 : 0}:${cl.up}:${cl.down}:${cl.port}`).join('|');
+    return `${s}__${c}__${showPublicIP}`;
+  }, [serverNode, visibleClients, showPublicIP]);
+
+  const prevFingerprintRef = useRef<string>('');
+
   useEffect(() => {
     const map = mapInstanceRef.current;
     const markersGroup = markersLayerRef.current;
     const linesGroup = linesLayerRef.current;
     if (!map || !markersGroup || !linesGroup) return;
+
+    // Zero-lag guard: prevent tearing down Leaflet layers if geo coordinates and node states haven't changed
+    if (prevFingerprintRef.current === dataFingerprint) {
+      return;
+    }
+    prevFingerprintRef.current = dataFingerprint;
 
     isRefreshingRef.current = true;
     markersGroup.clearLayers();
@@ -481,14 +505,14 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
           <div class="flex justify-between items-center">
             <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Traffic:</span>
             <span class="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-              ↑ ${formatBytes(client.up || 0)} / ↓ ${formatBytes(client.down || 0)}
+              ↑ ${formatBytesRef.current(client.up || 0)} / ↓ ${formatBytesRef.current(client.down || 0)}
             </span>
           </div>
 
           ${client.total && client.total > 0 ? `
             <div class="flex justify-between items-center">
               <span class="popup-label font-sans font-medium text-zinc-500 dark:text-zinc-400">Data Limit:</span>
-              <span class="popup-value font-mono font-bold">${formatBytes(client.total)}</span>
+              <span class="popup-value font-mono font-bold">${formatBytesRef.current(client.total)}</span>
             </div>
           ` : ''}
 
@@ -582,7 +606,7 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
     });
 
     isRefreshingRef.current = false;
-  }, [serverNode, visibleClients, showPublicIP, formatBytes]);
+  }, [dataFingerprint, serverNode, visibleClients, showPublicIP]);
 
   // Handler to smoothly fly to specific node coordinates
   const handleFlyTo = (node: GeoNode, zoom = 13) => {
@@ -634,37 +658,24 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
 
         {/* Toolbar Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Map Layer Switcher (Satellite Earth vs Obsidian Dark vs Streets) */}
+          {/* Map Layer Switcher (Obsidian Dark vs Streets vs Satellite Earth) */}
           <div className="flex items-center p-1 rounded-xl bg-zinc-100 dark:bg-zinc-900/80 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
             <button
               type="button"
-              onClick={() => setSelectedTheme('satellite')}
-              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
-                selectedTheme === 'satellite'
-                  ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
-                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200'
-              }`}
-              title="Real Earth Satellite Photography"
-            >
-              <Globe className={`w-3.5 h-3.5 ${selectedTheme === 'satellite' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
-              <span>Earth</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedTheme('dark')}
+              onClick={() => handleSelectTheme('dark')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'dark'
                   ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
                   : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200'
               }`}
-              title="Nexus Dark Canvas"
+              title="Dark Canvas (Fast, high-contrast & lightweight)"
             >
               <Moon className={`w-3.5 h-3.5 ${selectedTheme === 'dark' ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
               <span>Dark Canvas</span>
             </button>
             <button
               type="button"
-              onClick={() => setSelectedTheme('streets')}
+              onClick={() => handleSelectTheme('streets')}
               className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
                 selectedTheme === 'streets'
                   ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
@@ -674,6 +685,19 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
             >
               <Map className={`w-3.5 h-3.5 ${selectedTheme === 'streets' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
               <span>Streets</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectTheme('satellite')}
+              className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer flex items-center gap-1.5 ${
+                selectedTheme === 'satellite'
+                  ? 'bg-white dark:bg-white/[0.12] text-zinc-950 dark:text-white border border-zinc-300 dark:border-white/[0.2] font-semibold shadow-sm'
+                  : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-zinc-200'
+              }`}
+              title="Real Earth Satellite Photography"
+            >
+              <Globe className={`w-3.5 h-3.5 ${selectedTheme === 'satellite' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-500 dark:text-zinc-400'}`} />
+              <span>Earth</span>
             </button>
           </div>
 
@@ -920,4 +944,4 @@ export const GeoConnectionMap: React.FC<GeoConnectionMapProps> = ({
       </div>
     </div>
   );
-};
+});

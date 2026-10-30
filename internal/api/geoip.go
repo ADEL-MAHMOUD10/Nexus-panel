@@ -62,25 +62,27 @@ var fallbackCities = []GeoLocation{
 
 // GeoService manages IP geocoding and caching for server and connected clients
 type GeoService struct {
-	mu         sync.RWMutex
-	ipCache    map[string]GeoLocation
-	clientIPs  map[string]string // email -> ip
-	httpClient *http.Client
-	db         *database.DB
+	mu           sync.RWMutex
+	ipCache      map[string]GeoLocation
+	clientIPs    map[string]string // email -> ip
+	httpClient   *http.Client
+	db           *database.DB
+	inFlightReqs map[string]bool
 }
 
 // NewGeoService creates a new GeoService instance
 func NewGeoService() *GeoService {
 	return &GeoService{
-		ipCache:   make(map[string]GeoLocation),
-		clientIPs: make(map[string]string),
+		ipCache:      make(map[string]GeoLocation),
+		clientIPs:    make(map[string]string),
+		inFlightReqs: make(map[string]bool),
 		httpClient: &http.Client{
 			Timeout: 3 * time.Second,
 		},
 	}
 }
 
-// SetDB attaches the database and populates existing client IPs
+// SetDB attaches the database, populates existing client IPs, and preloads SQLite persistent geo-cache
 func (g *GeoService) SetDB(db *database.DB) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
@@ -89,6 +91,18 @@ func (g *GeoService) SetDB(db *database.DB) {
 		if ips, err := db.GetAllClientIPs(); err == nil {
 			for email, ip := range ips {
 				g.clientIPs[strings.ToLower(email)] = ip
+			}
+		}
+		if cached, err := db.GetAllGeoCache(); err == nil {
+			for ip, entry := range cached {
+				g.ipCache[ip] = GeoLocation{
+					Country:     entry.Country,
+					CountryCode: entry.CountryCode,
+					City:        entry.City,
+					Lat:         entry.Lat,
+					Lon:         entry.Lon,
+					IP:          entry.IP,
+				}
 			}
 		}
 	}
@@ -142,12 +156,13 @@ func (g *GeoService) isPrivateIP(ipStr string) bool {
 	return parsed.IsLoopback() || parsed.IsPrivate() || parsed.IsLinkLocalUnicast() || parsed.IsUnspecified()
 }
 
-// ResolveIP performs geocoding on an IP address with caching and fallbacks
+// ResolveIP returns cached location immediately, or returns deterministic fast fallback and schedules background resolution (zero blocking)
 func (g *GeoService) ResolveIP(ip string) GeoLocation {
 	cleanIP := strings.TrimSpace(ip)
 	if h, _, err := net.SplitHostPort(cleanIP); err == nil {
 		cleanIP = h
 	}
+	cleanIP = strings.Trim(cleanIP, "[]")
 
 	if g.isPrivateIP(cleanIP) {
 		return GeoLocation{
@@ -165,7 +180,37 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 		g.mu.RUnlock()
 		return loc
 	}
+	isInFlight := g.inFlightReqs[cleanIP]
 	g.mu.RUnlock()
+
+	// If not already in flight, trigger background resolution
+	if !isInFlight {
+		g.mu.Lock()
+		if g.inFlightReqs == nil {
+			g.inFlightReqs = make(map[string]bool)
+		}
+		g.inFlightReqs[cleanIP] = true
+		g.mu.Unlock()
+
+		go g.asyncFetchGeo(cleanIP)
+	}
+
+	// Deterministic instant fallback based on IP hash so API response is immediate (<1ms)
+	idx := int(crc32.ChecksumIEEE([]byte(cleanIP))) % len(fallbackCities)
+	if idx < 0 {
+		idx = -idx
+	}
+	fb := fallbackCities[idx]
+	fb.IP = cleanIP
+	return fb
+}
+
+func (g *GeoService) asyncFetchGeo(cleanIP string) {
+	defer func() {
+		g.mu.Lock()
+		delete(g.inFlightReqs, cleanIP)
+		g.mu.Unlock()
+	}()
 
 	// 1. Primary GeoIP Provider: ip-api.com
 	url := fmt.Sprintf("http://ip-api.com/json/%s?fields=status,country,countryCode,city,lat,lon", cleanIP)
@@ -189,10 +234,8 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 				Lon:         apiRes.Lon,
 				IP:          cleanIP,
 			}
-			g.mu.Lock()
-			g.ipCache[cleanIP] = loc
-			g.mu.Unlock()
-			return loc
+			g.saveResolved(cleanIP, loc)
+			return
 		}
 		_ = resp.Body.Close()
 	}
@@ -219,26 +262,22 @@ func (g *GeoService) ResolveIP(ip string) GeoLocation {
 				Lon:         whoRes.Longitude,
 				IP:          cleanIP,
 			}
-			g.mu.Lock()
-			g.ipCache[cleanIP] = loc
-			g.mu.Unlock()
-			return loc
+			g.saveResolved(cleanIP, loc)
+			return
 		}
 		_ = resp2.Body.Close()
 	}
+}
 
-	// Deterministic fallback based on IP hash
-	idx := int(crc32.ChecksumIEEE([]byte(cleanIP))) % len(fallbackCities)
-	if idx < 0 {
-		idx = -idx
-	}
-	fb := fallbackCities[idx]
-	fb.IP = cleanIP
-
+func (g *GeoService) saveResolved(cleanIP string, loc GeoLocation) {
 	g.mu.Lock()
-	g.ipCache[cleanIP] = fb
+	g.ipCache[cleanIP] = loc
+	db := g.db
 	g.mu.Unlock()
-	return fb
+
+	if db != nil {
+		_ = db.SaveGeoCache(cleanIP, loc.Country, loc.CountryCode, loc.City, loc.Lat, loc.Lon)
+	}
 }
 
 // ResolveClientLocation resolves coordinates for a client, using their real IP or a regional coordinate anchor

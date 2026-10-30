@@ -2647,17 +2647,36 @@ func (s *Server) extractClientIP(r *http.Request) string {
 	return strings.TrimSpace(clientIP)
 }
 
-// getRealPublicIP returns the true public IPv4 address of the VPS host (without port or domain name)
+// getRealPublicIP returns the true public IPv4 address of the VPS host without blocking
 func (s *Server) getRealPublicIP(r *http.Request) string {
 	s.publicIPMu.RLock()
-	if s.cachedPublicIP != "" && time.Since(s.lastPublicIPGet) < 10*time.Minute {
+	if s.cachedPublicIP != "" {
 		cached := s.cachedPublicIP
+		needsRefresh := time.Since(s.lastPublicIPGet) > 10*time.Minute
 		s.publicIPMu.RUnlock()
+		if needsRefresh {
+			go s.refreshPublicIP()
+		}
 		return cached
 	}
 	s.publicIPMu.RUnlock()
 
-	// Query public IP service
+	// Initial cold start: launch background detection so request never stalls
+	go s.refreshPublicIP()
+
+	// Instant host fallback
+	host := r.Host
+	if h, _, err := net.SplitHostPort(r.Host); err == nil {
+		host = h
+	}
+	host = strings.Trim(host, "[]")
+	if parsed := net.ParseIP(host); parsed != nil && !parsed.IsLoopback() && !parsed.IsPrivate() {
+		return host
+	}
+	return "127.0.0.1"
+}
+
+func (s *Server) refreshPublicIP() {
 	client := http.Client{Timeout: 3 * time.Second}
 	endpoints := []string{
 		"https://api.ipify.org",
@@ -2677,17 +2696,10 @@ func (s *Server) getRealPublicIP(r *http.Request) string {
 				s.cachedPublicIP = ipStr
 				s.lastPublicIPGet = time.Now()
 				s.publicIPMu.Unlock()
-				return ipStr
+				return
 			}
 		}
 	}
-
-	// Fallback to request host without port
-	host := r.Host
-	if h, _, err := net.SplitHostPort(r.Host); err == nil {
-		host = h
-	}
-	return host
 }
 
 func (s *Server) handleListEndpoints(w http.ResponseWriter, r *http.Request) {

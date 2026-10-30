@@ -150,15 +150,15 @@ export function App() {
     return () => window.removeEventListener('nexus:unauthorized', handleUnauthorized);
   }, []);
 
-  const formatBytes = (bytes: number): string => {
+  const formatBytes = useCallback((bytes: number): string => {
     if (!bytes || bytes === 0) return '0 B';
     const k = 1024;
     const sizes = ['B', 'KB', 'MB', 'GB', 'TB', 'PB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
+  }, []);
 
-  const formatSpeed = (bytesPerSec: number): string => {
+  const formatSpeed = useCallback((bytesPerSec: number): string => {
     if (!bytesPerSec || bytesPerSec === 0) return '0 B/s';
     if (bytesPerSec >= 1024 * 1024 * 1024) {
       return (bytesPerSec / (1024 * 1024 * 1024)).toFixed(2) + ' GB/s';
@@ -170,7 +170,7 @@ export function App() {
       return (bytesPerSec / 1024).toFixed(2) + ' KB/s';
     }
     return Math.round(bytesPerSec) + ' B/s';
-  };
+  }, []);
 
   // Fetch telemetry status
   const fetchStatus = useCallback(async () => {

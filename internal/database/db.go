@@ -271,6 +271,16 @@ func (db *DB) migrate() error {
 		FOREIGN KEY(inbound_id) REFERENCES inbounds(id) ON DELETE CASCADE,
 		UNIQUE(inbound_id, email)
 	);
+	CREATE TABLE IF NOT EXISTS geo_cache (
+		ip TEXT PRIMARY KEY,
+		country TEXT DEFAULT '',
+		country_code TEXT DEFAULT '',
+		city TEXT DEFAULT '',
+		lat REAL DEFAULT 0,
+		lon REAL DEFAULT 0,
+		updated_at INTEGER DEFAULT 0
+	);
+	CREATE INDEX IF NOT EXISTS idx_geo_cache_ip ON geo_cache(ip);
 	CREATE INDEX IF NOT EXISTS idx_client_sub_id ON clients(sub_id);
 	CREATE INDEX IF NOT EXISTS idx_clients_inbound_id ON clients(inbound_id);
 	CREATE INDEX IF NOT EXISTS idx_clients_email ON clients(email);
@@ -605,6 +615,54 @@ func (db *DB) GetAllClientIPs() (map[string]string, error) {
 		var email, ip string
 		if err := rows.Scan(&email, &ip); err == nil && email != "" && ip != "" {
 			res[strings.ToLower(strings.TrimSpace(email))] = strings.TrimSpace(ip)
+		}
+	}
+	return res, nil
+}
+
+// GeoCacheEntry represents a cached geographical coordinate entry in SQLite
+type GeoCacheEntry struct {
+	IP          string  `json:"ip"`
+	Country     string  `json:"country"`
+	CountryCode string  `json:"countryCode"`
+	City        string  `json:"city"`
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lon"`
+}
+
+// SaveGeoCache persists an IP geolocation to SQLite so it never has to be requested again
+func (db *DB) SaveGeoCache(ip, country, countryCode, city string, lat, lon float64) error {
+	cleanIP := strings.TrimSpace(ip)
+	if cleanIP == "" {
+		return nil
+	}
+	_, err := db.conn.Exec(`
+		INSERT INTO geo_cache (ip, country, country_code, city, lat, lon, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(ip) DO UPDATE SET
+			country=excluded.country,
+			country_code=excluded.country_code,
+			city=excluded.city,
+			lat=excluded.lat,
+			lon=excluded.lon,
+			updated_at=excluded.updated_at
+	`, cleanIP, country, countryCode, city, lat, lon, time.Now().Unix())
+	return err
+}
+
+// GetAllGeoCache loads all cached geocoded IPs from SQLite into memory on server boot
+func (db *DB) GetAllGeoCache() (map[string]GeoCacheEntry, error) {
+	rows, err := db.conn.Query("SELECT ip, country, country_code, city, lat, lon FROM geo_cache")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	res := make(map[string]GeoCacheEntry)
+	for rows.Next() {
+		var e GeoCacheEntry
+		if err := rows.Scan(&e.IP, &e.Country, &e.CountryCode, &e.City, &e.Lat, &e.Lon); err == nil && e.IP != "" {
+			res[e.IP] = e
 		}
 	}
 	return res, nil

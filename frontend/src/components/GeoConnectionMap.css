@@ -310,7 +310,7 @@ html.dark .nexus-map-popup .leaflet-popup-close-button:hover {
   color: #ffffff !important;
 }
 
-/* Streaming data packets on connection arcs */
+/* Streaming data packets on connection arcs (GPU Accelerated) */
 @keyframes dashAnimation {
   to {
     stroke-dashoffset: -24;
@@ -318,5 +318,7 @@ html.dark .nexus-map-popup .leaflet-popup-close-button:hover {
 }
 
 .nexus-animated-arc {
-  animation: dashAnimation 1.2s linear infinite;
+  animation: dashAnimation 1.8s linear infinite;
+  will-change: stroke-dashoffset;
+  transform: translateZ(0);
 }
